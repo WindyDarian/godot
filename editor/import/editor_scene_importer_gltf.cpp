@@ -999,10 +999,13 @@ Error EditorSceneImporterGLTF::_parse_meshes(GLTFState &state) {
 				print_verbose("glTF: Mesh has targets");
 				Array targets = p["targets"];
 
+				//gltf2 stores displacements
+				mesh.mesh->set_blend_shape_mode(Mesh::BLEND_SHAPE_MODE_RELATIVE);
+
 				if (j == 0) {
 					Array target_names = extras.has("targetNames") ? (Array)extras["targetNames"] : Array();
 					for (int k = 0; k < targets.size(); k++) {
-						String name = k < target_names.size() ? (String)target_names[k] : String("morph_") + itos(k);
+						String name = k < target_names.size() ? (String)target_names[k] : String("windy_") + itos(k);
 						mesh.mesh->add_blend_shape(name);
 					}
 				}
@@ -1015,17 +1018,26 @@ Error EditorSceneImporterGLTF::_parse_meshes(GLTFState &state) {
 					array_copy.resize(Mesh::ARRAY_MAX);
 
 					for (int l = 0; l < Mesh::ARRAY_MAX; l++) {
-						array_copy[l] = array[l];
+						array_copy[l] = Variant();
 					}
-
-					array_copy[Mesh::ARRAY_INDEX] = Variant();
 
 					if (t.has("POSITION")) {
 						array_copy[Mesh::ARRAY_VERTEX] = _decode_accessor_as_vec3(state, t["POSITION"], true);
+					} else if (a.has("POSITION")) {
+						PoolVector<Vector3> varr;
+						PoolVector<Vector3> src_arr = array[Mesh::ARRAY_VERTEX];
+						varr.fill_with_value(Vector3(), src_arr.size());
+						array_copy[Mesh::ARRAY_VERTEX] = varr;
 					}
 					if (t.has("NORMAL")) {
 						array_copy[Mesh::ARRAY_NORMAL] = _decode_accessor_as_vec3(state, t["NORMAL"], true);
+					} else if (a.has("NORMAL")) {
+						PoolVector<Vector3> narr;
+						PoolVector<Vector3> src_arr = array[Mesh::ARRAY_NORMAL];
+						narr.fill_with_value(Vector3(), src_arr.size());
+						array_copy[Mesh::ARRAY_NORMAL] = narr;
 					}
+
 					if (t.has("TANGENT")) {
 						PoolVector<Vector3> tangents_v3 = _decode_accessor_as_vec3(state, t["TANGENT"], true);
 						PoolVector<float> tangents_v4;
@@ -1033,24 +1045,54 @@ Error EditorSceneImporterGLTF::_parse_meshes(GLTFState &state) {
 						ERR_FAIL_COND_V(src_tangents.size() == 0, ERR_PARSE_ERROR);
 
 						{
-
 							int size4 = src_tangents.size();
 							tangents_v4.resize(size4);
 							PoolVector<float>::Write w4 = tangents_v4.write();
 
 							PoolVector<Vector3>::Read r3 = tangents_v3.read();
-							PoolVector<float>::Read r4 = src_tangents.read();
 
 							for (int l = 0; l < size4 / 4; l++) {
 
 								w4[l * 4 + 0] = r3[l].x;
 								w4[l * 4 + 1] = r3[l].y;
 								w4[l * 4 + 2] = r3[l].z;
-								w4[l * 4 + 3] = r4[l * 4 + 3]; //copy flip value
+								w4[l * 4 + 3] = 0.0; //no need to copy flip value as w is not blended
 							}
 						}
 
 						array_copy[Mesh::ARRAY_TANGENT] = tangents_v4;
+					} else if (a.has("TANGENT")) {
+						PoolVector<float> tarr;
+						PoolVector<float> src_arr = array[Mesh::ARRAY_TANGENT];
+						tarr.fill_with_value(0.0f, src_arr.size());
+						array_copy[Mesh::ARRAY_TANGENT] = tarr;
+					}
+
+					if (a.has("TEXCOORD_0")) {
+						PoolVector<Vector2> uvarr;
+						array_copy[Mesh::ARRAY_TEX_UV] = uvarr;
+					}
+					if (a.has("TEXCOORD_1")) {
+						PoolVector<Vector2> uv2arr;
+						array_copy[Mesh::ARRAY_TEX_UV2] = uv2arr;
+					}
+					if (a.has("COLOR_0")) {
+						PoolVector<Color> carr;
+						PoolVector<int> src_arr = array[Mesh::ARRAY_COLOR];
+						carr.fill_with_value(Color(), src_arr.size());
+						array_copy[Mesh::ARRAY_COLOR] = carr;
+					}
+					if (a.has("JOINTS_0")) {
+						PoolVector<int> barr;
+						PoolVector<int> src_arr = array[Mesh::ARRAY_BONES];
+						barr.fill_with_value(0, src_arr.size());
+						array_copy[Mesh::ARRAY_BONES] = barr;
+					}
+					if (a.has("WEIGHTS_0")) {
+						PoolVector<float> warr;
+						PoolVector<float> src_arr = array[Mesh::ARRAY_WEIGHTS];
+						warr.fill_with_value(0.0f, src_arr.size());
+						array_copy[Mesh::ARRAY_WEIGHTS] = warr;
 					}
 
 					if (generated_tangents) {
@@ -1062,7 +1104,6 @@ Error EditorSceneImporterGLTF::_parse_meshes(GLTFState &state) {
 						st->generate_tangents();
 						array_copy = st->commit_to_arrays();
 					}
-
 					morphs.push_back(array_copy);
 				}
 			}

@@ -372,6 +372,15 @@ public:
 		}
 	}
 
+	void fill_with_value(const T &p_val, int p_count)
+	{
+		resize(p_count);
+		Write w = write();
+		for (int i = 0; i < p_count; i++) {
+			w[i] = p_val;
+		}
+	}
+
 	void remove(int p_index) {
 
 		int s = size();
