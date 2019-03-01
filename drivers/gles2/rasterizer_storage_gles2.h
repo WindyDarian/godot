@@ -72,6 +72,7 @@ public:
 		bool float_texture_supported;
 		bool s3tc_supported;
 		bool etc1_supported;
+		bool pvrtc_supported;
 
 		bool keep_original_textures;
 
@@ -84,6 +85,9 @@ public:
 		bool support_write_depth;
 		bool support_half_float_vertices;
 		bool support_npot_repeat_mipmap;
+
+		GLuint depth_internalformat;
+		GLuint depth_type;
 	} config;
 
 	struct Resources {
