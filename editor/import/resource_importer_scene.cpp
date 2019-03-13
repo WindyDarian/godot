@@ -1247,7 +1247,7 @@ Error ResourceImporterScene::import(const String &p_source_file, const String &p
 		root_type = ScriptServer::get_global_class_base(root_type);
 	}
 
-	if (scene->get_class() != root_type) {
+	if (root_type != "Spatial") {
 		Node *base_node = Object::cast_to<Node>(ClassDB::instance(root_type));
 
 		if (base_node) {

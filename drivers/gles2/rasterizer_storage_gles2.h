@@ -73,6 +73,8 @@ public:
 		bool s3tc_supported;
 		bool etc1_supported;
 		bool pvrtc_supported;
+		bool rgtc_supported;
+		bool bptc_supported;
 
 		bool keep_original_textures;
 
@@ -85,9 +87,14 @@ public:
 		bool support_write_depth;
 		bool support_half_float_vertices;
 		bool support_npot_repeat_mipmap;
+		bool support_depth_texture;
+		bool support_depth_cubemaps;
+
+		bool support_shadow_cubemaps;
 
 		GLuint depth_internalformat;
 		GLuint depth_type;
+
 	} config;
 
 	struct Resources {
@@ -631,6 +638,7 @@ public:
 
 		PoolVector<uint8_t> data;
 		PoolVector<uint8_t> index_data;
+		Vector<PoolVector<uint8_t> > blend_shape_data;
 
 		int total_data_size;
 
@@ -857,12 +865,16 @@ public:
 		Set<RasterizerScene::InstanceBase *> instances;
 
 		Transform2D base_transform_2d;
+		Transform world_transform;
+		Transform world_transform_inverse;
+		bool use_world_transform;
 
 		Skeleton() :
 				use_2d(false),
 				size(0),
 				tex_id(0),
-				update_list(this) {
+				update_list(this),
+				use_world_transform(false) {
 		}
 	};
 
@@ -880,6 +892,7 @@ public:
 	virtual void skeleton_bone_set_transform_2d(RID p_skeleton, int p_bone, const Transform2D &p_transform);
 	virtual Transform2D skeleton_bone_get_transform_2d(RID p_skeleton, int p_bone) const;
 	virtual void skeleton_set_base_transform_2d(RID p_skeleton, const Transform2D &p_base_transform);
+	virtual void skeleton_set_world_transform(RID p_skeleton, bool p_enable, const Transform &p_world_transform);
 
 	void _update_skeleton_transform_buffer(const PoolVector<float> &p_data, size_t p_size);
 
