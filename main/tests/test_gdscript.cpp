@@ -127,6 +127,7 @@ static String _parser_expr(const GDScriptParser::Node *p_expr) {
 
 				case GDScriptParser::OperatorNode::OP_PARENT_CALL:
 					txt += ".";
+					FALLTHROUGH;
 				case GDScriptParser::OperatorNode::OP_CALL: {
 
 					ERR_FAIL_COND_V(c_node->arguments.size() < 1, "");
@@ -283,7 +284,8 @@ static String _parser_expr(const GDScriptParser::Node *p_expr) {
 				case GDScriptParser::OperatorNode::OP_BIT_XOR: {
 					txt = _parser_expr(c_node->arguments[0]) + "^" + _parser_expr(c_node->arguments[1]);
 				} break;
-				default: {}
+				default: {
+				}
 			}
 
 		} break;
