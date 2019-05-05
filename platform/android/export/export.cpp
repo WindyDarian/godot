@@ -1735,8 +1735,8 @@ public:
 								new_file += l + "\n";
 							} else {
 								String base = l.substr(0, last_tag_pos + last_tag.length());
-								if (manifest_sections.has("application_tags")) {
-									for (List<String>::Element *E = manifest_sections["application_tags"].front(); E; E = E->next()) {
+								if (manifest_sections.has("application_attribs")) {
+									for (List<String>::Element *E = manifest_sections["application_attribs"].front(); E; E = E->next()) {
 										String to_add = E->get().strip_edges();
 										base += " " + to_add + " ";
 									}
@@ -1864,7 +1864,6 @@ public:
 			return ERR_FILE_NOT_FOUND;
 		}
 
-		ERR_FAIL_COND_V(!pkg, ERR_CANT_OPEN);
 		int ret = unzGoToFirstFile(pkg);
 
 		zlib_filefunc_def io2 = io;
@@ -2204,7 +2203,6 @@ public:
 			return ERR_FILE_NOT_FOUND;
 		}
 
-		ERR_FAIL_COND_V(!tmp_unaligned, ERR_CANT_OPEN);
 		ret = unzGoToFirstFile(tmp_unaligned);
 
 		io2 = io;
