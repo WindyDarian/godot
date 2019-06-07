@@ -88,14 +88,7 @@ void ProjectExportDialog::popup_export() {
 	if (saved_size != Rect2()) {
 		popup(saved_size);
 	} else {
-
-		Size2 popup_size = Size2(900, 700) * editor_get_scale();
-		Size2 window_size = get_viewport_rect().size;
-
-		popup_size.x = MIN(window_size.x * 0.8, popup_size.x);
-		popup_size.y = MIN(window_size.y * 0.8, popup_size.y);
-
-		popup_centered(popup_size);
+		popup_centered_clamped(Size2(900, 700) * EDSCALE, 0.8);
 	}
 }
 
@@ -571,9 +564,8 @@ void ProjectExportDialog::_duplicate_preset() {
 	Ref<EditorExportPreset> preset = current->get_platform()->create_preset();
 	ERR_FAIL_COND(!preset.is_valid());
 
-	String name = current->get_name() + "" + itos(1);
+	String name = current->get_name() + " (copy)";
 	bool make_runnable = true;
-	int attempt = 2;
 	while (true) {
 
 		bool valid = true;
@@ -592,8 +584,7 @@ void ProjectExportDialog::_duplicate_preset() {
 		if (valid)
 			break;
 
-		attempt++;
-		name = current->get_name() + " " + itos(attempt);
+		name += " (copy)";
 	}
 
 	preset->set_name(name);
