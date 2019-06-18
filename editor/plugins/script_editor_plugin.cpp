@@ -437,6 +437,8 @@ void ScriptEditor::_go_to_tab(int p_idx) {
 		if (script != NULL) {
 			notify_script_changed(script);
 		}
+
+		Object::cast_to<ScriptEditorBase>(c)->validate();
 	}
 	if (Object::cast_to<EditorHelp>(c)) {
 
@@ -2056,6 +2058,8 @@ bool ScriptEditor::edit(const RES &p_resource, int p_line, int p_col, bool p_gra
 					se->goto_line(p_line - 1);
 				}
 			}
+			_update_script_names();
+			script_list->ensure_current_is_visible();
 			return true;
 		}
 	}
