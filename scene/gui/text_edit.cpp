@@ -683,7 +683,7 @@ void TextEdit::_notification(int p_what) {
 			}
 
 			if (line_length_guideline) {
-				int x = xmargin_beg + cache.font->get_char_size('0').width * line_length_guideline_col - cursor.x_ofs;
+				int x = xmargin_beg + (int)cache.font->get_char_size('0').width * line_length_guideline_col - cursor.x_ofs;
 				if (x > xmargin_beg && x < xmargin_end) {
 					VisualServer::get_singleton()->canvas_item_add_line(ci, Point2(x, 0), Point2(x, size.height), cache.line_length_guideline_color);
 				}
@@ -1403,7 +1403,7 @@ void TextEdit::_notification(int p_what) {
 				}
 				int line_from = CLAMP(completion_index - lines / 2, 0, completion_options.size() - lines);
 				VisualServer::get_singleton()->canvas_item_add_rect(ci, Rect2(Point2(completion_rect.position.x, completion_rect.position.y + (completion_index - line_from) * get_row_height()), Size2(completion_rect.size.width, get_row_height())), cache.completion_selected_color);
-				draw_rect(Rect2(completion_rect.position, Size2(nofs, completion_rect.size.height)), cache.completion_existing_color);
+				draw_rect(Rect2(completion_rect.position + Vector2(icon_area_size.x + icon_hsep, 0), Size2(nofs, completion_rect.size.height)), cache.completion_existing_color);
 
 				for (int i = 0; i < lines; i++) {
 
@@ -3287,28 +3287,6 @@ void TextEdit::_gui_input(const Ref<InputEvent> &p_gui_input) {
 
 			} break;
 
-			case KEY_U: {
-				if (!k->get_command() || k->get_shift()) {
-					scancode_handled = false;
-					break;
-				} else {
-					if (selection.active) {
-						int ini = selection.from_line;
-						int end = selection.to_line;
-
-						for (int i = ini; i <= end; i++) {
-							_uncomment_line(i);
-						}
-					} else {
-						_uncomment_line(cursor.line);
-						if (cursor.column >= get_line(cursor.line).length()) {
-							cursor.column = MAX(0, get_line(cursor.line).length() - 1);
-						}
-					}
-					update();
-				}
-			} break;
-
 			default: {
 
 				scancode_handled = false;
@@ -3364,24 +3342,6 @@ void TextEdit::_gui_input(const Ref<InputEvent> &p_gui_input) {
 		}
 
 		return;
-	}
-}
-
-void TextEdit::_uncomment_line(int p_line) {
-	String line_text = get_line(p_line);
-	for (int i = 0; i < line_text.length(); i++) {
-		if (line_text[i] == '#') {
-			_remove_text(p_line, i, p_line, i + 1);
-			if (p_line == selection.to_line && selection.to_column > line_text.length() - 1) {
-				selection.to_column -= 1;
-				if (selection.to_column >= selection.from_column) {
-					selection.active = false;
-				}
-			}
-			return;
-		} else if (line_text[i] != '\t' && line_text[i] != ' ') {
-			return;
-		}
 	}
 }
 
