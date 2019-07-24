@@ -345,6 +345,7 @@ void EditorSettings::_load_defaults(Ref<ConfigFile> p_extra_config) {
 	_initial_set("interface/editor/unfocused_low_processor_mode_sleep_usec", 50000); // 20 FPS
 	hints["interface/editor/unfocused_low_processor_mode_sleep_usec"] = PropertyInfo(Variant::REAL, "interface/editor/unfocused_low_processor_mode_sleep_usec", PROPERTY_HINT_RANGE, "1,100000,1", PROPERTY_USAGE_DEFAULT);
 	_initial_set("interface/editor/separate_distraction_mode", false);
+	_initial_set("interface/editor/automatically_open_screenshots", true);
 	_initial_set("interface/editor/hide_console_window", false);
 	_initial_set("interface/editor/save_each_scene_on_quit", true); // Regression
 	_initial_set("interface/editor/quit_confirmation", true);
@@ -483,7 +484,9 @@ void EditorSettings::_load_defaults(Ref<ConfigFile> p_extra_config) {
 	// Completion
 	_initial_set("text_editor/completion/idle_parse_delay", 2.0);
 	hints["text_editor/completion/idle_parse_delay"] = PropertyInfo(Variant::REAL, "text_editor/completion/idle_parse_delay", PROPERTY_HINT_RANGE, "0.1, 10, 0.01");
-	_initial_set("text_editor/completion/auto_brace_complete", false);
+	_initial_set("text_editor/completion/auto_brace_complete", true);
+	_initial_set("text_editor/completion/code_complete_delay", 0.3);
+	hints["text_editor/completion/code_complete_delay"] = PropertyInfo(Variant::REAL, "text_editor/completion/code_complete_delay", PROPERTY_HINT_RANGE, "0.01, 5, 0.01");
 	_initial_set("text_editor/completion/put_callhint_tooltip_below_current_line", true);
 	_initial_set("text_editor/completion/callhint_tooltip_offset", Vector2());
 	_initial_set("text_editor/completion/complete_file_paths", true);
