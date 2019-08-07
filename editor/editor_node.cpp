@@ -334,6 +334,11 @@ void EditorNode::_notification(int p_what) {
 			OS::get_singleton()->set_low_processor_usage_mode_sleep_usec(int(EDITOR_GET("interface/editor/unfocused_low_processor_mode_sleep_usec")));
 		} break;
 
+		case MainLoop::NOTIFICATION_WM_ABOUT: {
+
+			show_about();
+		} break;
+
 		case MainLoop::NOTIFICATION_WM_QUIT_REQUEST: {
 
 			_menu_option_confirm(FILE_QUIT, false);
@@ -2775,6 +2780,20 @@ void EditorNode::_editor_select(int p_which) {
 			set_distraction_free_mode(scene_distraction);
 		}
 	}
+}
+
+void EditorNode::select_editor_by_name(const String &p_name) {
+	ERR_FAIL_COND(p_name == "");
+
+	for (int i = 0; i < main_editor_buttons.size(); i++) {
+		if (main_editor_buttons[i]->get_text() == p_name) {
+			_editor_select(i);
+			return;
+		}
+	}
+
+	ERR_EXPLAIN("The editor name '" + p_name + "' was not found.");
+	ERR_FAIL();
 }
 
 void EditorNode::add_editor_plugin(EditorPlugin *p_editor, bool p_config_changed) {
@@ -5943,7 +5962,7 @@ EditorNode::EditorNode() {
 	recent_scenes->connect("id_pressed", this, "_open_recent_scene");
 
 	p->add_separator();
-	p->add_item(TTR("Quit"), FILE_QUIT, KEY_MASK_CMD + KEY_Q);
+	p->add_shortcut(ED_SHORTCUT("editor/file_quit", TTR("Quit"), KEY_MASK_CMD + KEY_Q), FILE_QUIT, true);
 
 	project_menu = memnew(MenuButton);
 	project_menu->set_flat(false);
@@ -5977,9 +5996,9 @@ EditorNode::EditorNode() {
 	p->add_separator();
 
 #ifdef OSX_ENABLED
-	p->add_item(TTR("Quit to Project List"), RUN_PROJECT_MANAGER, KEY_MASK_SHIFT + KEY_MASK_ALT + KEY_Q);
+	p->add_shortcut(ED_SHORTCUT("editor/quit_to_project_list", TTR("Quit to Project List"), KEY_MASK_SHIFT + KEY_MASK_ALT + KEY_Q), RUN_PROJECT_MANAGER, true);
 #else
-	p->add_item(TTR("Quit to Project List"), RUN_PROJECT_MANAGER, KEY_MASK_SHIFT + KEY_MASK_CMD + KEY_Q);
+	p->add_shortcut(ED_SHORTCUT("editor/quit_to_project_list", TTR("Quit to Project List"), KEY_MASK_SHIFT + KEY_MASK_CMD + KEY_Q), RUN_PROJECT_MANAGER, true);
 #endif
 
 	menu_hb->add_spacer();
