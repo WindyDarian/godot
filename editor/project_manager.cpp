@@ -1109,7 +1109,7 @@ void ProjectList::load_project_icon(int p_index) {
 		Error err = img->load(item.icon.replace_first("res://", item.path + "/"));
 		if (err == OK) {
 
-			img->resize(default_icon->get_width(), default_icon->get_height());
+			img->resize(default_icon->get_width(), default_icon->get_height(), Image::INTERPOLATE_LANCZOS);
 			Ref<ImageTexture> it = memnew(ImageTexture);
 			it->create_from_image(img);
 			icon = it;
@@ -1312,7 +1312,7 @@ void ProjectList::set_filter_option(ProjectListFilter::FilterOption p_option) {
 void ProjectList::set_order_option(ProjectListFilter::FilterOption p_option) {
 	if (_order_option != p_option) {
 		_order_option = p_option;
-		EditorSettings::get_singleton()->set("project_manager/sorting_order", (int)_filter_option);
+		EditorSettings::get_singleton()->set("project_manager/sorting_order", (int)_order_option);
 		EditorSettings::get_singleton()->save();
 	}
 }
