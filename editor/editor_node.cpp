@@ -2954,7 +2954,6 @@ void EditorNode::set_addon_plugin_enabled(const String &p_addon, bool p_enabled,
 
 	EditorPlugin *ep = memnew(EditorPlugin);
 	ep->set_script(script.get_ref_ptr());
-	ep->set_dir_cache(p_addon);
 	plugin_addons[p_addon] = ep;
 	add_editor_plugin(ep, p_config_changed);
 
@@ -3828,9 +3827,13 @@ void EditorNode::show_accept(const String &p_text, const String &p_title) {
 
 void EditorNode::show_warning(const String &p_text, const String &p_title) {
 
-	warning->set_text(p_text);
-	warning->set_title(p_title);
-	warning->popup_centered_minsize();
+	if (warning->is_inside_tree()) {
+		warning->set_text(p_text);
+		warning->set_title(p_title);
+		warning->popup_centered_minsize();
+	} else {
+		WARN_PRINTS(p_title + " " + p_text);
+	}
 }
 
 void EditorNode::_copy_warning(const String &p_str) {
@@ -5511,6 +5514,9 @@ EditorNode::EditorNode() {
 			} break;
 		}
 	}
+
+	// Define a minimum window size to prevent UI elements from overlapping or being cut off
+	OS::get_singleton()->set_min_window_size(Size2(1024, 600) * EDSCALE);
 
 	ResourceLoader::set_abort_on_missing_resources(false);
 	FileDialog::set_default_show_hidden_files(EditorSettings::get_singleton()->get("filesystem/file_dialog/show_hidden_files"));
