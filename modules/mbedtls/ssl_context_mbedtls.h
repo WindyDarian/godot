@@ -1,5 +1,5 @@
 /*************************************************************************/
-/*  ssl_context_mbed_tls.h                                               */
+/*  ssl_context_mbedtls.h                                                */
 /*************************************************************************/
 /*                       This file is part of:                           */
 /*                           GODOT ENGINE                                */
@@ -41,7 +41,6 @@
 #include <mbedtls/ctr_drbg.h>
 #include <mbedtls/debug.h>
 #include <mbedtls/entropy.h>
-#include <mbedtls/net.h>
 #include <mbedtls/ssl.h>
 
 class SSLContextMbedTLS : public Reference {

@@ -1,5 +1,5 @@
 /*************************************************************************/
-/*  stream_peer_mbed_tls.h                                               */
+/*  stream_peer_mbedtls.h                                                */
 /*************************************************************************/
 /*                       This file is part of:                           */
 /*                           GODOT ENGINE                                */
@@ -33,15 +33,6 @@
 
 #include "core/io/stream_peer_ssl.h"
 #include "ssl_context_mbedtls.h"
-
-#include <mbedtls/config.h>
-#include <mbedtls/ctr_drbg.h>
-#include <mbedtls/debug.h>
-#include <mbedtls/entropy.h>
-#include <mbedtls/ssl.h>
-
-#include <stdio.h>
-#include <stdlib.h>
 
 class StreamPeerMbedTLS : public StreamPeerSSL {
 private:
