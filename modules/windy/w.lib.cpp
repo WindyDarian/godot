@@ -3,7 +3,39 @@
 
 #include "w.lib.h"
 
+static Dictionary* _get_tag_dictionary()
+{
+	// FIXME: multithreading
+	static Dictionary tag_name_to_tag_id;
+	return &tag_name_to_tag_id;
+}
+
 _W* _W::singleton = nullptr;
+
+// static void _register_tag_recursive(const String& tag_name, int depth)
+// {
+// 	if (depth >= 4)
+// 	{
+// 		print_error(String("Tag name has more than 4 segments. Currently only support 4. - ") + tag_name);
+// 		return;
+// 	}
+// }
+
+static void _register_tag(const String& tag_name)
+{
+	Dictionary& tag_dictionary = *_get_tag_dictionary();
+	int split_location = -1;
+	do {
+		split_location = tag_name.find_char('.', split_location + 1);
+		String current_parent_tag_name = tag_name.substr(0, split_location);
+		Variant current_parent_tag_name_variant = {current_parent_tag_name};
+		if (!tag_dictionary.has(current_parent_tag_name_variant))
+		{
+			tag_dictionary[current_parent_tag_name_variant] = 0; // TODO
+		}
+	} while (split_location >= 0);
+	// TODO: finish register_tag and expose to gdscript!
+}
 
 static void _spatial_set_rotation_quat(Spatial *spatial, const Quat &rotation)
 {
