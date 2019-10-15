@@ -1,0 +1,3 @@
+[submodule "modules/w"]
+	path = modules/w
+	url = https://github.com/WindyDarian/godot_module_w
