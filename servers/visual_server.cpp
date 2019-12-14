@@ -1693,7 +1693,7 @@ void VisualServer::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("mesh_create"), &VisualServer::mesh_create);
 	ClassDB::bind_method(D_METHOD("mesh_surface_get_format_offset", "format", "vertex_len", "index_len", "array_index"), &VisualServer::mesh_surface_get_format_offset);
 	ClassDB::bind_method(D_METHOD("mesh_surface_get_format_stride", "format", "vertex_len", "index_len"), &VisualServer::mesh_surface_get_format_stride);
-	ClassDB::bind_method(D_METHOD("mesh_add_surface_from_arrays", "mesh", "primtive", "arrays", "blend_shapes", "compress_format"), &VisualServer::mesh_add_surface_from_arrays, DEFVAL(Array()), DEFVAL(ARRAY_COMPRESS_DEFAULT));
+	ClassDB::bind_method(D_METHOD("mesh_add_surface_from_arrays", "mesh", "primitive", "arrays", "blend_shapes", "compress_format"), &VisualServer::mesh_add_surface_from_arrays, DEFVAL(Array()), DEFVAL(ARRAY_COMPRESS_DEFAULT));
 	ClassDB::bind_method(D_METHOD("mesh_set_blend_shape_count", "mesh", "amount"), &VisualServer::mesh_set_blend_shape_count);
 	ClassDB::bind_method(D_METHOD("mesh_get_blend_shape_count", "mesh"), &VisualServer::mesh_get_blend_shape_count);
 	ClassDB::bind_method(D_METHOD("mesh_set_blend_shape_mode", "mesh", "mode"), &VisualServer::mesh_set_blend_shape_mode);
@@ -1717,6 +1717,7 @@ void VisualServer::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("mesh_get_custom_aabb", "mesh"), &VisualServer::mesh_get_custom_aabb);
 	ClassDB::bind_method(D_METHOD("mesh_clear", "mesh"), &VisualServer::mesh_clear);
 
+	ClassDB::bind_method(D_METHOD("multimesh_create"), &VisualServer::multimesh_create);
 	ClassDB::bind_method(D_METHOD("multimesh_allocate", "multimesh", "instances", "transform_format", "color_format", "custom_data_format"), &VisualServer::multimesh_allocate, DEFVAL(MULTIMESH_CUSTOM_DATA_NONE));
 	ClassDB::bind_method(D_METHOD("multimesh_get_instance_count", "multimesh"), &VisualServer::multimesh_get_instance_count);
 	ClassDB::bind_method(D_METHOD("multimesh_set_mesh", "multimesh", "mesh"), &VisualServer::multimesh_set_mesh);
