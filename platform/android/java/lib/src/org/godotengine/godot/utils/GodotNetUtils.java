@@ -1,5 +1,5 @@
 /*************************************************************************/
-/*  scroll_container.h                                                   */
+/*  GodotNetUtils.java                                                   */
 /*************************************************************************/
 /*                       This file is part of:                           */
 /*                           GODOT ENGINE                                */
@@ -28,79 +28,57 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
 
-#ifndef SCROLL_CONTAINER_H
-#define SCROLL_CONTAINER_H
+package org.godotengine.godot.utils;
 
-#include "container.h"
+import android.content.Context;
+import android.net.wifi.WifiManager;
+import android.util.Log;
 
-#include "scroll_bar.h"
+import org.godotengine.godot.Godot;
 
-class ScrollContainer : public Container {
+/**
+ * This class handles Android-specific networking functions.
+ * For now, it only provides access to WifiManager.MulticastLock, which is needed on some devices
+ * to receive broadcast and multicast packets.
+ */
+public class GodotNetUtils {
 
-	GDCLASS(ScrollContainer, Container);
+	/* A single, reference counted, multicast lock, or null if permission CHANGE_WIFI_MULTICAST_STATE is missing */
+	private WifiManager.MulticastLock multicastLock;
 
-	HScrollBar *h_scroll;
-	VScrollBar *v_scroll;
+	public GodotNetUtils(Godot p_activity) {
+		if (PermissionsUtil.hasManifestPermission(p_activity, "android.permission.CHANGE_WIFI_MULTICAST_STATE")) {
+			WifiManager wifi = (WifiManager)p_activity.getApplicationContext().getSystemService(Context.WIFI_SERVICE);
+			multicastLock = wifi.createMulticastLock("GodotMulticastLock");
+			multicastLock.setReferenceCounted(true);
+		}
+	}
 
-	Size2 child_max_size;
-	Size2 scroll;
+	/**
+	 * Acquire the multicast lock. This is required on some devices to receive broadcast/multicast packets.
+	 * This is done automatically by Godot when enabling broadcast or joining a multicast group on a socket.
+	 */
+	public void multicastLockAcquire() {
+		if (multicastLock == null)
+			return;
+		try {
+			multicastLock.acquire();
+		} catch (RuntimeException e) {
+			Log.e("Godot", "Exception during multicast lock acquire: " + e);
+		}
+	}
 
-	void update_scrollbars();
-
-	Vector2 drag_speed;
-	Vector2 drag_accum;
-	Vector2 drag_from;
-	Vector2 last_drag_accum;
-	float last_drag_time;
-	float time_since_motion;
-	bool drag_touching;
-	bool drag_touching_deaccel;
-	bool click_handled;
-	bool beyond_deadzone;
-
-	bool scroll_h;
-	bool scroll_v;
-
-	int deadzone;
-
-	void _cancel_drag();
-
-protected:
-	Size2 get_minimum_size() const;
-
-	void _gui_input(const Ref<InputEvent> &p_gui_input);
-	void _notification(int p_what);
-
-	void _scroll_moved(float);
-	static void _bind_methods();
-
-	void _update_scrollbar_position();
-	void _ensure_focused_visible(Control *p_node);
-
-public:
-	int get_v_scroll() const;
-	void set_v_scroll(int p_pos);
-
-	int get_h_scroll() const;
-	void set_h_scroll(int p_pos);
-
-	void set_enable_h_scroll(bool p_enable);
-	bool is_h_scroll_enabled() const;
-
-	void set_enable_v_scroll(bool p_enable);
-	bool is_v_scroll_enabled() const;
-
-	int get_deadzone() const;
-	void set_deadzone(int p_deadzone);
-
-	HScrollBar *get_h_scrollbar();
-	VScrollBar *get_v_scrollbar();
-
-	virtual bool clips_input() const;
-
-	virtual String get_configuration_warning() const;
-
-	ScrollContainer();
-};
-
-#endif
+	/**
+	 * Release the multicast lock.
+	 * This is done automatically by Godot when the lock is no longer needed by a socket.
+	 */
+	public void multicastLockRelease() {
+		if (multicastLock == null)
+			return;
+		try {
+			multicastLock.release();
+		} catch (RuntimeException e) {
+			Log.e("Godot", "Exception during multicast lock release: " + e);
+		}
+	}
+}

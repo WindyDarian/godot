@@ -1,5 +1,5 @@
 /*************************************************************************/
-/*  scroll_container.h                                                   */
+/*  net_socket_android.h                                                 */
 /*************************************************************************/
 /*                       This file is part of:                           */
 /*                           GODOT ENGINE                                */
@@ -28,79 +28,51 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
 
-#ifndef SCROLL_CONTAINER_H
-#define SCROLL_CONTAINER_H
+#ifndef NET_SOCKET_ANDROID_H
+#define NET_SOCKET_ANDROID_H
 
-#include "container.h"
+#include "drivers/unix/net_socket_posix.h"
 
-#include "scroll_bar.h"
+#include <jni.h>
 
-class ScrollContainer : public Container {
+/**
+ * Specialized NetSocket implementation for Android.
+ *
+ * Some devices requires Android-specific code to acquire a MulticastLock
+ * before sockets are allowed to receive broadcast and multicast packets.
+ * This implementation calls into Java code and automatically acquire/release
+ * the lock when broadcasting is enabled/disabled on a socket, or that socket
+ * joins/leaves a multicast group.
+ */
+class NetSocketAndroid : public NetSocketPosix {
 
-	GDCLASS(ScrollContainer, Container);
+private:
+	static jobject net_utils;
+	static jclass cls;
+	static jmethodID _multicast_lock_acquire;
+	static jmethodID _multicast_lock_release;
 
-	HScrollBar *h_scroll;
-	VScrollBar *v_scroll;
+	bool wants_broadcast;
+	int multicast_groups;
 
-	Size2 child_max_size;
-	Size2 scroll;
-
-	void update_scrollbars();
-
-	Vector2 drag_speed;
-	Vector2 drag_accum;
-	Vector2 drag_from;
-	Vector2 last_drag_accum;
-	float last_drag_time;
-	float time_since_motion;
-	bool drag_touching;
-	bool drag_touching_deaccel;
-	bool click_handled;
-	bool beyond_deadzone;
-
-	bool scroll_h;
-	bool scroll_v;
-
-	int deadzone;
-
-	void _cancel_drag();
+	static void multicast_lock_acquire();
+	static void multicast_lock_release();
 
 protected:
-	Size2 get_minimum_size() const;
-
-	void _gui_input(const Ref<InputEvent> &p_gui_input);
-	void _notification(int p_what);
-
-	void _scroll_moved(float);
-	static void _bind_methods();
-
-	void _update_scrollbar_position();
-	void _ensure_focused_visible(Control *p_node);
+	static NetSocket *_create_func();
 
 public:
-	int get_v_scroll() const;
-	void set_v_scroll(int p_pos);
+	static void make_default();
+	static void setup(jobject p_net_utils);
 
-	int get_h_scroll() const;
-	void set_h_scroll(int p_pos);
+	virtual void close();
 
-	void set_enable_h_scroll(bool p_enable);
-	bool is_h_scroll_enabled() const;
+	virtual Error set_broadcasting_enabled(bool p_enabled);
+	virtual Error join_multicast_group(const IP_Address &p_multi_address, String p_if_name);
+	virtual Error leave_multicast_group(const IP_Address &p_multi_address, String p_if_name);
 
-	void set_enable_v_scroll(bool p_enable);
-	bool is_v_scroll_enabled() const;
-
-	int get_deadzone() const;
-	void set_deadzone(int p_deadzone);
-
-	HScrollBar *get_h_scrollbar();
-	VScrollBar *get_v_scrollbar();
-
-	virtual bool clips_input() const;
-
-	virtual String get_configuration_warning() const;
-
-	ScrollContainer();
+	NetSocketAndroid();
+	~NetSocketAndroid();
 };
 
 #endif
