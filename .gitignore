@@ -76,7 +76,7 @@ logs/
 
 # for projects that use SCons for building: http://http://www.scons.org/
 .sconf_temp
-.sconsign.dblite
+.sconsign*.dblite
 *.pyc
 
 # https://github.com/github/gitignore/blob/master/VisualStudio.gitignore
