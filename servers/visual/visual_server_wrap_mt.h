@@ -101,7 +101,7 @@ public:
 	FUNC2(texture_set_path, RID, const String &)
 	FUNC1RC(String, texture_get_path, RID)
 	FUNC1(texture_set_shrink_all_x2_on_set_data, bool)
-	FUNC1(texture_debug_usage, List<TextureInfo> *)
+	FUNC1S(texture_debug_usage, List<TextureInfo> *)
 
 	FUNC1(textures_keep_original, bool)
 
@@ -453,11 +453,10 @@ public:
 	FUNC2(scenario_set_fallback_environment, RID, RID)
 
 	/* INSTANCING API */
-	// from can be mesh, light,  area and portal so far.
 	FUNCRID(instance)
 
-	FUNC2(instance_set_base, RID, RID) // from can be mesh, light, poly, area and portal so far.
-	FUNC2(instance_set_scenario, RID, RID) // from can be mesh, light, poly, area and portal so far.
+	FUNC2(instance_set_base, RID, RID)
+	FUNC2(instance_set_scenario, RID, RID)
 	FUNC2(instance_set_layer_mask, RID, uint32_t)
 	FUNC2(instance_set_transform, RID, const Transform &)
 	FUNC2(instance_attach_object_instance_id, RID, ObjectID)
