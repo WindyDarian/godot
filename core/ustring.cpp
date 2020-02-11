@@ -146,9 +146,11 @@ void CharString::copy_from(const char *p_cstr) {
 		return;
 	}
 
-	resize(len + 1); // include terminating null char
+	Error err = resize(++len); // include terminating null char
 
-	strcpy(ptrw(), p_cstr);
+	ERR_FAIL_COND_MSG(err != OK, "Failed to copy C-string.");
+
+	memcpy(ptrw(), p_cstr, len);
 }
 
 void String::copy_from(const char *p_cstr) {
@@ -3324,7 +3326,7 @@ String String::humanize_size(uint64_t p_size) {
 
 	int prefix_idx = 0;
 
-	while (prefix_idx < prefixes.size() && p_size > (_div * 1024)) {
+	while (prefix_idx < prefixes.size() - 1 && p_size > (_div * 1024)) {
 		_div *= 1024;
 		prefix_idx++;
 	}

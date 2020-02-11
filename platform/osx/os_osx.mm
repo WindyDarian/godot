@@ -1724,42 +1724,39 @@ public:
 			case ERR_WARNING:
 				if (NSAppKitVersionNumber >= NSAppKitVersionNumber10_12) {
 					os_log_info(OS_LOG_DEFAULT,
-							"WARNING: %{public}s: %{public}s\nAt: %{public}s:%i.",
-							p_function, err_details, p_file, p_line);
+							"WARNING: %{public}s\nat: %{public}s (%{public}s:%i)",
+							err_details, p_function, p_file, p_line);
 				}
-				logf_error("\E[1;33mWARNING: %s: \E[0m\E[1m%s\n", p_function,
-						err_details);
-				logf_error("\E[0;33m   At: %s:%i.\E[0m\n", p_file, p_line);
+				logf_error("\E[1;33mWARNING:\E[0;93m %s\n", err_details);
+				logf_error("\E[0;90m     at: %s (%s:%i)\E[0m\n", p_function, p_file, p_line);
 				break;
 			case ERR_SCRIPT:
 				if (NSAppKitVersionNumber >= NSAppKitVersionNumber10_12) {
 					os_log_error(OS_LOG_DEFAULT,
-							"SCRIPT ERROR: %{public}s: %{public}s\nAt: %{public}s:%i.",
-							p_function, err_details, p_file, p_line);
+							"SCRIPT ERROR: %{public}s\nat: %{public}s (%{public}s:%i)",
+							err_details, p_function, p_file, p_line);
 				}
-				logf_error("\E[1;35mSCRIPT ERROR: %s: \E[0m\E[1m%s\n", p_function,
-						err_details);
-				logf_error("\E[0;35m   At: %s:%i.\E[0m\n", p_file, p_line);
+				logf_error("\E[1;35mSCRIPT ERROR:\E[0;95m %s\n", err_details);
+				logf_error("\E[0;90m          at: %s (%s:%i)\E[0m\n", p_function, p_file, p_line);
 				break;
 			case ERR_SHADER:
 				if (NSAppKitVersionNumber >= NSAppKitVersionNumber10_12) {
 					os_log_error(OS_LOG_DEFAULT,
-							"SHADER ERROR: %{public}s: %{public}s\nAt: %{public}s:%i.",
-							p_function, err_details, p_file, p_line);
+							"SHADER ERROR: %{public}s\nat: %{public}s (%{public}s:%i)",
+							err_details, p_function, p_file, p_line);
 				}
-				logf_error("\E[1;36mSHADER ERROR: %s: \E[0m\E[1m%s\n", p_function,
-						err_details);
-				logf_error("\E[0;36m   At: %s:%i.\E[0m\n", p_file, p_line);
+				logf_error("\E[1;36mSHADER ERROR:\E[0;96m %s\n", err_details);
+				logf_error("\E[0;90m          at: %s (%s:%i)\E[0m\n", p_function, p_file, p_line);
 				break;
 			case ERR_ERROR:
 			default:
 				if (NSAppKitVersionNumber >= NSAppKitVersionNumber10_12) {
 					os_log_error(OS_LOG_DEFAULT,
-							"ERROR: %{public}s: %{public}s\nAt: %{public}s:%i.",
-							p_function, err_details, p_file, p_line);
+							"ERROR: %{public}s\nat: %{public}s (%{public}s:%i)",
+							err_details, p_function, p_file, p_line);
 				}
-				logf_error("\E[1;31mERROR: %s: \E[0m\E[1m%s\n", p_function, err_details);
-				logf_error("\E[0;31m   At: %s:%i.\E[0m\n", p_file, p_line);
+				logf_error("\E[1;31mERROR:\E[0;91m %s\n", err_details);
+				logf_error("\E[0;90m   at: %s (%s:%i)\E[0m\n", p_function, p_file, p_line);
 				break;
 		}
 	}
@@ -2931,7 +2928,7 @@ void OS_OSX::run() {
 				quit = true;
 			}
 		} @catch (NSException *exception) {
-			ERR_PRINTS("NSException: " + String([exception reason].UTF8String));
+			ERR_PRINT("NSException: " + String([exception reason].UTF8String));
 		}
 	};
 
@@ -2987,7 +2984,7 @@ Error OS_OSX::move_to_trash(const String &p_path) {
 	NSError *err;
 
 	if (![fm trashItemAtURL:url resultingItemURL:nil error:&err]) {
-		ERR_PRINTS("trashItemAtURL error: " + String(err.localizedDescription.UTF8String));
+		ERR_PRINT("trashItemAtURL error: " + String(err.localizedDescription.UTF8String));
 		return FAILED;
 	}
 

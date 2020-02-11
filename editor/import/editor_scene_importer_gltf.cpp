@@ -29,6 +29,7 @@
 /*************************************************************************/
 
 #include "editor_scene_importer_gltf.h"
+
 #include "core/crypto/crypto_core.h"
 #include "core/io/json.h"
 #include "core/math/disjoint_set.h"
@@ -233,7 +234,7 @@ Error EditorSceneImporterGLTF::_parse_scenes(GLTFState &state) {
 	if (state.json.has("scene")) {
 		loaded_scene = state.json["scene"];
 	} else {
-		WARN_PRINT("The load-time scene is not defined in the glTF2 file. Picking the first scene.")
+		WARN_PRINT("The load-time scene is not defined in the glTF2 file. Picking the first scene.");
 	}
 
 	if (scenes.size()) {
@@ -2438,7 +2439,7 @@ Error EditorSceneImporterGLTF::_parse_animations(GLTFState &state) {
 					track->weight_tracks.write[k] = cf;
 				}
 			} else {
-				WARN_PRINTS("Invalid path '" + path + "'.");
+				WARN_PRINT("Invalid path '" + path + "'.");
 			}
 		}
 

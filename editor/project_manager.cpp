@@ -163,7 +163,7 @@ private:
 		}
 
 		if (valid_path == "") {
-			set_message(TTR("The path does not exist."), MESSAGE_ERROR);
+			set_message(TTR("The path specified doesn't exist."), MESSAGE_ERROR);
 			memdelete(d);
 			get_ok()->set_disabled(true);
 			return "";
@@ -177,7 +177,7 @@ private:
 			}
 
 			if (valid_install_path == "") {
-				set_message(TTR("The path does not exist."), MESSAGE_ERROR, INSTALL_PATH);
+				set_message(TTR("The path specified doesn't exist."), MESSAGE_ERROR, INSTALL_PATH);
 				memdelete(d);
 				get_ok()->set_disabled(true);
 				return "";
@@ -195,7 +195,7 @@ private:
 					unzFile pkg = unzOpen2(valid_path.utf8().get_data(), &io);
 					if (!pkg) {
 
-						set_message(TTR("Error opening package file, not in ZIP format."), MESSAGE_ERROR);
+						set_message(TTR("Error opening package file (it's not in ZIP format)."), MESSAGE_ERROR);
 						memdelete(d);
 						get_ok()->set_disabled(true);
 						unzClose(pkg);
@@ -216,7 +216,7 @@ private:
 					}
 
 					if (ret == UNZ_END_OF_LIST_OF_FILE) {
-						set_message(TTR("Invalid '.zip' project file, does not contain a 'project.godot' file."), MESSAGE_ERROR);
+						set_message(TTR("Invalid \".zip\" project file; it doesn't contain a \"project.godot\" file."), MESSAGE_ERROR);
 						memdelete(d);
 						get_ok()->set_disabled(true);
 						unzClose(pkg);
@@ -230,7 +230,11 @@ private:
 					bool is_empty = true;
 					String n = d->get_next();
 					while (n != String()) {
-						if (n != "." && n != "..") {
+						if (!n.begins_with(".")) {
+							// Allow `.`, `..` (reserved current/parent folder names)
+							// and hidden files/folders to be present.
+							// For instance, this lets users initialize a Git repository
+							// and still be able to create a project in the directory afterwards.
 							is_empty = false;
 							break;
 						}
@@ -247,7 +251,7 @@ private:
 					}
 
 				} else {
-					set_message(TTR("Please choose a 'project.godot' or '.zip' file."), MESSAGE_ERROR);
+					set_message(TTR("Please choose a \"project.godot\" or \".zip\" file."), MESSAGE_ERROR);
 					memdelete(d);
 					install_path_container->hide();
 					get_ok()->set_disabled(true);
@@ -256,7 +260,7 @@ private:
 
 			} else if (valid_path.ends_with("zip")) {
 
-				set_message(TTR("Directory already contains a Godot project."), MESSAGE_ERROR, INSTALL_PATH);
+				set_message(TTR("This directory already contains a Godot project."), MESSAGE_ERROR, INSTALL_PATH);
 				memdelete(d);
 				get_ok()->set_disabled(true);
 				return "";
@@ -269,7 +273,11 @@ private:
 			bool is_empty = true;
 			String n = d->get_next();
 			while (n != String()) {
-				if (n != "." && n != "..") { // i don't know if this is enough to guarantee an empty dir
+				if (!n.begins_with(".")) {
+					// Allow `.`, `..` (reserved current/parent folder names)
+					// and hidden files/folders to be present.
+					// For instance, this lets users initialize a Git repository
+					// and still be able to create a project in the directory afterwards.
 					is_empty = false;
 					break;
 				}
@@ -332,7 +340,7 @@ private:
 				install_path_container->show();
 				get_ok()->set_disabled(false);
 			} else {
-				set_message(TTR("Please choose a 'project.godot' or '.zip' file."), MESSAGE_ERROR);
+				set_message(TTR("Please choose a \"project.godot\" or \".zip\" file."), MESSAGE_ERROR);
 				get_ok()->set_disabled(true);
 				return;
 			}
@@ -877,7 +885,8 @@ public:
 		rs_button->set_pressed(true);
 		rvb->add_child(rs_button);
 		l = memnew(Label);
-		l->set_text(TTR("Higher visual quality\nAll features available\nIncompatible with older hardware\nNot recommended for web games"));
+		l->set_text(TTR("- Higher visual quality\n- All features available\n- Incompatible with older hardware\n- Not recommended for web games"));
+		l->set_modulate(Color(1, 1, 1, 0.7));
 		rvb->add_child(l);
 
 		rshb->add_child(memnew(VSeparator));
@@ -891,12 +900,17 @@ public:
 		rs_button->set_meta("driver_name", "GLES2");
 		rvb->add_child(rs_button);
 		l = memnew(Label);
-		l->set_text(TTR("Lower visual quality\nSome features not available\nWorks on most hardware\nRecommended for web games"));
+		l->set_text(TTR("- Lower visual quality\n- Some features not available\n- Works on most hardware\n- Recommended for web games"));
+		l->set_modulate(Color(1, 1, 1, 0.7));
 		rvb->add_child(l);
 
 		l = memnew(Label);
-		l->set_text(TTR("Renderer can be changed later, but scenes may need to be adjusted."));
+		l->set_text(TTR("The renderer can be changed later, but scenes may need to be adjusted."));
+		// Add some extra spacing to separate it from the list above and the buttons below.
+		l->set_custom_minimum_size(Size2(0, 40) * EDSCALE);
 		l->set_align(Label::ALIGN_CENTER);
+		l->set_valign(Label::VALIGN_CENTER);
+		l->set_modulate(Color(1, 1, 1, 0.7));
 		rasterizer_container->add_child(l);
 
 		fdialog = memnew(FileDialog);
@@ -1029,6 +1043,7 @@ public:
 	void sort_projects();
 	int get_project_count() const;
 	void select_project(int p_index);
+	void select_first_visible_project();
 	void erase_selected_projects();
 	Vector<Item> get_selected_projects() const;
 	const Set<String> &get_selected_project_keys() const;
@@ -1316,6 +1331,7 @@ void ProjectList::create_project_item_control(int p_index) {
 	// The project icon may not be loaded by the time the control is displayed,
 	// so use a loading placeholder.
 	tf->set_texture(get_icon("ProjectIconLoading", "EditorIcons"));
+	tf->set_v_size_flags(SIZE_SHRINK_CENTER);
 	if (item.missing) {
 		tf->set_modulate(Color(1, 1, 1, 0.5));
 	}
@@ -1618,6 +1634,23 @@ void ProjectList::select_project(int p_index) {
 	}
 
 	toggle_select(p_index);
+}
+
+void ProjectList::select_first_visible_project() {
+	bool found = false;
+
+	for (int i = 0; i < _projects.size(); i++) {
+		if (_projects[i].control->is_visible()) {
+			select_project(i);
+			found = true;
+			break;
+		}
+	}
+
+	if (!found) {
+		// Deselect all projects if there are no visible projects in the list.
+		_selected_project_keys.clear();
+	}
 }
 
 inline void sort(int &a, int &b) {
@@ -2338,6 +2371,12 @@ void ProjectManager::_on_order_option_changed() {
 void ProjectManager::_on_filter_option_changed() {
 	_project_list->set_search_term(project_filter->get_search_term());
 	_project_list->sort_projects();
+
+	// Select the first visible project in the list.
+	// This makes it possible to open a project without ever touching the mouse,
+	// as the search field is automatically focused on startup.
+	_project_list->select_first_visible_project();
+	_update_project_buttons();
 }
 
 void ProjectManager::_bind_methods() {
