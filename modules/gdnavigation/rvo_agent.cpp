@@ -6,7 +6,7 @@
 /*                      https://godotengine.org                          */
 /*************************************************************************/
 /* Copyright (c) 2007-2020 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2020 Godot Engine contributors (cf. AUTHORS.md)    */
+/* Copyright (c) 2014-2020 Godot Engine contributors (cf. AUTHORS.md).   */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -38,7 +38,7 @@
 
 RvoAgent::RvoAgent() :
 		map(NULL) {
-	callback.id = ObjectID(0);
+	callback.id = ObjectID();
 }
 
 void RvoAgent::set_map(NavMap *p_map) {
@@ -62,16 +62,16 @@ void RvoAgent::set_callback(ObjectID p_id, const StringName p_method, const Vari
 }
 
 bool RvoAgent::has_callback() const {
-	return callback.id != 0;
+	return callback.id.is_valid();
 }
 
 void RvoAgent::dispatch_callback() {
-	if (callback.id == 0) {
+	if (callback.id.is_null()) {
 		return;
 	}
 	Object *obj = ObjectDB::get_instance(callback.id);
 	if (obj == NULL) {
-		callback.id = ObjectID(0);
+		callback.id = ObjectID();
 	}
 
 	Variant::CallError responseCallError;

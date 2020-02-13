@@ -107,9 +107,9 @@ private:
 	void set_message(const String &p_msg, MessageType p_type = MESSAGE_SUCCESS, InputType input_type = PROJECT_PATH) {
 
 		msg->set_text(p_msg);
-		Ref<Texture> current_path_icon = status_rect->get_texture();
-		Ref<Texture> current_install_icon = install_status_rect->get_texture();
-		Ref<Texture> new_icon;
+		Ref<Texture2D> current_path_icon = status_rect->get_texture();
+		Ref<Texture2D> current_install_icon = install_status_rect->get_texture();
+		Ref<Texture2D> new_icon;
 
 		switch (p_type) {
 
@@ -880,12 +880,12 @@ public:
 		rshb->add_child(rvb);
 		Button *rs_button = memnew(CheckBox);
 		rs_button->set_button_group(rasterizer_button_group);
-		rs_button->set_text(TTR("OpenGL ES 3.0"));
+		rs_button->set_text(TTR("Vulkan"));
 		rs_button->set_meta("driver_name", "GLES3");
 		rs_button->set_pressed(true);
 		rvb->add_child(rs_button);
 		l = memnew(Label);
-		l->set_text(TTR("- Higher visual quality\n- All features available\n- Incompatible with older hardware\n- Not recommended for web games"));
+		l->set_text(TTR("- Higher visual quality\n- More accurate API, which produces very fast code\n- Some features not implemented yet — work in progress\n- Incompatible with older hardware\n- Not recommended for web and mobile games"));
 		l->set_modulate(Color(1, 1, 1, 0.7));
 		rvb->add_child(l);
 
@@ -900,7 +900,7 @@ public:
 		rs_button->set_meta("driver_name", "GLES2");
 		rvb->add_child(rs_button);
 		l = memnew(Label);
-		l->set_text(TTR("- Lower visual quality\n- Some features not available\n- Works on most hardware\n- Recommended for web games"));
+		l->set_text(TTR("- Lower visual quality\n- Some features not available\n- Works on most hardware\n- Recommended for web and mobile games"));
 		l->set_modulate(Color(1, 1, 1, 0.7));
 		rvb->add_child(l);
 
@@ -1141,8 +1141,8 @@ void ProjectList::_notification(int p_what) {
 void ProjectList::load_project_icon(int p_index) {
 	Item &item = _projects.write[p_index];
 
-	Ref<Texture> default_icon = get_icon("DefaultProjectIcon", "EditorIcons");
-	Ref<Texture> icon;
+	Ref<Texture2D> default_icon = get_icon("DefaultProjectIcon", "EditorIcons");
+	Ref<Texture2D> icon;
 	if (item.icon != "") {
 		Ref<Image> img;
 		img.instance();
@@ -1304,7 +1304,7 @@ void ProjectList::create_project_item_control(int p_index) {
 	Item &item = _projects.write[p_index];
 	ERR_FAIL_COND(item.control != NULL); // Already created
 
-	Ref<Texture> favorite_icon = get_icon("Favorites", "EditorIcons");
+	Ref<Texture2D> favorite_icon = get_icon("Favorites", "EditorIcons");
 	Color font_color = get_color("font_color", "Tree");
 
 	ProjectListItemControl *hb = memnew(ProjectListItemControl);
