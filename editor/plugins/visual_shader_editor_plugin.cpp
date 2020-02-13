@@ -116,7 +116,7 @@ void VisualShaderEditor::clear_custom_types() {
 	}
 }
 
-void VisualShaderEditor::add_custom_type(const String &p_name, const Ref<Script> &p_script, const String &p_description, int p_return_icon_type, const String &p_category, const String &p_subcategory) {
+void VisualShaderEditor::add_custom_type(const String &p_name, const Ref<Script> &p_script, const String &p_description, int p_return_icon_type, const String &p_category, const String &p_subcategory, bool p_highend) {
 
 	ERR_FAIL_COND(!p_name.is_valid_identifier());
 	ERR_FAIL_COND(!p_script.is_valid());
@@ -135,6 +135,7 @@ void VisualShaderEditor::add_custom_type(const String &p_name, const Ref<Script>
 	ao.description = p_description;
 	ao.category = p_category;
 	ao.sub_category = p_subcategory;
+	ao.highend = p_highend;
 	ao.is_custom = true;
 
 	bool begin = false;
@@ -247,6 +248,11 @@ void VisualShaderEditor::update_custom_nodes() {
 				subcategory = (String)ref->call("_get_subcategory");
 			}
 
+			bool highend = false;
+			if (ref->has_method("_is_highend")) {
+				highend = (bool)ref->call("_is_highend");
+			}
+
 			Dictionary dict;
 			dict["name"] = name;
 			dict["script"] = script;
@@ -254,6 +260,7 @@ void VisualShaderEditor::update_custom_nodes() {
 			dict["return_icon_type"] = return_icon_type;
 			dict["category"] = category;
 			dict["subcategory"] = subcategory;
+			dict["highend"] = highend;
 
 			String key;
 			key = category;
@@ -277,18 +284,14 @@ void VisualShaderEditor::update_custom_nodes() {
 
 		const Dictionary &value = (Dictionary)added[key];
 
-		add_custom_type(value["name"], value["script"], value["description"], value["return_icon_type"], value["category"], value["subcategory"]);
+		add_custom_type(value["name"], value["script"], value["description"], value["return_icon_type"], value["category"], value["subcategory"], value["highend"]);
 	}
 
 	_update_options_menu();
 }
 
 String VisualShaderEditor::_get_description(int p_idx) {
-	if (add_options[p_idx].highend) {
-		return TTR("(GLES3 only)") + " " + add_options[p_idx].description; // TODO: change it to (Vulkan Only) when its ready
-	} else {
-		return add_options[p_idx].description;
-	}
+	return add_options[p_idx].description;
 }
 
 void VisualShaderEditor::_update_options_menu() {
@@ -1680,6 +1683,8 @@ void VisualShaderEditor::_notification(int p_what) {
 
 	if (p_what == NOTIFICATION_ENTER_TREE || p_what == NOTIFICATION_THEME_CHANGED) {
 
+		highend_label->set_modulate(get_color("vulkan_color", "Editor"));
+
 		error_panel->add_style_override("panel", get_stylebox("bg", "Tree"));
 		error_label->add_color_override("font_color", get_color("error_color", "Editor"));
 
@@ -2037,8 +2042,10 @@ void VisualShaderEditor::_member_selected() {
 
 	if (item != NULL && item->has_meta("id")) {
 		members_dialog->get_ok()->set_disabled(false);
+		highend_label->set_visible(add_options[item->get_meta("id")].highend);
 		node_desc->set_text(_get_description(item->get_meta("id")));
 	} else {
+		highend_label->set_visible(false);
 		members_dialog->get_ok()->set_disabled(true);
 		node_desc->set_text("");
 	}
@@ -2425,9 +2432,21 @@ VisualShaderEditor::VisualShaderEditor() {
 	members->connect("item_selected", this, "_member_selected");
 	members->connect("nothing_selected", this, "_member_unselected");
 
+	HBoxContainer *desc_hbox = memnew(HBoxContainer);
+	members_vb->add_child(desc_hbox);
+
 	Label *desc_label = memnew(Label);
-	members_vb->add_child(desc_label);
+	desc_hbox->add_child(desc_label);
 	desc_label->set_text(TTR("Description:"));
+
+	desc_hbox->add_spacer();
+
+	highend_label = memnew(Label);
+	desc_hbox->add_child(highend_label);
+	highend_label->set_visible(false);
+	highend_label->set_text("Vulkan");
+	highend_label->set_mouse_filter(Control::MOUSE_FILTER_STOP);
+	highend_label->set_tooltip(TTR("High-end node"));
 
 	node_desc = memnew(RichTextLabel);
 	members_vb->add_child(node_desc);

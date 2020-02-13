@@ -625,7 +625,7 @@ Error MultiplayerAPI::_encode_and_compress_variant(const Variant &p_variant, uin
 		} break;
 		default:
 			// Any other case is not yet compressed.
-			Error err = encode_variant(p_variant, r_buffer, r_len, allow_object_decoding || network_peer->is_object_decoding_allowed());
+			Error err = encode_variant(p_variant, r_buffer, r_len, allow_object_decoding);
 			if (err != OK)
 				return err;
 			if (r_buffer) {
@@ -691,7 +691,7 @@ Error MultiplayerAPI::_decode_and_decompress_variant(Variant &r_variant, const u
 			}
 		} break;
 		default:
-			Error err = decode_variant(r_variant, p_buffer, p_len, r_len, allow_object_decoding || network_peer->is_object_decoding_allowed());
+			Error err = decode_variant(r_variant, p_buffer, p_len, r_len, allow_object_decoding);
 			if (err != OK)
 				return err;
 	}
@@ -1293,9 +1293,7 @@ void MultiplayerAPI::_bind_methods() {
 	BIND_ENUM_CONSTANT(RPC_MODE_REMOTE);
 	BIND_ENUM_CONSTANT(RPC_MODE_MASTER);
 	BIND_ENUM_CONSTANT(RPC_MODE_PUPPET);
-	BIND_ENUM_CONSTANT(RPC_MODE_SLAVE); // Deprecated.
 	BIND_ENUM_CONSTANT(RPC_MODE_REMOTESYNC);
-	BIND_ENUM_CONSTANT(RPC_MODE_SYNC); // Deprecated.
 	BIND_ENUM_CONSTANT(RPC_MODE_MASTERSYNC);
 	BIND_ENUM_CONSTANT(RPC_MODE_PUPPETSYNC);
 }
