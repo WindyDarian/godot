@@ -108,13 +108,6 @@ PoolStringArray _ResourceLoader::get_dependencies(const String &p_path) {
 	return ret;
 };
 
-#ifndef DISABLE_DEPRECATED
-bool _ResourceLoader::has(const String &p_path) {
-	WARN_PRINT("ResourceLoader.has() is deprecated, please replace it with the equivalent has_cached() or the new exists().");
-	return has_cached(p_path);
-}
-#endif // DISABLE_DEPRECATED
-
 bool _ResourceLoader::has_cached(const String &p_path) {
 
 	String local_path = ProjectSettings::get_singleton()->localize_path(p_path);
@@ -134,9 +127,6 @@ void _ResourceLoader::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_dependencies", "path"), &_ResourceLoader::get_dependencies);
 	ClassDB::bind_method(D_METHOD("has_cached", "path"), &_ResourceLoader::has_cached);
 	ClassDB::bind_method(D_METHOD("exists", "path", "type_hint"), &_ResourceLoader::exists, DEFVAL(""));
-#ifndef DISABLE_DEPRECATED
-	ClassDB::bind_method(D_METHOD("has", "path"), &_ResourceLoader::has);
-#endif // DISABLE_DEPRECATED
 }
 
 _ResourceLoader::_ResourceLoader() {
@@ -595,18 +585,6 @@ void _OS::set_vsync_via_compositor(bool p_enable) {
 bool _OS::is_vsync_via_compositor_enabled() const {
 
 	return OS::get_singleton()->is_vsync_via_compositor_enabled();
-}
-
-_OS::PowerState _OS::get_power_state() {
-	return _OS::PowerState(OS::get_singleton()->get_power_state());
-}
-
-int _OS::get_power_seconds_left() {
-	return OS::get_singleton()->get_power_seconds_left();
-}
-
-int _OS::get_power_percent_left() {
-	return OS::get_singleton()->get_power_percent_left();
 }
 
 bool _OS::has_feature(const String &p_feature) const {
@@ -1358,10 +1336,6 @@ void _OS::_bind_methods() {
 
 	ClassDB::bind_method(D_METHOD("has_feature", "tag_name"), &_OS::has_feature);
 
-	ClassDB::bind_method(D_METHOD("get_power_state"), &_OS::get_power_state);
-	ClassDB::bind_method(D_METHOD("get_power_seconds_left"), &_OS::get_power_seconds_left);
-	ClassDB::bind_method(D_METHOD("get_power_percent_left"), &_OS::get_power_percent_left);
-
 	ClassDB::bind_method(D_METHOD("request_permission", "name"), &_OS::request_permission);
 	ClassDB::bind_method(D_METHOD("request_permissions"), &_OS::request_permissions);
 	ClassDB::bind_method(D_METHOD("get_granted_permissions"), &_OS::get_granted_permissions);
@@ -1449,12 +1423,6 @@ void _OS::_bind_methods() {
 	BIND_ENUM_CONSTANT(SYSTEM_DIR_MUSIC);
 	BIND_ENUM_CONSTANT(SYSTEM_DIR_PICTURES);
 	BIND_ENUM_CONSTANT(SYSTEM_DIR_RINGTONES);
-
-	BIND_ENUM_CONSTANT(POWERSTATE_UNKNOWN);
-	BIND_ENUM_CONSTANT(POWERSTATE_ON_BATTERY);
-	BIND_ENUM_CONSTANT(POWERSTATE_NO_BATTERY);
-	BIND_ENUM_CONSTANT(POWERSTATE_CHARGING);
-	BIND_ENUM_CONSTANT(POWERSTATE_CHARGED);
 }
 
 _OS::_OS() {

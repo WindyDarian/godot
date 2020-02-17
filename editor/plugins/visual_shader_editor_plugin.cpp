@@ -216,7 +216,7 @@ void VisualShaderEditor::update_custom_nodes() {
 
 			Ref<VisualShaderNodeCustom> ref;
 			ref.instance();
-			ref->set_script(script.get_ref_ptr());
+			ref->set_script(script);
 
 			String name;
 			if (ref->has_method("_get_name")) {
@@ -1415,7 +1415,7 @@ VisualShaderNode *VisualShaderEditor::_add_node(int p_idx, int p_op_idx) {
 		VisualShaderNode *vsn = Object::cast_to<VisualShaderNode>(ClassDB::instance(base_type));
 		ERR_FAIL_COND_V(!vsn, NULL);
 		vsnode = Ref<VisualShaderNode>(vsn);
-		vsnode->set_script(add_options[p_idx].script.get_ref_ptr());
+		vsnode->set_script(add_options[p_idx].script);
 	}
 
 	Point2 position = graph->get_scroll_ofs();
@@ -2179,7 +2179,7 @@ void VisualShaderEditor::drop_data_fw(const Point2 &p_point, const Variant &p_da
 							_add_custom_node(arr[i]);
 							j++;
 						}
-					} else if (ClassDB::get_parent_class(type) == "Texture") {
+					} else if (ClassDB::get_parent_class(type) == "Texture2D") {
 						saved_node_pos = p_point + Vector2(0, j * 210 * EDSCALE);
 						saved_node_pos_dirty = true;
 						_add_texture_node(arr[i]);
@@ -2710,10 +2710,10 @@ VisualShaderEditor::VisualShaderEditor() {
 
 	// TEXTURES
 
-	add_options.push_back(AddOption("CubeMap", "Textures", "Functions", "VisualShaderNodeCubeMap", TTR("Perform the cubic texture lookup."), -1, -1));
+	add_options.push_back(AddOption("CubeMap", "Textures", "Functions", "VisualShaderNodeCubemap", TTR("Perform the cubic texture lookup."), -1, -1));
 	texture_node_option_idx = add_options.size();
 	add_options.push_back(AddOption("Texture2D", "Textures", "Functions", "VisualShaderNodeTexture", TTR("Perform the texture lookup."), -1, -1));
-	add_options.push_back(AddOption("CubeMapUniform", "Textures", "Variables", "VisualShaderNodeCubeMapUniform", TTR("Cubic texture uniform lookup."), -1, -1));
+	add_options.push_back(AddOption("CubeMapUniform", "Textures", "Variables", "VisualShaderNodeCubemapUniform", TTR("Cubic texture uniform lookup."), -1, -1));
 	add_options.push_back(AddOption("TextureUniform", "Textures", "Variables", "VisualShaderNodeTextureUniform", TTR("2D texture uniform lookup."), -1, -1));
 	add_options.push_back(AddOption("TextureUniformTriplanar", "Textures", "Variables", "VisualShaderNodeTextureUniformTriplanar", TTR("2D texture uniform lookup with triplanar."), -1, -1, VisualShader::TYPE_FRAGMENT | VisualShader::TYPE_LIGHT, Shader::MODE_SPATIAL));
 

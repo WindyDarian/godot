@@ -423,6 +423,7 @@ void BaseMaterial3D::_update_shader() {
 		case TEXTURE_FILTER_LINEAR_WITH_MIPMAPS: texfilter_str = "filter_linear_mipmap"; break;
 		case TEXTURE_FILTER_NEAREST_WITH_MIMPAMPS_ANISOTROPIC: texfilter_str = "filter_nearest_mipmap_aniso"; break;
 		case TEXTURE_FILTER_LINEAR_WITH_MIPMAPS_ANISOTROPIC: texfilter_str = "filter_linear_mipmap_aniso"; break;
+		case TEXTURE_FILTER_MAX: break; // Internal value, skip.
 	}
 
 	if (flags[FLAG_USE_TEXTURE_REPEAT]) {
@@ -2598,8 +2599,9 @@ BaseMaterial3D::~BaseMaterial3D() {
 }
 
 //////////////////////
-#ifndef DISABLE_DEPRECATED
 
+#ifndef DISABLE_DEPRECATED
+// Kept for compatibility from 3.x to 4.0.
 bool StandardMaterial3D::_set(const StringName &p_name, const Variant &p_value) {
 	if (p_name == "flags_transparent") {
 		bool transparent = p_value;
@@ -2686,5 +2688,4 @@ bool StandardMaterial3D::_set(const StringName &p_name, const Variant &p_value) 
 
 	return false;
 }
-
-#endif
+#endif // DISABLE_DEPRECATED
