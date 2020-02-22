@@ -170,8 +170,8 @@ void Area::_body_inout(int p_status, const RID &p_body, ObjectID p_instance, int
 			E->get().rc = 0;
 			E->get().in_tree = node && node->is_inside_tree();
 			if (node) {
-				node->connect(SceneStringNames::get_singleton()->tree_entered, this, SceneStringNames::get_singleton()->_body_enter_tree, make_binds(objid));
-				node->connect(SceneStringNames::get_singleton()->tree_exiting, this, SceneStringNames::get_singleton()->_body_exit_tree, make_binds(objid));
+				node->connect_compat(SceneStringNames::get_singleton()->tree_entered, this, SceneStringNames::get_singleton()->_body_enter_tree, make_binds(objid));
+				node->connect_compat(SceneStringNames::get_singleton()->tree_exiting, this, SceneStringNames::get_singleton()->_body_exit_tree, make_binds(objid));
 				if (E->get().in_tree) {
 					emit_signal(SceneStringNames::get_singleton()->body_entered, node);
 				}
@@ -197,8 +197,8 @@ void Area::_body_inout(int p_status, const RID &p_body, ObjectID p_instance, int
 		if (E->get().rc == 0) {
 
 			if (node) {
-				node->disconnect(SceneStringNames::get_singleton()->tree_entered, this, SceneStringNames::get_singleton()->_body_enter_tree);
-				node->disconnect(SceneStringNames::get_singleton()->tree_exiting, this, SceneStringNames::get_singleton()->_body_exit_tree);
+				node->disconnect_compat(SceneStringNames::get_singleton()->tree_entered, this, SceneStringNames::get_singleton()->_body_enter_tree);
+				node->disconnect_compat(SceneStringNames::get_singleton()->tree_exiting, this, SceneStringNames::get_singleton()->_body_exit_tree);
 				if (E->get().in_tree)
 					emit_signal(SceneStringNames::get_singleton()->body_exited, obj);
 			}
@@ -244,8 +244,8 @@ void Area::_clear_monitoring() {
 
 			emit_signal(SceneStringNames::get_singleton()->body_exited, node);
 
-			node->disconnect(SceneStringNames::get_singleton()->tree_entered, this, SceneStringNames::get_singleton()->_body_enter_tree);
-			node->disconnect(SceneStringNames::get_singleton()->tree_exiting, this, SceneStringNames::get_singleton()->_body_exit_tree);
+			node->disconnect_compat(SceneStringNames::get_singleton()->tree_entered, this, SceneStringNames::get_singleton()->_body_enter_tree);
+			node->disconnect_compat(SceneStringNames::get_singleton()->tree_exiting, this, SceneStringNames::get_singleton()->_body_exit_tree);
 		}
 	}
 
@@ -274,8 +274,8 @@ void Area::_clear_monitoring() {
 
 			emit_signal(SceneStringNames::get_singleton()->area_exited, obj);
 
-			node->disconnect(SceneStringNames::get_singleton()->tree_entered, this, SceneStringNames::get_singleton()->_area_enter_tree);
-			node->disconnect(SceneStringNames::get_singleton()->tree_exiting, this, SceneStringNames::get_singleton()->_area_exit_tree);
+			node->disconnect_compat(SceneStringNames::get_singleton()->tree_entered, this, SceneStringNames::get_singleton()->_area_enter_tree);
+			node->disconnect_compat(SceneStringNames::get_singleton()->tree_exiting, this, SceneStringNames::get_singleton()->_area_exit_tree);
 		}
 	}
 }
@@ -363,8 +363,8 @@ void Area::_area_inout(int p_status, const RID &p_area, ObjectID p_instance, int
 			E->get().rc = 0;
 			E->get().in_tree = node && node->is_inside_tree();
 			if (node) {
-				node->connect(SceneStringNames::get_singleton()->tree_entered, this, SceneStringNames::get_singleton()->_area_enter_tree, make_binds(objid));
-				node->connect(SceneStringNames::get_singleton()->tree_exiting, this, SceneStringNames::get_singleton()->_area_exit_tree, make_binds(objid));
+				node->connect_compat(SceneStringNames::get_singleton()->tree_entered, this, SceneStringNames::get_singleton()->_area_enter_tree, make_binds(objid));
+				node->connect_compat(SceneStringNames::get_singleton()->tree_exiting, this, SceneStringNames::get_singleton()->_area_exit_tree, make_binds(objid));
 				if (E->get().in_tree) {
 					emit_signal(SceneStringNames::get_singleton()->area_entered, node);
 				}
@@ -390,8 +390,8 @@ void Area::_area_inout(int p_status, const RID &p_area, ObjectID p_instance, int
 		if (E->get().rc == 0) {
 
 			if (node) {
-				node->disconnect(SceneStringNames::get_singleton()->tree_entered, this, SceneStringNames::get_singleton()->_area_enter_tree);
-				node->disconnect(SceneStringNames::get_singleton()->tree_exiting, this, SceneStringNames::get_singleton()->_area_exit_tree);
+				node->disconnect_compat(SceneStringNames::get_singleton()->tree_entered, this, SceneStringNames::get_singleton()->_area_enter_tree);
+				node->disconnect_compat(SceneStringNames::get_singleton()->tree_exiting, this, SceneStringNames::get_singleton()->_area_exit_tree);
 				if (E->get().in_tree) {
 					emit_signal(SceneStringNames::get_singleton()->area_exited, obj);
 				}
@@ -719,10 +719,10 @@ void Area::_bind_methods() {
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "collision_mask", PROPERTY_HINT_LAYERS_3D_PHYSICS), "set_collision_mask", "get_collision_mask");
 	ADD_GROUP("Audio Bus", "audio_bus_");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "audio_bus_override"), "set_audio_bus_override", "is_overriding_audio_bus");
-	ADD_PROPERTY(PropertyInfo(Variant::STRING, "audio_bus_name", PROPERTY_HINT_ENUM, ""), "set_audio_bus", "get_audio_bus");
+	ADD_PROPERTY(PropertyInfo(Variant::STRING_NAME, "audio_bus_name", PROPERTY_HINT_ENUM, ""), "set_audio_bus", "get_audio_bus");
 	ADD_GROUP("Reverb Bus", "reverb_bus_");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "reverb_bus_enable"), "set_use_reverb_bus", "is_using_reverb_bus");
-	ADD_PROPERTY(PropertyInfo(Variant::STRING, "reverb_bus_name", PROPERTY_HINT_ENUM, ""), "set_reverb_bus", "get_reverb_bus");
+	ADD_PROPERTY(PropertyInfo(Variant::STRING_NAME, "reverb_bus_name", PROPERTY_HINT_ENUM, ""), "set_reverb_bus", "get_reverb_bus");
 	ADD_PROPERTY(PropertyInfo(Variant::REAL, "reverb_bus_amount", PROPERTY_HINT_RANGE, "0,1,0.01"), "set_reverb_amount", "get_reverb_amount");
 	ADD_PROPERTY(PropertyInfo(Variant::REAL, "reverb_bus_uniformity", PROPERTY_HINT_RANGE, "0,1,0.01"), "set_reverb_uniformity", "get_reverb_uniformity");
 

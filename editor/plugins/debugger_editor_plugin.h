@@ -1,5 +1,5 @@
 /*************************************************************************/
-/*  pool_vector.cpp                                                      */
+/*  debugger_editor_plugin.h                                             */
 /*************************************************************************/
 /*                       This file is part of:                           */
 /*                           GODOT ENGINE                                */
@@ -28,43 +28,23 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
 
-#include "pool_vector.h"
+#ifndef DEBUGGER_EDITOR_PLUGIN_H
+#define DEBUGGER_EDITOR_PLUGIN_H
 
-Mutex *pool_vector_lock = NULL;
+#include "editor/debugger/editor_debugger_node.h"
+#include "editor/editor_node.h"
+#include "editor/editor_plugin.h"
 
-PoolAllocator *MemoryPool::memory_pool = NULL;
-uint8_t *MemoryPool::pool_memory = NULL;
-size_t *MemoryPool::pool_size = NULL;
+class DebuggerEditorPlugin : public EditorPlugin {
 
-MemoryPool::Alloc *MemoryPool::allocs = NULL;
-MemoryPool::Alloc *MemoryPool::free_list = NULL;
-uint32_t MemoryPool::alloc_count = 0;
-uint32_t MemoryPool::allocs_used = 0;
-Mutex *MemoryPool::alloc_mutex = NULL;
+	GDCLASS(DebuggerEditorPlugin, EditorPlugin);
 
-size_t MemoryPool::total_memory = 0;
-size_t MemoryPool::max_memory = 0;
+public:
+	virtual String get_name() const { return "Debugger"; }
+	bool has_main_screen() const { return false; }
 
-void MemoryPool::setup(uint32_t p_max_allocs) {
+	DebuggerEditorPlugin(EditorNode *p_node);
+	~DebuggerEditorPlugin();
+};
 
-	allocs = memnew_arr(Alloc, p_max_allocs);
-	alloc_count = p_max_allocs;
-	allocs_used = 0;
-
-	for (uint32_t i = 0; i < alloc_count - 1; i++) {
-
-		allocs[i].free_list = &allocs[i + 1];
-	}
-
-	free_list = &allocs[0];
-
-	alloc_mutex = Mutex::create();
-}
-
-void MemoryPool::cleanup() {
-
-	memdelete_arr(allocs);
-	memdelete(alloc_mutex);
-
-	ERR_FAIL_COND_MSG(allocs_used > 0, "There are still MemoryPool allocs in use at exit!");
-}
+#endif // DEBUGGER_EDITOR_PLUGIN_H

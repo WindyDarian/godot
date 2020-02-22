@@ -160,16 +160,19 @@ static const _bit _type_list[] = {
 	{ Variant::COLOR, "Color" },
 	{ Variant::_RID, "RID" },
 	{ Variant::OBJECT, "Object" },
+	{ Variant::STRING_NAME, "StringName" },
 	{ Variant::NODE_PATH, "NodePath" },
 	{ Variant::DICTIONARY, "Dictionary" },
+	{ Variant::CALLABLE, "Callable" },
+	{ Variant::SIGNAL, "Signal" },
 	{ Variant::ARRAY, "Array" },
-	{ Variant::POOL_BYTE_ARRAY, "PoolByteArray" },
-	{ Variant::POOL_INT_ARRAY, "PoolIntArray" },
-	{ Variant::POOL_REAL_ARRAY, "PoolRealArray" },
-	{ Variant::POOL_STRING_ARRAY, "PoolStringArray" },
-	{ Variant::POOL_VECTOR2_ARRAY, "PoolVector2Array" },
-	{ Variant::POOL_VECTOR3_ARRAY, "PoolVector3Array" },
-	{ Variant::POOL_COLOR_ARRAY, "PoolColorArray" },
+	{ Variant::PACKED_BYTE_ARRAY, "PackedByteArray" },
+	{ Variant::PACKED_INT_ARRAY, "PackedIntArray" },
+	{ Variant::PACKED_REAL_ARRAY, "PackedRealArray" },
+	{ Variant::PACKED_STRING_ARRAY, "PackedStringArray" },
+	{ Variant::PACKED_VECTOR2_ARRAY, "PackedVector2Array" },
+	{ Variant::PACKED_VECTOR3_ARRAY, "PackedVector3Array" },
+	{ Variant::PACKED_COLOR_ARRAY, "PackedColorArray" },
 	{ Variant::VARIANT_MAX, NULL },
 };
 
@@ -475,7 +478,7 @@ void GDScriptTokenizerText::_advance() {
 	}
 	while (true) {
 
-		bool is_node_path = false;
+		bool is_string_name = false;
 		StringMode string_mode = STRING_DOUBLE_QUOTE;
 
 		switch (GETCHAR(0)) {
@@ -749,7 +752,7 @@ void GDScriptTokenizerText::_advance() {
 					return;
 				}
 				INCPOS(1);
-				is_node_path = true;
+				is_string_name = true;
 				FALLTHROUGH;
 			case '\'':
 			case '"': {
@@ -860,8 +863,8 @@ void GDScriptTokenizerText::_advance() {
 				}
 				INCPOS(i);
 
-				if (is_node_path) {
-					_make_constant(NodePath(str));
+				if (is_string_name) {
+					_make_constant(StringName(str));
 				} else {
 					_make_constant(str);
 				}

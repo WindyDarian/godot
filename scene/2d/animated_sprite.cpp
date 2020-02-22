@@ -475,10 +475,10 @@ void AnimatedSprite::_notification(int p_what) {
 void AnimatedSprite::set_sprite_frames(const Ref<SpriteFrames> &p_frames) {
 
 	if (frames.is_valid())
-		frames->disconnect("changed", this, "_res_changed");
+		frames->disconnect_compat("changed", this, "_res_changed");
 	frames = p_frames;
 	if (frames.is_valid())
-		frames->connect("changed", this, "_res_changed");
+		frames->connect_compat("changed", this, "_res_changed");
 
 	if (!frames.is_valid()) {
 		frame = 0;
@@ -742,7 +742,7 @@ void AnimatedSprite::_bind_methods() {
 
 	ADD_GROUP("Animation", "");
 	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "frames", PROPERTY_HINT_RESOURCE_TYPE, "SpriteFrames"), "set_sprite_frames", "get_sprite_frames");
-	ADD_PROPERTY(PropertyInfo(Variant::STRING, "animation"), "set_animation", "get_animation");
+	ADD_PROPERTY(PropertyInfo(Variant::STRING_NAME, "animation"), "set_animation", "get_animation");
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "frame"), "set_frame", "get_frame");
 	ADD_PROPERTY(PropertyInfo(Variant::REAL, "speed_scale"), "set_speed_scale", "get_speed_scale");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "playing"), "_set_playing", "_is_playing");

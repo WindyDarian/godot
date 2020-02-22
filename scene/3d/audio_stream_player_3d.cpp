@@ -45,12 +45,12 @@ private:
 		mutable real_t squared_gain; // temporary
 	};
 
-	PoolVector<Speaker> speakers;
+	Vector<Speaker> speakers;
 
 public:
 	Spcap(unsigned int speaker_count, const Vector3 *speaker_directions) {
 		this->speakers.resize(speaker_count);
-		PoolVector<Speaker>::Write w = this->speakers.write();
+		Speaker *w = this->speakers.ptrw();
 		for (unsigned int speaker_num = 0; speaker_num < speaker_count; speaker_num++) {
 			w[speaker_num].direction = speaker_directions[speaker_num];
 			w[speaker_num].squared_gain = 0.0;
@@ -66,11 +66,11 @@ public:
 	}
 
 	Vector3 get_speaker_direction(unsigned int index) const {
-		return this->speakers.read()[index].direction;
+		return this->speakers.ptr()[index].direction;
 	}
 
 	void calculate(const Vector3 &source_direction, real_t tightness, unsigned int volume_count, real_t *volumes) const {
-		PoolVector<Speaker>::Read r = this->speakers.read();
+		const Speaker *r = this->speakers.ptr();
 		real_t sum_squared_gains = 0.0;
 		for (unsigned int speaker_num = 0; speaker_num < (unsigned int)this->speakers.size(); speaker_num++) {
 			real_t initial_gain = 0.5 * powf(1.0 + r[speaker_num].direction.dot(source_direction), tightness) / r[speaker_num].effective_number_of_speakers;
@@ -1013,7 +1013,7 @@ void AudioStreamPlayer3D::_bind_methods() {
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "stream_paused", PROPERTY_HINT_NONE, ""), "set_stream_paused", "get_stream_paused");
 	ADD_PROPERTY(PropertyInfo(Variant::REAL, "max_distance", PROPERTY_HINT_EXP_RANGE, "0,4096,1,or_greater"), "set_max_distance", "get_max_distance");
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "out_of_range_mode", PROPERTY_HINT_ENUM, "Mix,Pause"), "set_out_of_range_mode", "get_out_of_range_mode");
-	ADD_PROPERTY(PropertyInfo(Variant::STRING, "bus", PROPERTY_HINT_ENUM, ""), "set_bus", "get_bus");
+	ADD_PROPERTY(PropertyInfo(Variant::STRING_NAME, "bus", PROPERTY_HINT_ENUM, ""), "set_bus", "get_bus");
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "area_mask", PROPERTY_HINT_LAYERS_2D_PHYSICS), "set_area_mask", "get_area_mask");
 	ADD_GROUP("Emission Angle", "emission_angle");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "emission_angle_enabled"), "set_emission_angle_enabled", "is_emission_angle_enabled");
@@ -1068,7 +1068,7 @@ AudioStreamPlayer3D::AudioStreamPlayer3D() {
 	stream_paused_fade_out = false;
 
 	velocity_tracker.instance();
-	AudioServer::get_singleton()->connect("bus_layout_changed", this, "_bus_layout_changed");
+	AudioServer::get_singleton()->connect_compat("bus_layout_changed", this, "_bus_layout_changed");
 	set_disable_scale(true);
 }
 AudioStreamPlayer3D::~AudioStreamPlayer3D() {

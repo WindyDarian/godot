@@ -32,13 +32,13 @@
 
 #include "core/os/keyboard.h"
 #include "core/project_settings.h"
+#include "editor/debugger/editor_debugger_node.h"
 #include "editor_file_system.h"
 #include "editor_log.h"
 #include "editor_node.h"
 #include "editor_scale.h"
 #include "editor_settings.h"
 #include "scene/gui/margin_container.h"
-#include "script_editor_debugger.h"
 
 void EditorSettingsDialog::ok_pressed() {
 
@@ -119,9 +119,8 @@ void EditorSettingsDialog::_notification(int p_what) {
 
 	switch (p_what) {
 		case NOTIFICATION_READY: {
-			ScriptEditorDebugger *sed = ScriptEditor::get_singleton()->get_debugger();
-			undo_redo->set_method_notify_callback(sed->_method_changeds, sed);
-			undo_redo->set_property_notify_callback(sed->_property_changeds, sed);
+			undo_redo->set_method_notify_callback(EditorDebuggerNode::_method_changeds, NULL);
+			undo_redo->set_property_notify_callback(EditorDebuggerNode::_property_changeds, NULL);
 			undo_redo->set_commit_notify_callback(_undo_redo_callback, this);
 		} break;
 		case NOTIFICATION_ENTER_TREE: {
@@ -412,7 +411,7 @@ EditorSettingsDialog::EditorSettingsDialog() {
 
 	tabs = memnew(TabContainer);
 	tabs->set_tab_align(TabContainer::ALIGN_LEFT);
-	tabs->connect("tab_changed", this, "_tabs_tab_changed");
+	tabs->connect_compat("tab_changed", this, "_tabs_tab_changed");
 	add_child(tabs);
 
 	// General Tab
@@ -435,8 +434,8 @@ EditorSettingsDialog::EditorSettingsDialog() {
 	inspector->set_v_size_flags(Control::SIZE_EXPAND_FILL);
 	inspector->get_inspector()->set_undo_redo(undo_redo);
 	tab_general->add_child(inspector);
-	inspector->get_inspector()->connect("property_edited", this, "_settings_property_edited");
-	inspector->get_inspector()->connect("restart_requested", this, "_editor_restart_request");
+	inspector->get_inspector()->connect_compat("property_edited", this, "_settings_property_edited");
+	inspector->get_inspector()->connect_compat("restart_requested", this, "_editor_restart_request");
 
 	restart_container = memnew(PanelContainer);
 	tab_general->add_child(restart_container);
@@ -450,11 +449,11 @@ EditorSettingsDialog::EditorSettingsDialog() {
 	restart_hb->add_child(restart_label);
 	restart_hb->add_spacer();
 	Button *restart_button = memnew(Button);
-	restart_button->connect("pressed", this, "_editor_restart");
+	restart_button->connect_compat("pressed", this, "_editor_restart");
 	restart_hb->add_child(restart_button);
 	restart_button->set_text(TTR("Save & Restart"));
 	restart_close_button = memnew(ToolButton);
-	restart_close_button->connect("pressed", this, "_editor_restart_close");
+	restart_close_button->connect_compat("pressed", this, "_editor_restart_close");
 	restart_hb->add_child(restart_close_button);
 	restart_container->hide();
 
@@ -471,7 +470,7 @@ EditorSettingsDialog::EditorSettingsDialog() {
 	shortcut_search_box = memnew(LineEdit);
 	shortcut_search_box->set_h_size_flags(Control::SIZE_EXPAND_FILL);
 	hbc->add_child(shortcut_search_box);
-	shortcut_search_box->connect("text_changed", this, "_filter_shortcuts");
+	shortcut_search_box->connect_compat("text_changed", this, "_filter_shortcuts");
 
 	shortcuts = memnew(Tree);
 	tab_shortcuts->add_child(shortcuts, true);
@@ -481,7 +480,7 @@ EditorSettingsDialog::EditorSettingsDialog() {
 	shortcuts->set_column_titles_visible(true);
 	shortcuts->set_column_title(0, TTR("Name"));
 	shortcuts->set_column_title(1, TTR("Binding"));
-	shortcuts->connect("button_pressed", this, "_shortcut_button_pressed");
+	shortcuts->connect_compat("button_pressed", this, "_shortcut_button_pressed");
 
 	press_a_key = memnew(ConfirmationDialog);
 	press_a_key->set_focus_mode(FOCUS_ALL);
@@ -495,17 +494,17 @@ EditorSettingsDialog::EditorSettingsDialog() {
 	l->set_anchor_and_margin(MARGIN_BOTTOM, ANCHOR_BEGIN, 30);
 	press_a_key_label = l;
 	press_a_key->add_child(l);
-	press_a_key->connect("gui_input", this, "_wait_for_key");
-	press_a_key->connect("confirmed", this, "_press_a_key_confirm");
+	press_a_key->connect_compat("gui_input", this, "_wait_for_key");
+	press_a_key->connect_compat("confirmed", this, "_press_a_key_confirm");
 
 	set_hide_on_ok(true);
 
 	timer = memnew(Timer);
 	timer->set_wait_time(1.5);
-	timer->connect("timeout", this, "_settings_save");
+	timer->connect_compat("timeout", this, "_settings_save");
 	timer->set_one_shot(true);
 	add_child(timer);
-	EditorSettings::get_singleton()->connect("settings_changed", this, "_settings_changed");
+	EditorSettings::get_singleton()->connect_compat("settings_changed", this, "_settings_changed");
 	get_ok()->set_text(TTR("Close"));
 
 	updating = false;
