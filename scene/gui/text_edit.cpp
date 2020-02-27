@@ -1844,6 +1844,42 @@ void TextEdit::_consume_pair_symbol(CharType ch) {
 		}
 	}
 
+	String line = text[cursor.line];
+
+	bool in_single_quote = false;
+	bool in_double_quote = false;
+
+	int c = 0;
+	while (c < line.length()) {
+		if (line[c] == '\\') {
+			c++; // Skip quoted anything.
+
+			if (cursor.column == c) {
+				break;
+			}
+		} else {
+			if (line[c] == '\'' && !in_double_quote) {
+				in_single_quote = !in_single_quote;
+			} else if (line[c] == '"' && !in_single_quote) {
+				in_double_quote = !in_double_quote;
+			}
+		}
+
+		c++;
+
+		if (cursor.column == c) {
+			break;
+		}
+	}
+
+	//	Disallow inserting duplicated quotes while already in string
+	if ((in_single_quote || in_double_quote) && (ch == '"' || ch == '\'')) {
+		insert_text_at_cursor(ch_single);
+		cursor_set_column(cursor_position_to_move);
+
+		return;
+	}
+
 	insert_text_at_cursor(ch_pair);
 	cursor_set_column(cursor_position_to_move);
 }
@@ -3068,7 +3104,7 @@ void TextEdit::_gui_input(const Ref<InputEvent> &p_gui_input) {
 					scancode_handled = false;
 					break;
 				}
-				FALLTHROUGH;
+				[[fallthrough]];
 			}
 			case KEY_LEFT: {
 
@@ -3144,7 +3180,7 @@ void TextEdit::_gui_input(const Ref<InputEvent> &p_gui_input) {
 					scancode_handled = false;
 					break;
 				}
-				FALLTHROUGH;
+				[[fallthrough]];
 			}
 			case KEY_RIGHT: {
 
@@ -3205,7 +3241,7 @@ void TextEdit::_gui_input(const Ref<InputEvent> &p_gui_input) {
 					scancode_handled = false;
 					break;
 				}
-				FALLTHROUGH;
+				[[fallthrough]];
 			}
 			case KEY_UP: {
 
@@ -3258,7 +3294,7 @@ void TextEdit::_gui_input(const Ref<InputEvent> &p_gui_input) {
 					scancode_handled = false;
 					break;
 				}
-				FALLTHROUGH;
+				[[fallthrough]];
 			}
 			case KEY_DOWN: {
 
@@ -3381,7 +3417,7 @@ void TextEdit::_gui_input(const Ref<InputEvent> &p_gui_input) {
 					scancode_handled = false;
 					break;
 				}
-				FALLTHROUGH;
+				[[fallthrough]];
 			}
 			case KEY_HOME: {
 #ifdef APPLE_STYLE_KEYS
@@ -3442,7 +3478,7 @@ void TextEdit::_gui_input(const Ref<InputEvent> &p_gui_input) {
 					scancode_handled = false;
 					break;
 				}
-				FALLTHROUGH;
+				[[fallthrough]];
 			}
 			case KEY_END: {
 #ifdef APPLE_STYLE_KEYS
@@ -3489,7 +3525,7 @@ void TextEdit::_gui_input(const Ref<InputEvent> &p_gui_input) {
 					scancode_handled = false;
 					break;
 				}
-				FALLTHROUGH;
+				[[fallthrough]];
 			}
 			case KEY_PAGEUP: {
 
@@ -3512,7 +3548,7 @@ void TextEdit::_gui_input(const Ref<InputEvent> &p_gui_input) {
 					scancode_handled = false;
 					break;
 				}
-				FALLTHROUGH;
+				[[fallthrough]];
 			}
 			case KEY_PAGEDOWN: {
 
@@ -5446,11 +5482,11 @@ int TextEdit::_get_column_pos_of_word(const String &p_key, const String &p_searc
 	return col;
 }
 
-PoolVector<int> TextEdit::_search_bind(const String &p_key, uint32_t p_search_flags, int p_from_line, int p_from_column) const {
+Vector<int> TextEdit::_search_bind(const String &p_key, uint32_t p_search_flags, int p_from_line, int p_from_column) const {
 
 	int col, line;
 	if (search(p_key, p_search_flags, p_from_line, p_from_column, line, col)) {
-		PoolVector<int> result;
+		Vector<int> result;
 		result.resize(2);
 		result.set(SEARCH_RESULT_COLUMN, col);
 		result.set(SEARCH_RESULT_LINE, line);
@@ -5458,7 +5494,7 @@ PoolVector<int> TextEdit::_search_bind(const String &p_key, uint32_t p_search_fl
 
 	} else {
 
-		return PoolVector<int>();
+		return Vector<int>();
 	}
 }
 
@@ -7147,10 +7183,10 @@ void TextEdit::_bind_methods() {
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "shortcut_keys_enabled"), "set_shortcut_keys_enabled", "is_shortcut_keys_enabled");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "selecting_enabled"), "set_selecting_enabled", "is_selecting_enabled");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "smooth_scrolling"), "set_smooth_scroll_enable", "is_smooth_scroll_enabled");
-	ADD_PROPERTY(PropertyInfo(Variant::REAL, "v_scroll_speed"), "set_v_scroll_speed", "get_v_scroll_speed");
+	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "v_scroll_speed"), "set_v_scroll_speed", "get_v_scroll_speed");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "hiding_enabled"), "set_hiding_enabled", "is_hiding_enabled");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "wrap_enabled"), "set_wrap_enabled", "is_wrap_enabled");
-	ADD_PROPERTY(PropertyInfo(Variant::REAL, "scroll_vertical"), "set_v_scroll", "get_v_scroll");
+	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "scroll_vertical"), "set_v_scroll", "get_v_scroll");
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "scroll_horizontal"), "set_h_scroll", "get_h_scroll");
 
 	ADD_GROUP("Minimap", "minimap_");
@@ -7160,7 +7196,7 @@ void TextEdit::_bind_methods() {
 	ADD_GROUP("Caret", "caret_");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "caret_block_mode"), "cursor_set_block_mode", "cursor_is_block_mode");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "caret_blink"), "cursor_set_blink_enabled", "cursor_get_blink_enabled");
-	ADD_PROPERTY(PropertyInfo(Variant::REAL, "caret_blink_speed", PROPERTY_HINT_RANGE, "0.1,10,0.01"), "cursor_set_blink_speed", "cursor_get_blink_speed");
+	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "caret_blink_speed", PROPERTY_HINT_RANGE, "0.1,10,0.01"), "cursor_set_blink_speed", "cursor_get_blink_speed");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "caret_moving_by_right_click"), "set_right_click_moves_caret", "is_right_click_moving_caret");
 
 	ADD_SIGNAL(MethodInfo("cursor_changed"));
@@ -7180,7 +7216,7 @@ void TextEdit::_bind_methods() {
 	BIND_ENUM_CONSTANT(MENU_MAX);
 
 	GLOBAL_DEF("gui/timers/text_edit_idle_detect_sec", 3);
-	ProjectSettings::get_singleton()->set_custom_property_info("gui/timers/text_edit_idle_detect_sec", PropertyInfo(Variant::REAL, "gui/timers/text_edit_idle_detect_sec", PROPERTY_HINT_RANGE, "0,10,0.01,or_greater")); // No negative numbers.
+	ProjectSettings::get_singleton()->set_custom_property_info("gui/timers/text_edit_idle_detect_sec", PropertyInfo(Variant::FLOAT, "gui/timers/text_edit_idle_detect_sec", PROPERTY_HINT_RANGE, "0,10,0.01,or_greater")); // No negative numbers.
 }
 
 TextEdit::TextEdit() {
@@ -7223,10 +7259,10 @@ TextEdit::TextEdit() {
 	updating_scrolls = false;
 	selection.active = false;
 
-	h_scroll->connect("value_changed", this, "_scroll_moved");
-	v_scroll->connect("value_changed", this, "_scroll_moved");
+	h_scroll->connect_compat("value_changed", this, "_scroll_moved");
+	v_scroll->connect_compat("value_changed", this, "_scroll_moved");
 
-	v_scroll->connect("scrolling", this, "_v_scroll_input");
+	v_scroll->connect_compat("scrolling", this, "_v_scroll_input");
 
 	cursor_changed_dirty = false;
 	text_changed_dirty = false;
@@ -7243,7 +7279,7 @@ TextEdit::TextEdit() {
 	caret_blink_timer = memnew(Timer);
 	add_child(caret_blink_timer);
 	caret_blink_timer->set_wait_time(0.65);
-	caret_blink_timer->connect("timeout", this, "_toggle_draw_caret");
+	caret_blink_timer->connect_compat("timeout", this, "_toggle_draw_caret");
 	cursor_set_blink_enabled(false);
 	right_click_moves_caret = true;
 
@@ -7251,12 +7287,12 @@ TextEdit::TextEdit() {
 	add_child(idle_detect);
 	idle_detect->set_one_shot(true);
 	idle_detect->set_wait_time(GLOBAL_GET("gui/timers/text_edit_idle_detect_sec"));
-	idle_detect->connect("timeout", this, "_push_current_op");
+	idle_detect->connect_compat("timeout", this, "_push_current_op");
 
 	click_select_held = memnew(Timer);
 	add_child(click_select_held);
 	click_select_held->set_wait_time(0.05);
-	click_select_held->connect("timeout", this, "_click_selection_held");
+	click_select_held->connect_compat("timeout", this, "_click_selection_held");
 
 	current_op.type = TextOperation::TYPE_NONE;
 	undo_enabled = true;
@@ -7314,7 +7350,7 @@ TextEdit::TextEdit() {
 	add_child(menu);
 	readonly = true; // Initialise to opposite first, so we get past the early-out in set_readonly.
 	set_readonly(false);
-	menu->connect("id_pressed", this, "menu_option");
+	menu->connect_compat("id_pressed", this, "menu_option");
 	first_draw = true;
 
 	executing_line = -1;

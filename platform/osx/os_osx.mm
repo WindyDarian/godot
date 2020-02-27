@@ -747,7 +747,7 @@ static void _mouseDownEvent(NSEvent *event, int index, int mask, bool pressed) {
 	const Vector2 pos = get_mouse_pos([event locationInWindow], backingScaleFactor);
 	mm->set_position(pos);
 	mm->set_pressure([event pressure]);
-	if ([event subtype] == NSTabletPointEventSubtype) {
+	if ([event subtype] == NSEventSubtypeTabletPoint) {
 		const NSPoint p = [event tilt];
 		mm->set_tilt(Vector2(p.x, p.y));
 	}
@@ -1757,7 +1757,7 @@ void OS_OSX::alert(const String &p_alert, const String &p_title) {
 	[window addButtonWithTitle:@"OK"];
 	[window setMessageText:ns_title];
 	[window setInformativeText:ns_alert];
-	[window setAlertStyle:NSWarningAlertStyle];
+	[window setAlertStyle:NSAlertStyleWarning];
 
 	// Display it, then release
 	[window runModal];
@@ -1892,10 +1892,6 @@ void OS_OSX::set_custom_mouse_cursor(const RES &p_cursor, CursorShape p_shape, c
 		uint8_t *pixels = [imgrep bitmapData];
 
 		int len = int(texture_size.width * texture_size.height);
-		PoolVector<uint8_t> data = image->get_data();
-		PoolVector<uint8_t>::Read r = data.read();
-
-		image->lock();
 
 		for (int i = 0; i < len; i++) {
 			int row_index = floor(i / texture_size.width) + atlas_rect.position.y;
@@ -1914,8 +1910,6 @@ void OS_OSX::set_custom_mouse_cursor(const RES &p_cursor, CursorShape p_shape, c
 			pixels[i * 4 + 2] = ((color)&0xFF) * alpha / 255;
 			pixels[i * 4 + 3] = alpha;
 		}
-
-		image->unlock();
 
 		NSImage *nsimage = [[NSImage alloc] initWithSize:NSMakeSize(texture_size.width, texture_size.height)];
 		[nsimage addRepresentation:imgrep];
@@ -2051,8 +2045,7 @@ void OS_OSX::set_icon(const Ref<Image> &p_icon) {
 	uint8_t *pixels = [imgrep bitmapData];
 
 	int len = img->get_width() * img->get_height();
-	PoolVector<uint8_t> data = img->get_data();
-	PoolVector<uint8_t>::Read r = data.read();
+	const uint8_t *r = img->get_data().ptr();
 
 	/* Premultiply the alpha channel */
 	for (int i = 0; i < len; i++) {
