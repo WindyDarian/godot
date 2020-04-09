@@ -50,8 +50,8 @@ void PHashTranslation::generate(const Ref<Translation> &p_from) {
 
 	int size = Math::larger_prime(keys.size());
 
-	Vector<Vector<Pair<int, CharString> > > buckets;
-	Vector<Map<uint32_t, int> > table;
+	Vector<Vector<Pair<int, CharString>>> buckets;
+	Vector<Map<uint32_t, int>> table;
 	Vector<uint32_t> hfunc_table;
 	Vector<_PHashTranslationCmp> compressed;
 
@@ -109,7 +109,7 @@ void PHashTranslation::generate(const Ref<Translation> &p_from) {
 
 	for (int i = 0; i < size; i++) {
 
-		const Vector<Pair<int, CharString> > &b = buckets[i];
+		const Vector<Pair<int, CharString>> &b = buckets[i];
 		Map<uint32_t, int> &t = table.write[i];
 
 		if (b.size() == 0)
@@ -279,8 +279,8 @@ StringName PHashTranslation::get_message(const StringName &p_src_text) const {
 
 void PHashTranslation::_get_property_list(List<PropertyInfo> *p_list) const {
 
-	p_list->push_back(PropertyInfo(Variant::PACKED_INT_ARRAY, "hash_table"));
-	p_list->push_back(PropertyInfo(Variant::PACKED_INT_ARRAY, "bucket_table"));
+	p_list->push_back(PropertyInfo(Variant::PACKED_INT32_ARRAY, "hash_table"));
+	p_list->push_back(PropertyInfo(Variant::PACKED_INT32_ARRAY, "bucket_table"));
 	p_list->push_back(PropertyInfo(Variant::PACKED_BYTE_ARRAY, "strings"));
 	p_list->push_back(PropertyInfo(Variant::OBJECT, "load_from", PROPERTY_HINT_RESOURCE_TYPE, "Translation", PROPERTY_USAGE_EDITOR));
 }

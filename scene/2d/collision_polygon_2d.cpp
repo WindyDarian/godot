@@ -50,7 +50,7 @@ void CollisionPolygon2D::_build_polygon() {
 
 		//here comes the sun, lalalala
 		//decompose concave into multiple convex polygons and add them
-		Vector<Vector<Vector2> > decomp = _decompose_in_convex();
+		Vector<Vector<Vector2>> decomp = _decompose_in_convex();
 		for (int i = 0; i < decomp.size(); i++) {
 			Ref<ConvexPolygonShape2D> convex = memnew(ConvexPolygonShape2D);
 			convex->set_points(decomp[i]);
@@ -76,8 +76,8 @@ void CollisionPolygon2D::_build_polygon() {
 	}
 }
 
-Vector<Vector<Vector2> > CollisionPolygon2D::_decompose_in_convex() {
-	Vector<Vector<Vector2> > decomp = Geometry::decompose_polygon_in_convex(polygon);
+Vector<Vector<Vector2>> CollisionPolygon2D::_decompose_in_convex() {
+	Vector<Vector<Vector2>> decomp = Geometry::decompose_polygon_in_convex(polygon);
 	return decomp;
 }
 
@@ -106,7 +106,7 @@ void CollisionPolygon2D::_notification(int p_what) {
 			/*if (Engine::get_singleton()->is_editor_hint()) {
 				//display above all else
 				set_z_as_relative(false);
-				set_z_index(VS::CANVAS_ITEM_Z_MAX - 1);
+				set_z_index(RS::CANVAS_ITEM_Z_MAX - 1);
 			}*/
 
 		} break;
@@ -129,7 +129,7 @@ void CollisionPolygon2D::_notification(int p_what) {
 				parent->remove_shape_owner(owner_id);
 			}
 			owner_id = 0;
-			parent = NULL;
+			parent = nullptr;
 		} break;
 
 		case NOTIFICATION_DRAW: {
@@ -148,7 +148,7 @@ void CollisionPolygon2D::_notification(int p_what) {
 #define DEBUG_DECOMPOSE
 #if defined(TOOLS_ENABLED) && defined(DEBUG_DECOMPOSE)
 
-			Vector<Vector<Vector2> > decomp = _decompose_in_convex();
+			Vector<Vector<Vector2>> decomp = _decompose_in_convex();
 
 			Color c(0.4, 0.9, 0.1);
 			for (int i = 0; i < decomp.size(); i++) {
@@ -308,7 +308,7 @@ void CollisionPolygon2D::_bind_methods() {
 	ADD_PROPERTY(PropertyInfo(Variant::PACKED_VECTOR2_ARRAY, "polygon"), "set_polygon", "get_polygon");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "disabled"), "set_disabled", "is_disabled");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "one_way_collision"), "set_one_way_collision", "is_one_way_collision_enabled");
-	ADD_PROPERTY(PropertyInfo(Variant::REAL, "one_way_collision_margin", PROPERTY_HINT_RANGE, "0,128,0.1"), "set_one_way_collision_margin", "get_one_way_collision_margin");
+	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "one_way_collision_margin", PROPERTY_HINT_RANGE, "0,128,0.1"), "set_one_way_collision_margin", "get_one_way_collision_margin");
 
 	BIND_ENUM_CONSTANT(BUILD_SOLIDS);
 	BIND_ENUM_CONSTANT(BUILD_SEGMENTS);
@@ -319,7 +319,7 @@ CollisionPolygon2D::CollisionPolygon2D() {
 	aabb = Rect2(-10, -10, 20, 20);
 	build_mode = BUILD_SOLIDS;
 	set_notify_local_transform(true);
-	parent = NULL;
+	parent = nullptr;
 	owner_id = 0;
 	disabled = false;
 	one_way_collision = false;

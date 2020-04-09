@@ -382,7 +382,7 @@ public:
 	virtual bool is_vararg() const { return true; }
 
 	MethodBindVarArg() {
-		call_method = NULL;
+		call_method = nullptr;
 		_set_returns(true);
 	}
 };
@@ -405,4 +405,4 @@ class __UnexistingClass;
 
 #include "method_bind.gen.inc"
 
-#endif
+#endif // METHOD_BIND_H

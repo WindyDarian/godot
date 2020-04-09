@@ -42,7 +42,7 @@ WebSocketMultiplayerPeer::WebSocketMultiplayerPeer() {
 	_current_packet.source = 0;
 	_current_packet.destination = 0;
 	_current_packet.size = 0;
-	_current_packet.data = NULL;
+	_current_packet.data = nullptr;
 }
 
 WebSocketMultiplayerPeer::~WebSocketMultiplayerPeer() {
@@ -74,12 +74,12 @@ int WebSocketMultiplayerPeer::_gen_unique_id() const {
 void WebSocketMultiplayerPeer::_clear() {
 
 	_peer_map.clear();
-	if (_current_packet.data != NULL)
+	if (_current_packet.data != nullptr)
 		memfree(_current_packet.data);
 
 	for (List<Packet>::Element *E = _incoming_packets.front(); E; E = E->next()) {
 		memfree(E->get().data);
-		E->get().data = NULL;
+		E->get().data = nullptr;
 	}
 
 	_incoming_packets.clear();
@@ -109,9 +109,9 @@ Error WebSocketMultiplayerPeer::get_packet(const uint8_t **r_buffer, int &r_buff
 
 	r_buffer_size = 0;
 
-	if (_current_packet.data != NULL) {
+	if (_current_packet.data != nullptr) {
 		memfree(_current_packet.data);
-		_current_packet.data = NULL;
+		_current_packet.data = nullptr;
 	}
 
 	_current_packet = _incoming_packets.front()->get();
@@ -209,7 +209,7 @@ void WebSocketMultiplayerPeer::_send_add(int32_t p_peer_id) {
 	// Then send the server peer (which will trigger connection_succeded in client)
 	_send_sys(get_peer(p_peer_id), SYS_ADD, 1);
 
-	for (Map<int, Ref<WebSocketPeer> >::Element *E = _peer_map.front(); E; E = E->next()) {
+	for (Map<int, Ref<WebSocketPeer>>::Element *E = _peer_map.front(); E; E = E->next()) {
 		int32_t id = E->key();
 		if (p_peer_id == id)
 			continue; // Skip the newwly added peer (already confirmed)
@@ -222,7 +222,7 @@ void WebSocketMultiplayerPeer::_send_add(int32_t p_peer_id) {
 }
 
 void WebSocketMultiplayerPeer::_send_del(int32_t p_peer_id) {
-	for (Map<int, Ref<WebSocketPeer> >::Element *E = _peer_map.front(); E; E = E->next()) {
+	for (Map<int, Ref<WebSocketPeer>>::Element *E = _peer_map.front(); E; E = E->next()) {
 		int32_t id = E->key();
 		if (p_peer_id != id)
 			_send_sys(get_peer(id), SYS_DEL, p_peer_id);
@@ -247,7 +247,7 @@ Error WebSocketMultiplayerPeer::_server_relay(int32_t p_from, int32_t p_to, cons
 
 	} else if (p_to == 0) {
 
-		for (Map<int, Ref<WebSocketPeer> >::Element *E = _peer_map.front(); E; E = E->next()) {
+		for (Map<int, Ref<WebSocketPeer>>::Element *E = _peer_map.front(); E; E = E->next()) {
 			if (E->key() != p_from)
 				E->get()->put_packet(p_buffer, p_buffer_size);
 		}
@@ -255,7 +255,7 @@ Error WebSocketMultiplayerPeer::_server_relay(int32_t p_from, int32_t p_to, cons
 
 	} else if (p_to < 0) {
 
-		for (Map<int, Ref<WebSocketPeer> >::Element *E = _peer_map.front(); E; E = E->next()) {
+		for (Map<int, Ref<WebSocketPeer>>::Element *E = _peer_map.front(); E; E = E->next()) {
 			if (E->key() != p_from && E->key() != -p_to)
 				E->get()->put_packet(p_buffer, p_buffer_size);
 		}

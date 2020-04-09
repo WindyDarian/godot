@@ -29,6 +29,7 @@
 /*************************************************************************/
 
 #include "sprite_3d.h"
+
 #include "core/core_string_names.h"
 #include "scene/scene_string_names.h"
 
@@ -82,8 +83,8 @@ void SpriteBase3D::_notification(int p_what) {
 		if (parent_sprite) {
 
 			parent_sprite->children.erase(pI);
-			pI = NULL;
-			parent_sprite = NULL;
+			pI = nullptr;
+			parent_sprite = nullptr;
 		}
 	}
 }
@@ -177,8 +178,6 @@ void SpriteBase3D::_im_update() {
 	_draw();
 
 	pending_update = false;
-
-	//texture->draw_rect_region(ci,dst_rect,src_rect,modulate);
 }
 
 void SpriteBase3D::_queue_update() {
@@ -334,16 +333,13 @@ void SpriteBase3D::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_item_rect"), &SpriteBase3D::get_item_rect);
 	ClassDB::bind_method(D_METHOD("generate_triangle_mesh"), &SpriteBase3D::generate_triangle_mesh);
 
-	ClassDB::bind_method(D_METHOD("_queue_update"), &SpriteBase3D::_queue_update);
-	ClassDB::bind_method(D_METHOD("_im_update"), &SpriteBase3D::_im_update);
-
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "centered"), "set_centered", "is_centered");
 	ADD_PROPERTY(PropertyInfo(Variant::VECTOR2, "offset"), "set_offset", "get_offset");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "flip_h"), "set_flip_h", "is_flipped_h");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "flip_v"), "set_flip_v", "is_flipped_v");
 	ADD_PROPERTY(PropertyInfo(Variant::COLOR, "modulate"), "set_modulate", "get_modulate");
-	ADD_PROPERTY(PropertyInfo(Variant::REAL, "opacity", PROPERTY_HINT_RANGE, "0,1,0.01"), "set_opacity", "get_opacity");
-	ADD_PROPERTY(PropertyInfo(Variant::REAL, "pixel_size", PROPERTY_HINT_RANGE, "0.0001,128,0.0001"), "set_pixel_size", "get_pixel_size");
+	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "opacity", PROPERTY_HINT_RANGE, "0,1,0.01"), "set_opacity", "get_opacity");
+	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "pixel_size", PROPERTY_HINT_RANGE, "0.0001,128,0.0001"), "set_pixel_size", "get_pixel_size");
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "axis", PROPERTY_HINT_ENUM, "X-Axis,Y-Axis,Z-Axis"), "set_axis", "get_axis");
 	ADD_GROUP("Flags", "");
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "billboard", PROPERTY_HINT_ENUM, "Disabled,Enabled,Y-Billboard"), "set_billboard_mode", "get_billboard_mode");
@@ -368,8 +364,8 @@ SpriteBase3D::SpriteBase3D() {
 	centered = true;
 	hflip = false;
 	vflip = false;
-	parent_sprite = NULL;
-	pI = NULL;
+	parent_sprite = nullptr;
+	pI = nullptr;
 
 	for (int i = 0; i < FLAG_MAX; i++)
 		flags[i] = i == FLAG_TRANSPARENT || i == FLAG_DOUBLE_SIDED;
@@ -381,13 +377,13 @@ SpriteBase3D::SpriteBase3D() {
 	modulate = Color(1, 1, 1, 1);
 	pending_update = false;
 	opacity = 1.0;
-	immediate = VisualServer::get_singleton()->immediate_create();
+	immediate = RenderingServer::get_singleton()->immediate_create();
 	set_base(immediate);
 }
 
 SpriteBase3D::~SpriteBase3D() {
 
-	VisualServer::get_singleton()->free(immediate);
+	RenderingServer::get_singleton()->free(immediate);
 }
 
 ///////////////////////////////////////////
@@ -396,7 +392,7 @@ void Sprite3D::_draw() {
 
 	RID immediate = get_immediate();
 
-	VS::get_singleton()->immediate_clear(immediate);
+	RS::get_singleton()->immediate_clear(immediate);
 	if (!texture.is_valid())
 		return;
 	Vector2 tsize = texture->get_size();
@@ -445,7 +441,7 @@ void Sprite3D::_draw() {
 
 	// Properly setup UVs for impostor textures (AtlasTexture).
 	Ref<AtlasTexture> atlas_tex = texture;
-	if (atlas_tex != NULL) {
+	if (atlas_tex != nullptr) {
 		src_tsize[0] = atlas_tex->get_atlas()->get_width();
 		src_tsize[1] = atlas_tex->get_atlas()->get_height();
 	}
@@ -479,9 +475,9 @@ void Sprite3D::_draw() {
 	}
 
 	RID mat = StandardMaterial3D::get_material_rid_for_2d(get_draw_flag(FLAG_SHADED), get_draw_flag(FLAG_TRANSPARENT), get_draw_flag(FLAG_DOUBLE_SIDED), get_alpha_cut_mode() == ALPHA_CUT_DISCARD, get_alpha_cut_mode() == ALPHA_CUT_OPAQUE_PREPASS, get_billboard_mode() == StandardMaterial3D::BILLBOARD_ENABLED, get_billboard_mode() == StandardMaterial3D::BILLBOARD_FIXED_Y);
-	VS::get_singleton()->immediate_set_material(immediate, mat);
+	RS::get_singleton()->immediate_set_material(immediate, mat);
 
-	VS::get_singleton()->immediate_begin(immediate, VS::PRIMITIVE_TRIANGLES, texture->get_rid());
+	RS::get_singleton()->immediate_begin(immediate, RS::PRIMITIVE_TRIANGLES, texture->get_rid());
 
 	int x_axis = ((axis + 1) % 3);
 	int y_axis = ((axis + 2) % 3);
@@ -506,15 +502,15 @@ void Sprite3D::_draw() {
 
 		static const int index[6] = { 0, 1, 2, 0, 2, 3 };
 
-		VS::get_singleton()->immediate_normal(immediate, normal);
-		VS::get_singleton()->immediate_tangent(immediate, tangent);
-		VS::get_singleton()->immediate_color(immediate, color);
-		VS::get_singleton()->immediate_uv(immediate, uvs[i]);
+		RS::get_singleton()->immediate_normal(immediate, normal);
+		RS::get_singleton()->immediate_tangent(immediate, tangent);
+		RS::get_singleton()->immediate_color(immediate, color);
+		RS::get_singleton()->immediate_uv(immediate, uvs[i]);
 
 		Vector3 vtx;
 		vtx[x_axis] = vertices[index[i]][0];
 		vtx[y_axis] = vertices[index[i]][1];
-		VS::get_singleton()->immediate_vertex(immediate, vtx);
+		RS::get_singleton()->immediate_vertex(immediate, vtx);
 		if (i == 0) {
 			aabb.position = vtx;
 			aabb.size = Vector3();
@@ -523,7 +519,11 @@ void Sprite3D::_draw() {
 		}
 	}
 	set_aabb(aabb);
-	VS::get_singleton()->immediate_end(immediate);
+	RS::get_singleton()->immediate_end(immediate);
+}
+
+void Sprite3D::_texture_changed() {
+	_queue_update();
 }
 
 void Sprite3D::set_texture(const Ref<Texture2D> &p_texture) {
@@ -531,11 +531,11 @@ void Sprite3D::set_texture(const Ref<Texture2D> &p_texture) {
 	if (p_texture == texture)
 		return;
 	if (texture.is_valid()) {
-		texture->disconnect_compat(CoreStringNames::get_singleton()->changed, this, SceneStringNames::get_singleton()->_queue_update);
+		texture->disconnect(CoreStringNames::get_singleton()->changed, callable_mp(this, &Sprite3D::_texture_changed));
 	}
 	texture = p_texture;
 	if (texture.is_valid()) {
-		texture->connect_compat(CoreStringNames::get_singleton()->changed, this, SceneStringNames::get_singleton()->_queue_update);
+		texture->connect(CoreStringNames::get_singleton()->changed, callable_mp(this, &Sprite3D::_texture_changed));
 	}
 	_queue_update();
 }
@@ -717,7 +717,7 @@ Sprite3D::Sprite3D() {
 void AnimatedSprite3D::_draw() {
 
 	RID immediate = get_immediate();
-	VS::get_singleton()->immediate_clear(immediate);
+	RS::get_singleton()->immediate_clear(immediate);
 
 	if (frames.is_null()) {
 		return;
@@ -775,7 +775,7 @@ void AnimatedSprite3D::_draw() {
 
 	// Properly setup UVs for impostor textures (AtlasTexture).
 	Ref<AtlasTexture> atlas_tex = texture;
-	if (atlas_tex != NULL) {
+	if (atlas_tex != nullptr) {
 		src_tsize[0] = atlas_tex->get_atlas()->get_width();
 		src_tsize[1] = atlas_tex->get_atlas()->get_height();
 	}
@@ -810,9 +810,9 @@ void AnimatedSprite3D::_draw() {
 
 	RID mat = StandardMaterial3D::get_material_rid_for_2d(get_draw_flag(FLAG_SHADED), get_draw_flag(FLAG_TRANSPARENT), get_draw_flag(FLAG_DOUBLE_SIDED), get_alpha_cut_mode() == ALPHA_CUT_DISCARD, get_alpha_cut_mode() == ALPHA_CUT_OPAQUE_PREPASS, get_billboard_mode() == StandardMaterial3D::BILLBOARD_ENABLED, get_billboard_mode() == StandardMaterial3D::BILLBOARD_FIXED_Y);
 
-	VS::get_singleton()->immediate_set_material(immediate, mat);
+	RS::get_singleton()->immediate_set_material(immediate, mat);
 
-	VS::get_singleton()->immediate_begin(immediate, VS::PRIMITIVE_TRIANGLES, texture->get_rid());
+	RS::get_singleton()->immediate_begin(immediate, RS::PRIMITIVE_TRIANGLES, texture->get_rid());
 
 	int x_axis = ((axis + 1) % 3);
 	int y_axis = ((axis + 2) % 3);
@@ -840,15 +840,15 @@ void AnimatedSprite3D::_draw() {
 			0, 2, 3
 		};
 
-		VS::get_singleton()->immediate_normal(immediate, normal);
-		VS::get_singleton()->immediate_tangent(immediate, tangent);
-		VS::get_singleton()->immediate_color(immediate, color);
-		VS::get_singleton()->immediate_uv(immediate, uvs[i]);
+		RS::get_singleton()->immediate_normal(immediate, normal);
+		RS::get_singleton()->immediate_tangent(immediate, tangent);
+		RS::get_singleton()->immediate_color(immediate, color);
+		RS::get_singleton()->immediate_uv(immediate, uvs[i]);
 
 		Vector3 vtx;
 		vtx[x_axis] = vertices[indices[i]][0];
 		vtx[y_axis] = vertices[indices[i]][1];
-		VS::get_singleton()->immediate_vertex(immediate, vtx);
+		RS::get_singleton()->immediate_vertex(immediate, vtx);
 		if (i == 0) {
 			aabb.position = vtx;
 			aabb.size = Vector3();
@@ -857,7 +857,7 @@ void AnimatedSprite3D::_draw() {
 		}
 	}
 	set_aabb(aabb);
-	VS::get_singleton()->immediate_end(immediate);
+	RS::get_singleton()->immediate_end(immediate);
 }
 
 void AnimatedSprite3D::_validate_property(PropertyInfo &property) const {
@@ -952,10 +952,10 @@ void AnimatedSprite3D::_notification(int p_what) {
 void AnimatedSprite3D::set_sprite_frames(const Ref<SpriteFrames> &p_frames) {
 
 	if (frames.is_valid())
-		frames->disconnect_compat("changed", this, "_res_changed");
+		frames->disconnect("changed", callable_mp(this, &AnimatedSprite3D::_res_changed));
 	frames = p_frames;
 	if (frames.is_valid())
-		frames->connect_compat("changed", this, "_res_changed");
+		frames->connect("changed", callable_mp(this, &AnimatedSprite3D::_res_changed));
 
 	if (!frames.is_valid()) {
 		frame = 0;
@@ -1124,8 +1124,6 @@ void AnimatedSprite3D::_bind_methods() {
 
 	ClassDB::bind_method(D_METHOD("set_frame", "frame"), &AnimatedSprite3D::set_frame);
 	ClassDB::bind_method(D_METHOD("get_frame"), &AnimatedSprite3D::get_frame);
-
-	ClassDB::bind_method(D_METHOD("_res_changed"), &AnimatedSprite3D::_res_changed);
 
 	ADD_SIGNAL(MethodInfo("frame_changed"));
 

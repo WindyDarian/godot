@@ -31,11 +31,12 @@
 #include "os_javascript.h"
 
 #include "core/io/file_access_buffered_fa.h"
-#include "drivers/gles2/rasterizer_gles2.h"
+//#include "drivers/gles2/rasterizer_gles2.h"
+#include "drivers/dummy/rasterizer_dummy.h"
 #include "drivers/unix/dir_access_unix.h"
 #include "drivers/unix/file_access_unix.h"
 #include "main/main.h"
-#include "servers/visual/visual_server_raster.h"
+#include "servers/rendering/rendering_server_raster.h"
 
 #include <emscripten.h>
 #include <png.h>
@@ -166,7 +167,7 @@ void OS_JavaScript::set_window_maximized(bool p_enabled) {
 		strategy.scaleMode = EMSCRIPTEN_FULLSCREEN_SCALE_STRETCH;
 		strategy.canvasResolutionScaleMode = EMSCRIPTEN_FULLSCREEN_CANVAS_SCALE_STDDEF;
 		strategy.filteringMode = EMSCRIPTEN_FULLSCREEN_FILTERING_DEFAULT;
-		strategy.canvasResizedCallback = NULL;
+		strategy.canvasResizedCallback = nullptr;
 		emscripten_enter_soft_fullscreen(GODOT_CANVAS_SELECTOR, &strategy);
 		window_maximized = p_enabled;
 	}
@@ -195,7 +196,7 @@ void OS_JavaScript::set_window_fullscreen(bool p_enabled) {
 		strategy.scaleMode = EMSCRIPTEN_FULLSCREEN_SCALE_STRETCH;
 		strategy.canvasResolutionScaleMode = EMSCRIPTEN_FULLSCREEN_CANVAS_SCALE_STDDEF;
 		strategy.filteringMode = EMSCRIPTEN_FULLSCREEN_FILTERING_DEFAULT;
-		strategy.canvasResizedCallback = NULL;
+		strategy.canvasResizedCallback = nullptr;
 		EMSCRIPTEN_RESULT result = emscripten_request_fullscreen_strategy(GODOT_CANVAS_SELECTOR, false, &strategy);
 		ERR_FAIL_COND_MSG(result == EMSCRIPTEN_RESULT_FAILED_NOT_DEFERRED, "Enabling fullscreen is only possible from an input callback for the HTML5 platform.");
 		ERR_FAIL_COND_MSG(result != EMSCRIPTEN_RESULT_SUCCESS, "Enabling fullscreen is only possible from an input callback for the HTML5 platform.");
@@ -250,7 +251,8 @@ static Ref<InputEventKey> setup_key_event(const EmscriptenKeyboardEvent *emscrip
 	ev.instance();
 	ev->set_echo(emscripten_event->repeat);
 	dom2godot_mod(emscripten_event, ev);
-	ev->set_scancode(dom2godot_scancode(emscripten_event->keyCode));
+	ev->set_keycode(dom2godot_keycode(emscripten_event->keyCode));
+	ev->set_physical_keycode(dom2godot_keycode(emscripten_event->keyCode));
 
 	String unicode = String::utf8(emscripten_event->key);
 	// Check if empty or multi-character (e.g. `CapsLock`).
@@ -270,7 +272,7 @@ EM_BOOL OS_JavaScript::keydown_callback(int p_event_type, const EmscriptenKeyboa
 	OS_JavaScript *os = get_singleton();
 	Ref<InputEventKey> ev = setup_key_event(p_event);
 	ev->set_pressed(true);
-	if (ev->get_unicode() == 0 && keycode_has_unicode(ev->get_scancode())) {
+	if (ev->get_unicode() == 0 && keycode_has_unicode(ev->get_keycode())) {
 		// Defer to keypress event for legacy unicode retrieval.
 		os->deferred_key_event = ev;
 		// Do not suppress keypress event.
@@ -295,7 +297,7 @@ EM_BOOL OS_JavaScript::keyup_callback(int p_event_type, const EmscriptenKeyboard
 	Ref<InputEventKey> ev = setup_key_event(p_event);
 	ev->set_pressed(false);
 	get_singleton()->input->parse_input_event(ev);
-	return ev->get_scancode() != KEY_UNKNOWN && ev->get_scancode() != 0;
+	return ev->get_keycode() != KEY_UNKNOWN && ev->get_keycode() != 0;
 }
 
 // Mouse
@@ -468,7 +470,7 @@ void OS_JavaScript::set_custom_mouse_cursor(const RES &p_cursor, CursorShape p_s
 
 	if (p_cursor.is_valid()) {
 
-		Map<CursorShape, Vector<Variant> >::Element *cursor_c = cursors_cache.find(p_shape);
+		Map<CursorShape, Vector<Variant>>::Element *cursor_c = cursors_cache.find(p_shape);
 
 		if (cursor_c) {
 			if (cursor_c->get()[0] == p_cursor && cursor_c->get()[1] == p_hotspot) {
@@ -538,15 +540,11 @@ void OS_JavaScript::set_custom_mouse_cursor(const RES &p_cursor, CursorShape p_s
 
 		PackedByteArray png;
 		size_t len;
-		const uint8_t *r = image->get_data().ptr();
-		ERR_FAIL_COND(!png_image_write_get_memory_size(png_meta, len, 0, r.ptr(), 0, NULL));
+		PackedByteArray data = image->get_data();
+		ERR_FAIL_COND(!png_image_write_get_memory_size(png_meta, len, 0, data.ptr(), 0, nullptr));
 
 		png.resize(len);
-		uint8_t *w = png.ptrw();
-		ERR_FAIL_COND(!png_image_write_to_memory(&png_meta, w.ptr(), &len, 0, r.ptr(), 0, NULL));
-		w = uint8_t * ();
-
-		r = png.ptr();
+		ERR_FAIL_COND(!png_image_write_to_memory(&png_meta, png.ptrw(), &len, 0, data.ptr(), 0, nullptr));
 
 		char *object_url;
 		/* clang-format off */
@@ -561,9 +559,8 @@ void OS_JavaScript::set_custom_mouse_cursor(const RES &p_cursor, CursorShape p_s
 			var string_on_wasm_heap = _malloc(length_bytes);
 			setValue(PTR, string_on_wasm_heap, '*');
 			stringToUTF8(url, string_on_wasm_heap, length_bytes);
-		}, r.ptr(), len, &object_url);
+		}, png.ptr(), len, &object_url);
 		/* clang-format on */
-		r = const uint8_t * ();
 
 		String url = String::utf8(object_url) + "?" + itos(p_hotspot.x) + " " + itos(p_hotspot.y);
 
@@ -827,7 +824,7 @@ const char *OS_JavaScript::get_video_driver_name(int p_driver) const {
 		case VIDEO_DRIVER_GLES2:
 			return "GLES2";
 	}
-	ERR_FAIL_V_MSG(NULL, "Invalid video driver index: " + itos(p_driver) + ".");
+	ERR_FAIL_V_MSG(nullptr, "Invalid video driver index: " + itos(p_driver) + ".");
 }
 
 // Audio
@@ -890,11 +887,12 @@ int OS_JavaScript::get_current_video_driver() const {
 void OS_JavaScript::initialize_core() {
 
 	OS_Unix::initialize_core();
-	FileAccess::make_default<FileAccessBufferedFA<FileAccessUnix> >(FileAccess::ACCESS_RESOURCES);
+	FileAccess::make_default<FileAccessBufferedFA<FileAccessUnix>>(FileAccess::ACCESS_RESOURCES);
 }
 
 Error OS_JavaScript::initialize(const VideoMode &p_desired, int p_video_driver, int p_audio_driver) {
 
+#if 0
 	EmscriptenWebGLContextAttributes attributes;
 	emscripten_webgl_init_context_attributes(&attributes);
 	attributes.alpha = GLOBAL_GET("display/window/per_pixel_transparency/allowed");
@@ -937,6 +935,7 @@ Error OS_JavaScript::initialize(const VideoMode &p_desired, int p_video_driver, 
 	if (p_desired.fullscreen) {
 		/* clang-format off */
 		EM_ASM({
+			const canvas = Module.canvas;
 			(canvas.requestFullscreen || canvas.msRequestFullscreen ||
 				canvas.mozRequestFullScreen || canvas.mozRequestFullscreen ||
 				canvas.webkitRequestFullscreen
@@ -951,6 +950,8 @@ Error OS_JavaScript::initialize(const VideoMode &p_desired, int p_video_driver, 
 	} else {
 		set_window_size(get_window_size());
 	}
+#endif
+	RasterizerDummy::make_current(); // TODO GLES2 in Godot 4.0... or webgpu?
 
 	char locale_ptr[16];
 	/* clang-format off */
@@ -961,18 +962,18 @@ Error OS_JavaScript::initialize(const VideoMode &p_desired, int p_video_driver, 
 	setenv("LANG", locale_ptr, true);
 
 	AudioDriverManager::initialize(p_audio_driver);
-	VisualServer *visual_server = memnew(VisualServerRaster());
+	RenderingServer *rendering_server = memnew(RenderingServerRaster());
 	input = memnew(InputDefault);
 
 	EMSCRIPTEN_RESULT result;
 #define EM_CHECK(ev)                         \
 	if (result != EMSCRIPTEN_RESULT_SUCCESS) \
 		ERR_PRINT("Error while setting " #ev " callback: Code " + itos(result));
-#define SET_EM_CALLBACK(target, ev, cb)                               \
-	result = emscripten_set_##ev##_callback(target, NULL, true, &cb); \
+#define SET_EM_CALLBACK(target, ev, cb)                                  \
+	result = emscripten_set_##ev##_callback(target, nullptr, true, &cb); \
 	EM_CHECK(ev)
-#define SET_EM_CALLBACK_NOTARGET(ev, cb)                      \
-	result = emscripten_set_##ev##_callback(NULL, true, &cb); \
+#define SET_EM_CALLBACK_NOTARGET(ev, cb)                         \
+	result = emscripten_set_##ev##_callback(nullptr, true, &cb); \
 	EM_CHECK(ev)
 	// These callbacks from Emscripten's html5.h suffice to access most
 	// JavaScript APIs. For APIs that are not (sufficiently) exposed, EM_ASM
@@ -981,10 +982,10 @@ Error OS_JavaScript::initialize(const VideoMode &p_desired, int p_video_driver, 
 	SET_EM_CALLBACK(GODOT_CANVAS_SELECTOR, mousedown, mouse_button_callback)
 	SET_EM_CALLBACK(EMSCRIPTEN_EVENT_TARGET_WINDOW, mouseup, mouse_button_callback)
 	SET_EM_CALLBACK(EMSCRIPTEN_EVENT_TARGET_WINDOW, wheel, wheel_callback)
-	SET_EM_CALLBACK(EMSCRIPTEN_EVENT_TARGET_WINDOW, touchstart, touch_press_callback)
-	SET_EM_CALLBACK(EMSCRIPTEN_EVENT_TARGET_WINDOW, touchmove, touchmove_callback)
-	SET_EM_CALLBACK(EMSCRIPTEN_EVENT_TARGET_WINDOW, touchend, touch_press_callback)
-	SET_EM_CALLBACK(EMSCRIPTEN_EVENT_TARGET_WINDOW, touchcancel, touch_press_callback)
+	SET_EM_CALLBACK(GODOT_CANVAS_SELECTOR, touchstart, touch_press_callback)
+	SET_EM_CALLBACK(GODOT_CANVAS_SELECTOR, touchmove, touchmove_callback)
+	SET_EM_CALLBACK(GODOT_CANVAS_SELECTOR, touchend, touch_press_callback)
+	SET_EM_CALLBACK(GODOT_CANVAS_SELECTOR, touchcancel, touch_press_callback)
 	SET_EM_CALLBACK(GODOT_CANVAS_SELECTOR, keydown, keydown_callback)
 	SET_EM_CALLBACK(GODOT_CANVAS_SELECTOR, keypress, keypress_callback)
 	SET_EM_CALLBACK(GODOT_CANVAS_SELECTOR, keyup, keyup_callback)
@@ -1008,14 +1009,14 @@ Error OS_JavaScript::initialize(const VideoMode &p_desired, int p_video_driver, 
 			update_clipboard(evt.clipboardData.getData('text'));
 		}, true);
 	},
-		MainLoop::NOTIFICATION_WM_MOUSE_ENTER,
-		MainLoop::NOTIFICATION_WM_MOUSE_EXIT,
-		MainLoop::NOTIFICATION_WM_FOCUS_IN,
-		MainLoop::NOTIFICATION_WM_FOCUS_OUT
+		NOTIFICATION_WM_MOUSE_ENTER,
+		NOTIFICATION_WM_MOUSE_EXIT,
+		NOTIFICATION_WM_FOCUS_IN,
+		NOTIFICATION_WM_FOCUS_OUT
 	);
 	/* clang-format on */
 
-	visual_server->init();
+	rendering_server->init();
 
 	return OK;
 }
@@ -1071,7 +1072,7 @@ bool OS_JavaScript::main_loop_iterate() {
 			strategy.scaleMode = EMSCRIPTEN_FULLSCREEN_SCALE_STRETCH;
 			strategy.canvasResolutionScaleMode = EMSCRIPTEN_FULLSCREEN_CANVAS_SCALE_STDDEF;
 			strategy.filteringMode = EMSCRIPTEN_FULLSCREEN_FILTERING_DEFAULT;
-			strategy.canvasResizedCallback = NULL;
+			strategy.canvasResizedCallback = nullptr;
 			emscripten_enter_soft_fullscreen(GODOT_CANVAS_SELECTOR, &strategy);
 		} else {
 			emscripten_set_canvas_element_size(GODOT_CANVAS_SELECTOR, windowed_size.width, windowed_size.height);
@@ -1120,8 +1121,8 @@ int OS_JavaScript::get_process_id() const {
 
 extern "C" EMSCRIPTEN_KEEPALIVE void send_notification(int p_notification) {
 
-	if (p_notification == MainLoop::NOTIFICATION_WM_MOUSE_ENTER || p_notification == MainLoop::NOTIFICATION_WM_MOUSE_EXIT) {
-		cursor_inside_canvas = p_notification == MainLoop::NOTIFICATION_WM_MOUSE_ENTER;
+	if (p_notification == NOTIFICATION_WM_MOUSE_ENTER || p_notification == NOTIFICATION_WM_MOUSE_EXIT) {
+		cursor_inside_canvas = p_notification == NOTIFICATION_WM_MOUSE_ENTER;
 	}
 	OS_JavaScript::get_singleton()->get_main_loop()->notification(p_notification);
 }
@@ -1180,15 +1181,12 @@ void OS_JavaScript::set_icon(const Ref<Image> &p_icon) {
 
 	PackedByteArray png;
 	size_t len;
-	const uint8_t *r = icon->get_data().ptr();
-	ERR_FAIL_COND(!png_image_write_get_memory_size(png_meta, len, 0, r.ptr(), 0, NULL));
+	PackedByteArray data = icon->get_data();
+	ERR_FAIL_COND(!png_image_write_get_memory_size(png_meta, len, 0, data.ptr(), 0, nullptr));
 
 	png.resize(len);
-	uint8_t *w = png.ptrw();
-	ERR_FAIL_COND(!png_image_write_to_memory(&png_meta, w.ptr(), &len, 0, r.ptr(), 0, NULL));
-	w = uint8_t * ();
+	ERR_FAIL_COND(!png_image_write_to_memory(&png_meta, png.ptrw(), &len, 0, data.ptr(), 0, nullptr));
 
-	r = png.ptr();
 	/* clang-format off */
 	EM_ASM_ARGS({
 		var PNG_PTR = $0;
@@ -1204,7 +1202,7 @@ void OS_JavaScript::set_icon(const Ref<Image> &p_icon) {
 			document.head.appendChild(link);
 		}
 		link.href = url;
-	}, r.ptr(), len);
+	}, png.ptr(), len);
 	/* clang-format on */
 }
 
@@ -1286,7 +1284,7 @@ OS_JavaScript::OS_JavaScript(int p_argc, char *p_argv[]) {
 	just_exited_fullscreen = false;
 	transparency_enabled = false;
 
-	main_loop = NULL;
+	main_loop = nullptr;
 
 	idb_available = false;
 	sync_wait_time = -1;

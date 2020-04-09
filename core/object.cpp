@@ -368,7 +368,7 @@ bool Object::_predelete() {
 	_predelete_ok = 1;
 	notification(NOTIFICATION_PREDELETE, true);
 	if (_predelete_ok) {
-		_class_ptr = NULL; //must restore so destructors can access class ptr correctly
+		_class_ptr = nullptr; //must restore so destructors can access class ptr correctly
 	}
 	return _predelete_ok;
 }
@@ -781,7 +781,7 @@ bool Object::has_method(const StringName &p_method) const {
 
 	MethodBind *method = ClassDB::get_method(get_class_name(), p_method);
 
-	return method != NULL;
+	return method != nullptr;
 }
 
 Variant Object::getvar(const Variant &p_key, bool *r_valid) const {
@@ -797,7 +797,7 @@ void Object::setvar(const Variant &p_key, const Variant &p_value, bool *r_valid)
 }
 
 Variant Object::callv(const StringName &p_method, const Array &p_args) {
-	const Variant **argptrs = NULL;
+	const Variant **argptrs = nullptr;
 
 	if (p_args.size() > 0) {
 		argptrs = (const Variant **)alloca(sizeof(Variant *) * p_args.size());
@@ -955,7 +955,7 @@ void Object::set_script_and_instance(const Variant &p_script, ScriptInstance *p_
 	//this function is not meant to be used in any of these ways
 	ERR_FAIL_COND(p_script.is_null());
 	ERR_FAIL_COND(!p_instance);
-	ERR_FAIL_COND(script_instance != NULL || !script.is_null());
+	ERR_FAIL_COND(script_instance != nullptr || !script.is_null());
 
 	script = p_script;
 	script_instance = p_instance;
@@ -968,7 +968,7 @@ void Object::set_script(const Variant &p_script) {
 
 	if (script_instance) {
 		memdelete(script_instance);
-		script_instance = NULL;
+		script_instance = nullptr;
 	}
 
 	script = p_script;
@@ -1119,7 +1119,7 @@ Variant Object::_emit_signal(const Variant **p_args, int p_argcount, Callable::C
 
 	StringName signal = *p_args[0];
 
-	const Variant **args = NULL;
+	const Variant **args = nullptr;
 
 	int argc = p_argcount - 1;
 	if (argc) {
@@ -1324,6 +1324,25 @@ Array Object::_get_incoming_connections() const {
 	return ret;
 }
 
+bool Object::has_signal(const StringName &p_name) const {
+	if (!script.is_null()) {
+		Ref<Script> scr = script;
+		if (scr.is_valid() && scr->has_script_signal(p_name)) {
+			return true;
+		}
+	}
+
+	if (ClassDB::has_signal(get_class_name(), p_name)) {
+		return true;
+	}
+
+	if (_has_user_signal(p_name)) {
+		return true;
+	}
+
+	return false;
+}
+
 void Object::get_signal_list(List<MethodInfo> *p_signals) const {
 
 	if (!script.is_null()) {
@@ -1335,7 +1354,7 @@ void Object::get_signal_list(List<MethodInfo> *p_signals) const {
 
 	ClassDB::get_signal_list(get_class_name(), p_signals);
 	//find maybe usersignals?
-	const StringName *S = NULL;
+	const StringName *S = nullptr;
 
 	while ((S = signal_map.next(S))) {
 
@@ -1348,7 +1367,7 @@ void Object::get_signal_list(List<MethodInfo> *p_signals) const {
 
 void Object::get_all_signal_connections(List<Connection> *p_connections) const {
 
-	const StringName *S = NULL;
+	const StringName *S = nullptr;
 
 	while ((S = signal_map.next(S))) {
 
@@ -1374,7 +1393,7 @@ void Object::get_signal_connection_list(const StringName &p_signal, List<Connect
 int Object::get_persistent_signal_connection_count() const {
 
 	int count = 0;
-	const StringName *S = NULL;
+	const StringName *S = nullptr;
 
 	while ((S = signal_map.next(S))) {
 
@@ -1404,6 +1423,9 @@ Error Object::connect_compat(const StringName &p_signal, Object *p_to_object, co
 Error Object::connect(const StringName &p_signal, const Callable &p_callable, const Vector<Variant> &p_binds, uint32_t p_flags) {
 
 	ERR_FAIL_COND_V(p_callable.is_null(), ERR_INVALID_PARAMETER);
+
+	Object *target_object = p_callable.get_object();
+	ERR_FAIL_COND_V(!target_object, ERR_INVALID_PARAMETER);
 
 	SignalData *s = signal_map.getptr(p_signal);
 	if (!s) {
@@ -1449,7 +1471,7 @@ Error Object::connect(const StringName &p_signal, const Callable &p_callable, co
 	conn.flags = p_flags;
 	conn.binds = p_binds;
 	slot.conn = conn;
-	slot.cE = p_callable.get_object()->connections.push_back(conn);
+	slot.cE = target_object->connections.push_back(conn);
 	if (p_flags & CONNECT_REFERENCE_COUNTED) {
 		slot.reference_count = 1;
 	}
@@ -1483,7 +1505,7 @@ bool Object::is_connected(const StringName &p_signal, const Callable &p_callable
 
 	return s->slot_map.has(target);
 	//const Map<Signal::Target,Signal::Slot>::Element *E = s->slot_map.find(target);
-	//return (E!=NULL);
+	//return (E!=nullptr );
 }
 
 void Object::disconnect_compat(const StringName &p_signal, Object *p_to_object, const StringName &p_to_method) {
@@ -1498,6 +1520,10 @@ void Object::disconnect(const StringName &p_signal, const Callable &p_callable) 
 void Object::_disconnect(const StringName &p_signal, const Callable &p_callable, bool p_force) {
 
 	ERR_FAIL_COND(p_callable.is_null());
+
+	Object *target_object = p_callable.get_object();
+	ERR_FAIL_COND(!target_object);
+
 	SignalData *s = signal_map.getptr(p_signal);
 	ERR_FAIL_COND_MSG(!s, vformat("Nonexistent signal '%s' in %s.", p_signal, to_string()));
 
@@ -1511,9 +1537,8 @@ void Object::_disconnect(const StringName &p_signal, const Callable &p_callable,
 			return;
 		}
 	}
-	Object *object = p_callable.get_object();
-	ERR_FAIL_COND(!object);
-	object->connections.erase(slot->cE);
+
+	target_object->connections.erase(slot->cE);
 	s->slot_map.erase(p_callable);
 
 	if (s->slot_map.empty() && ClassDB::has_signal(get_class_name(), p_signal)) {
@@ -1690,6 +1715,7 @@ void Object::_bind_methods() {
 
 	ClassDB::bind_method(D_METHOD("has_method", "method"), &Object::has_method);
 
+	ClassDB::bind_method(D_METHOD("has_signal", "signal"), &Object::has_signal);
 	ClassDB::bind_method(D_METHOD("get_signal_list"), &Object::_get_signal_list);
 	ClassDB::bind_method(D_METHOD("get_signal_connection_list", "signal"), &Object::_get_signal_connection_list);
 	ClassDB::bind_method(D_METHOD("get_incoming_connections"), &Object::_get_incoming_connections);
@@ -1814,7 +1840,7 @@ Variant::Type Object::get_static_property_type_indexed(const Vector<StringName> 
 	}
 
 	Callable::CallError ce;
-	Variant check = Variant::construct(t, NULL, 0, ce);
+	Variant check = Variant::construct(t, nullptr, 0, ce);
 
 	for (int i = 1; i < p_path.size(); i++) {
 		if (check.get_type() == Variant::OBJECT || check.get_type() == Variant::DICTIONARY || check.get_type() == Variant::ARRAY) {
@@ -1863,7 +1889,7 @@ uint32_t Object::get_edited_version() const {
 
 void *Object::get_script_instance_binding(int p_script_language_index) {
 #ifdef DEBUG_ENABLED
-	ERR_FAIL_INDEX_V(p_script_language_index, MAX_SCRIPT_INSTANCE_BINDINGS, NULL);
+	ERR_FAIL_INDEX_V(p_script_language_index, MAX_SCRIPT_INSTANCE_BINDINGS, nullptr);
 #endif
 
 	//it's up to the script language to make this thread safe, if the function is called twice due to threads being out of syncro
@@ -1884,19 +1910,19 @@ void *Object::get_script_instance_binding(int p_script_language_index) {
 
 bool Object::has_script_instance_binding(int p_script_language_index) {
 
-	return _script_instance_bindings[p_script_language_index] != NULL;
+	return _script_instance_bindings[p_script_language_index] != nullptr;
 }
 
 void Object::set_script_instance_binding(int p_script_language_index, void *p_data) {
 #ifdef DEBUG_ENABLED
-	CRASH_COND(_script_instance_bindings[p_script_language_index] != NULL);
+	CRASH_COND(_script_instance_bindings[p_script_language_index] != nullptr);
 #endif
 	_script_instance_bindings[p_script_language_index] = p_data;
 }
 
 void Object::_construct_object(bool p_reference) {
 	type_is_reference = p_reference;
-	_class_ptr = NULL;
+	_class_ptr = nullptr;
 	_block_signals = false;
 	_predelete_ok = 0;
 	_instance_id = ObjectDB::add_instance(this);
@@ -1905,7 +1931,7 @@ void Object::_construct_object(bool p_reference) {
 	_emitting = false;
 	instance_binding_count = 0;
 	memset(_script_instance_bindings, 0, sizeof(void *) * MAX_SCRIPT_INSTANCE_BINDINGS);
-	script_instance = NULL;
+	script_instance = nullptr;
 #ifdef TOOLS_ENABLED
 
 	_edited = false;
@@ -1929,16 +1955,16 @@ Object::~Object() {
 
 	if (script_instance)
 		memdelete(script_instance);
-	script_instance = NULL;
+	script_instance = nullptr;
 
-	const StringName *S = NULL;
+	const StringName *S = nullptr;
 
 	if (_emitting) {
 		//@todo this may need to actually reach the debugger prioritarily somehow because it may crash before
 		ERR_PRINT("Object " + to_string() + " was freed or unreferenced while a signal is being emitted from it. Try connecting to the signal using 'CONNECT_DEFERRED' flag, or use queue_free() to free the object (if this object is a Node) to avoid this error and potential crashes.");
 	}
 
-	while ((S = signal_map.next(NULL))) {
+	while ((S = signal_map.next(nullptr))) {
 
 		SignalData *s = &signal_map[*S];
 

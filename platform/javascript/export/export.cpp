@@ -94,6 +94,9 @@ public:
 		} else if (req[1] == basereq + ".js") {
 			filepath += ".js";
 			ctype = "application/javascript";
+		} else if (req[1] == basereq + ".worker.js") {
+			filepath += ".worker.js";
+			ctype = "application/javascript";
 		} else if (req[1] == basereq + ".pck") {
 			filepath += ".pck";
 			ctype = "application/octet-stream";
@@ -200,7 +203,7 @@ class EditorExportPlatformJavaScript : public EditorExportPlatform {
 private:
 	Ref<EditorHTTPServer> server;
 	bool server_quit;
-	Mutex *server_lock;
+	Mutex server_lock;
 	Thread *server_thread;
 
 	static void _server_thread_poll(void *data);
@@ -387,7 +390,7 @@ Error EditorExportPlatformJavaScript::export_project(const Ref<EditorExportPrese
 		return error;
 	}
 
-	FileAccess *src_f = NULL;
+	FileAccess *src_f = nullptr;
 	zlib_filefunc_def io = zipio_create_io_from_file(&src_f);
 	unzFile pkg = unzOpen2(template_path.utf8().get_data(), &io);
 
@@ -407,7 +410,7 @@ Error EditorExportPlatformJavaScript::export_project(const Ref<EditorExportPrese
 		//get filename
 		unz_file_info info;
 		char fname[16384];
-		unzGetCurrentFileInfo(pkg, &info, fname, 16384, NULL, 0, NULL, 0);
+		unzGetCurrentFileInfo(pkg, &info, fname, 16384, nullptr, 0, nullptr, 0);
 
 		String file = fname;
 
@@ -432,6 +435,10 @@ Error EditorExportPlatformJavaScript::export_project(const Ref<EditorExportPrese
 		} else if (file == "godot.js") {
 
 			file = p_path.get_file().get_basename() + ".js";
+		} else if (file == "godot.worker.js") {
+
+			file = p_path.get_file().get_basename() + ".worker.js";
+
 		} else if (file == "godot.wasm") {
 
 			file = p_path.get_file().get_basename() + ".wasm";
@@ -531,9 +538,8 @@ bool EditorExportPlatformJavaScript::poll_export() {
 	menu_options = preset.is_valid();
 	if (server->is_listening()) {
 		if (menu_options == 0) {
-			server_lock->lock();
+			MutexLock lock(server_lock);
 			server->stop();
-			server_lock->unlock();
 		} else {
 			menu_options += 1;
 		}
@@ -553,9 +559,8 @@ int EditorExportPlatformJavaScript::get_options_count() const {
 Error EditorExportPlatformJavaScript::run(const Ref<EditorExportPreset> &p_preset, int p_option, int p_debug_flags) {
 
 	if (p_option == 1) {
-		server_lock->lock();
+		MutexLock lock(server_lock);
 		server->stop();
-		server_lock->unlock();
 		return OK;
 	}
 
@@ -565,6 +570,7 @@ Error EditorExportPlatformJavaScript::run(const Ref<EditorExportPreset> &p_prese
 		// Export generates several files, clean them up on failure.
 		DirAccess::remove_file_or_error(basepath + ".html");
 		DirAccess::remove_file_or_error(basepath + ".js");
+		DirAccess::remove_file_or_error(basepath + ".worker.js");
 		DirAccess::remove_file_or_error(basepath + ".pck");
 		DirAccess::remove_file_or_error(basepath + ".png");
 		DirAccess::remove_file_or_error(basepath + ".wasm");
@@ -584,10 +590,12 @@ Error EditorExportPlatformJavaScript::run(const Ref<EditorExportPreset> &p_prese
 	ERR_FAIL_COND_V_MSG(!bind_ip.is_valid(), ERR_INVALID_PARAMETER, "Invalid editor setting 'export/web/http_host': '" + bind_host + "'. Try using '127.0.0.1'.");
 
 	// Restart server.
-	server_lock->lock();
-	server->stop();
-	err = server->listen(bind_port, bind_ip);
-	server_lock->unlock();
+	{
+		MutexLock lock(server_lock);
+
+		server->stop();
+		err = server->listen(bind_port, bind_ip);
+	}
 	ERR_FAIL_COND_V_MSG(err != OK, err, "Unable to start HTTP server.");
 
 	OS::get_singleton()->shell_open(String("http://" + bind_host + ":" + itos(bind_port) + "/tmp_js_export.html"));
@@ -605,9 +613,10 @@ void EditorExportPlatformJavaScript::_server_thread_poll(void *data) {
 	EditorExportPlatformJavaScript *ej = (EditorExportPlatformJavaScript *)data;
 	while (!ej->server_quit) {
 		OS::get_singleton()->delay_usec(1000);
-		ej->server_lock->lock();
-		ej->server->poll();
-		ej->server_lock->unlock();
+		{
+			MutexLock lock(ej->server_lock);
+			ej->server->poll();
+		}
 	}
 }
 
@@ -615,7 +624,6 @@ EditorExportPlatformJavaScript::EditorExportPlatformJavaScript() {
 
 	server.instance();
 	server_quit = false;
-	server_lock = Mutex::create();
 	server_thread = Thread::create(_server_thread_poll, this);
 
 	Ref<Image> img = memnew(Image(_javascript_logo));
@@ -639,7 +647,6 @@ EditorExportPlatformJavaScript::~EditorExportPlatformJavaScript() {
 	server->stop();
 	server_quit = true;
 	Thread::wait_to_finish(server_thread);
-	memdelete(server_lock);
 	memdelete(server_thread);
 }
 

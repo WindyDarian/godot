@@ -28,8 +28,8 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
 
-#ifndef GET_TYPE_INFO_H
-#define GET_TYPE_INFO_H
+#ifndef TYPE_INFO_H
+#define TYPE_INFO_H
 
 #ifdef DEBUG_METHODS_ENABLED
 
@@ -137,13 +137,16 @@ MAKE_TYPE_INFO_WITH_META(int32_t, Variant::INT, GodotTypeInfo::METADATA_INT_IS_I
 MAKE_TYPE_INFO_WITH_META(uint64_t, Variant::INT, GodotTypeInfo::METADATA_INT_IS_UINT64)
 MAKE_TYPE_INFO_WITH_META(int64_t, Variant::INT, GodotTypeInfo::METADATA_INT_IS_INT64)
 MAKE_TYPE_INFO(wchar_t, Variant::INT)
-MAKE_TYPE_INFO_WITH_META(float, Variant::REAL, GodotTypeInfo::METADATA_REAL_IS_FLOAT)
-MAKE_TYPE_INFO_WITH_META(double, Variant::REAL, GodotTypeInfo::METADATA_REAL_IS_DOUBLE)
+MAKE_TYPE_INFO_WITH_META(float, Variant::FLOAT, GodotTypeInfo::METADATA_REAL_IS_FLOAT)
+MAKE_TYPE_INFO_WITH_META(double, Variant::FLOAT, GodotTypeInfo::METADATA_REAL_IS_DOUBLE)
 
 MAKE_TYPE_INFO(String, Variant::STRING)
 MAKE_TYPE_INFO(Vector2, Variant::VECTOR2)
 MAKE_TYPE_INFO(Rect2, Variant::RECT2)
 MAKE_TYPE_INFO(Vector3, Variant::VECTOR3)
+MAKE_TYPE_INFO(Vector2i, Variant::VECTOR2I)
+MAKE_TYPE_INFO(Rect2i, Variant::RECT2I)
+MAKE_TYPE_INFO(Vector3i, Variant::VECTOR3I)
 MAKE_TYPE_INFO(Transform2D, Variant::TRANSFORM2D)
 MAKE_TYPE_INFO(Plane, Variant::PLANE)
 MAKE_TYPE_INFO(Quat, Variant::QUAT)
@@ -159,8 +162,10 @@ MAKE_TYPE_INFO(Signal, Variant::SIGNAL)
 MAKE_TYPE_INFO(Dictionary, Variant::DICTIONARY)
 MAKE_TYPE_INFO(Array, Variant::ARRAY)
 MAKE_TYPE_INFO(PackedByteArray, Variant::PACKED_BYTE_ARRAY)
-MAKE_TYPE_INFO(PackedIntArray, Variant::PACKED_INT_ARRAY)
-MAKE_TYPE_INFO(PackedRealArray, Variant::PACKED_REAL_ARRAY)
+MAKE_TYPE_INFO(PackedInt32Array, Variant::PACKED_INT32_ARRAY)
+MAKE_TYPE_INFO(PackedInt64Array, Variant::PACKED_INT64_ARRAY)
+MAKE_TYPE_INFO(PackedFloat32Array, Variant::PACKED_FLOAT32_ARRAY)
+MAKE_TYPE_INFO(PackedFloat64Array, Variant::PACKED_FLOAT64_ARRAY)
 MAKE_TYPE_INFO(PackedStringArray, Variant::PACKED_STRING_ARRAY)
 MAKE_TYPE_INFO(PackedVector2Array, Variant::PACKED_VECTOR2_ARRAY)
 MAKE_TYPE_INFO(PackedVector3Array, Variant::PACKED_VECTOR3_ARRAY)
@@ -172,7 +177,7 @@ MAKE_TYPE_INFO(IP_Address, Variant::STRING)
 template <>
 struct GetTypeInfo<ObjectID> {
 	static const Variant::Type VARIANT_TYPE = Variant::INT;
-	static const GodotTypeInfo::Metadata METADATA = GodotTypeInfo::METADATA_NONE;
+	static const GodotTypeInfo::Metadata METADATA = GodotTypeInfo::METADATA_INT_IS_UINT64;
 	static inline PropertyInfo get_class_info() {
 		return PropertyInfo(Variant::INT, String(), PROPERTY_HINT_INT_IS_OBJECTID);
 	}
@@ -199,7 +204,7 @@ struct GetTypeInfo<const Variant &> {
 
 #define MAKE_TEMPLATE_TYPE_INFO(m_template, m_type, m_var_type)                       \
 	template <>                                                                       \
-	struct GetTypeInfo<m_template<m_type> > {                                         \
+	struct GetTypeInfo<m_template<m_type>> {                                          \
 		static const Variant::Type VARIANT_TYPE = m_var_type;                         \
 		static const GodotTypeInfo::Metadata METADATA = GodotTypeInfo::METADATA_NONE; \
 		static inline PropertyInfo get_class_info() {                                 \
@@ -220,20 +225,6 @@ MAKE_TEMPLATE_TYPE_INFO(Vector, RID, Variant::ARRAY)
 MAKE_TEMPLATE_TYPE_INFO(Vector, Plane, Variant::ARRAY)
 MAKE_TEMPLATE_TYPE_INFO(Vector, Face3, Variant::PACKED_VECTOR3_ARRAY)
 MAKE_TEMPLATE_TYPE_INFO(Vector, StringName, Variant::PACKED_STRING_ARRAY)
-
-/*
-MAKE_TEMPLATE_TYPE_INFO(Vector, uint8_t, Variant::PACKED_BYTE_ARRAY)
-MAKE_TEMPLATE_TYPE_INFO(Vector, int, Variant::PACKED_INT_ARRAY)
-MAKE_TEMPLATE_TYPE_INFO(Vector, float, Variant::PACKED_REAL_ARRAY)
-MAKE_TEMPLATE_TYPE_INFO(Vector, String, Variant::PACKED_STRING_ARRAY)
-MAKE_TEMPLATE_TYPE_INFO(Vector, Vector2, Variant::PACKED_VECTOR2_ARRAY)
-MAKE_TEMPLATE_TYPE_INFO(Vector, Vector3, Variant::PACKED_VECTOR3_ARRAY)
-MAKE_TEMPLATE_TYPE_INFO(Vector, Color, Variant::PACKED_COLOR_ARRAY)
-
-
-MAKE_TEMPLATE_TYPE_INFO(Vector, Plane, Variant::ARRAY)
-MAKE_TEMPLATE_TYPE_INFO(Vector, Face3, Variant::PACKED_VECTOR3_ARRAY)
-*/
 
 template <typename T>
 struct GetTypeInfo<T *, typename EnableIf<TypeInherits<Object, T>::value>::type> {
@@ -285,4 +276,4 @@ inline StringName __constant_get_enum_name(T param, const String &p_constant) {
 
 #endif // DEBUG_METHODS_ENABLED
 
-#endif // GET_TYPE_INFO_H
+#endif // TYPE_INFO_H

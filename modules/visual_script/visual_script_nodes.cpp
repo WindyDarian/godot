@@ -32,7 +32,7 @@
 
 #include "core/engine.h"
 #include "core/global_constants.h"
-#include "core/os/input.h"
+#include "core/input/input_filter.h"
 #include "core/os/os.h"
 #include "core/project_settings.h"
 #include "scene/main/node.h"
@@ -1483,7 +1483,7 @@ void VisualScriptConstant::set_constant_type(Variant::Type p_type) {
 
 	type = p_type;
 	Callable::CallError ce;
-	value = Variant::construct(type, NULL, 0, ce);
+	value = Variant::construct(type, nullptr, 0, ce);
 	ports_changed_notify();
 	_change_notify();
 }
@@ -2259,7 +2259,7 @@ PropertyInfo VisualScriptMathConstant::get_input_value_port_info(int p_idx) cons
 
 PropertyInfo VisualScriptMathConstant::get_output_value_port_info(int p_idx) const {
 
-	return PropertyInfo(Variant::REAL, const_name[constant]);
+	return PropertyInfo(Variant::FLOAT, const_name[constant]);
 }
 
 String VisualScriptMathConstant::get_caption() const {
@@ -2548,7 +2548,7 @@ VisualScriptNodeInstance *VisualScriptSceneNode::instance(VisualScriptInstance *
 static Node *_find_script_node(Node *p_edited_scene, Node *p_current_node, const Ref<Script> &script) {
 
 	if (p_edited_scene != p_current_node && p_current_node->get_owner() != p_edited_scene)
-		return NULL;
+		return nullptr;
 
 	Ref<Script> scr = p_current_node->get_script();
 
@@ -2561,7 +2561,7 @@ static Node *_find_script_node(Node *p_edited_scene, Node *p_current_node, const
 			return n;
 	}
 
-	return NULL;
+	return nullptr;
 }
 
 #endif
@@ -3130,8 +3130,6 @@ void VisualScriptCustomNode::_bind_methods() {
 	stepmi.return_val.usage |= PROPERTY_USAGE_NIL_IS_VARIANT;
 	BIND_VMETHOD(stepmi);
 
-	ClassDB::bind_method(D_METHOD("_script_changed"), &VisualScriptCustomNode::_script_changed);
-
 	BIND_ENUM_CONSTANT(START_MODE_BEGIN_SEQUENCE);
 	BIND_ENUM_CONSTANT(START_MODE_CONTINUE_SEQUENCE);
 	BIND_ENUM_CONSTANT(START_MODE_RESUME_YIELD);
@@ -3144,7 +3142,7 @@ void VisualScriptCustomNode::_bind_methods() {
 }
 
 VisualScriptCustomNode::VisualScriptCustomNode() {
-	connect_compat("script_changed", this, "_script_changed");
+	connect("script_changed", callable_mp(this, &VisualScriptCustomNode::_script_changed));
 }
 
 //////////////////////////////////////////
@@ -3521,7 +3519,7 @@ VisualScriptConstructor::VisualScriptConstructor() {
 	type = Variant::NIL;
 }
 
-static Map<String, Pair<Variant::Type, MethodInfo> > constructor_map;
+static Map<String, Pair<Variant::Type, MethodInfo>> constructor_map;
 
 static Ref<VisualScriptNode> create_constructor_node(const String &p_name) {
 
@@ -3872,16 +3870,16 @@ public:
 
 		switch (mode) {
 			case VisualScriptInputAction::MODE_PRESSED: {
-				*p_outputs[0] = Input::get_singleton()->is_action_pressed(action);
+				*p_outputs[0] = InputFilter::get_singleton()->is_action_pressed(action);
 			} break;
 			case VisualScriptInputAction::MODE_RELEASED: {
-				*p_outputs[0] = !Input::get_singleton()->is_action_pressed(action);
+				*p_outputs[0] = !InputFilter::get_singleton()->is_action_pressed(action);
 			} break;
 			case VisualScriptInputAction::MODE_JUST_PRESSED: {
-				*p_outputs[0] = Input::get_singleton()->is_action_just_pressed(action);
+				*p_outputs[0] = InputFilter::get_singleton()->is_action_just_pressed(action);
 			} break;
 			case VisualScriptInputAction::MODE_JUST_RELEASED: {
-				*p_outputs[0] = Input::get_singleton()->is_action_just_released(action);
+				*p_outputs[0] = InputFilter::get_singleton()->is_action_just_released(action);
 			} break;
 		}
 
@@ -4008,7 +4006,7 @@ void VisualScriptDeconstruct::_update_elements() {
 	elements.clear();
 	Variant v;
 	Callable::CallError ce;
-	v = Variant::construct(type, NULL, 0, ce);
+	v = Variant::construct(type, nullptr, 0, ce);
 
 	List<PropertyInfo> pinfo;
 	v.get_property_list(&pinfo);

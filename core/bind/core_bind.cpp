@@ -62,10 +62,23 @@ static const unsigned int MONTH_DAYS_TABLE[2][12] = {
 	{ 31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 }
 };
 
-_ResourceLoader *_ResourceLoader::singleton = NULL;
+_ResourceLoader *_ResourceLoader::singleton = nullptr;
 
-Ref<ResourceInteractiveLoader> _ResourceLoader::load_interactive(const String &p_path, const String &p_type_hint) {
-	return ResourceLoader::load_interactive(p_path, p_type_hint);
+Error _ResourceLoader::load_threaded_request(const String &p_path, const String &p_type_hint, bool p_use_sub_threads) {
+
+	return ResourceLoader::load_threaded_request(p_path, p_type_hint, p_use_sub_threads);
+}
+_ResourceLoader::ThreadLoadStatus _ResourceLoader::load_threaded_get_status(const String &p_path, Array r_progress) {
+	float progress = 0;
+	ResourceLoader::ThreadLoadStatus tls = ResourceLoader::load_threaded_get_status(p_path, &progress);
+	r_progress.resize(1);
+	r_progress[0] = progress;
+	return (ThreadLoadStatus)tls;
+}
+RES _ResourceLoader::load_threaded_get(const String &p_path) {
+	Error error;
+	RES res = ResourceLoader::load_threaded_get(p_path, &error);
+	return res;
 }
 
 RES _ResourceLoader::load(const String &p_path, const String &p_type_hint, bool p_no_cache) {
@@ -120,13 +133,21 @@ bool _ResourceLoader::exists(const String &p_path, const String &p_type_hint) {
 
 void _ResourceLoader::_bind_methods() {
 
-	ClassDB::bind_method(D_METHOD("load_interactive", "path", "type_hint"), &_ResourceLoader::load_interactive, DEFVAL(""));
+	ClassDB::bind_method(D_METHOD("load_threaded_request", "path", "type_hint", "use_sub_threads"), &_ResourceLoader::load_threaded_request, DEFVAL(""), DEFVAL(false));
+	ClassDB::bind_method(D_METHOD("load_threaded_get_status", "path", "progress"), &_ResourceLoader::load_threaded_get_status, DEFVAL(Array()));
+	ClassDB::bind_method(D_METHOD("load_threaded_get", "path"), &_ResourceLoader::load_threaded_get);
+
 	ClassDB::bind_method(D_METHOD("load", "path", "type_hint", "no_cache"), &_ResourceLoader::load, DEFVAL(""), DEFVAL(false));
 	ClassDB::bind_method(D_METHOD("get_recognized_extensions_for_type", "type"), &_ResourceLoader::get_recognized_extensions_for_type);
 	ClassDB::bind_method(D_METHOD("set_abort_on_missing_resources", "abort"), &_ResourceLoader::set_abort_on_missing_resources);
 	ClassDB::bind_method(D_METHOD("get_dependencies", "path"), &_ResourceLoader::get_dependencies);
 	ClassDB::bind_method(D_METHOD("has_cached", "path"), &_ResourceLoader::has_cached);
 	ClassDB::bind_method(D_METHOD("exists", "path", "type_hint"), &_ResourceLoader::exists, DEFVAL(""));
+
+	BIND_ENUM_CONSTANT(THREAD_LOAD_INVALID_RESOURCE);
+	BIND_ENUM_CONSTANT(THREAD_LOAD_IN_PROGRESS);
+	BIND_ENUM_CONSTANT(THREAD_LOAD_FAILED);
+	BIND_ENUM_CONSTANT(THREAD_LOAD_LOADED);
 }
 
 _ResourceLoader::_ResourceLoader() {
@@ -152,7 +173,7 @@ Vector<String> _ResourceSaver::get_recognized_extensions(const RES &p_resource) 
 	return ret;
 }
 
-_ResourceSaver *_ResourceSaver::singleton = NULL;
+_ResourceSaver *_ResourceSaver::singleton = nullptr;
 
 void _ResourceSaver::_bind_methods() {
 
@@ -173,82 +194,6 @@ _ResourceSaver::_ResourceSaver() {
 	singleton = this;
 }
 
-/////////////////OS
-
-void _OS::global_menu_add_item(const String &p_menu, const String &p_label, const Variant &p_signal, const Variant &p_meta) {
-
-	OS::get_singleton()->global_menu_add_item(p_menu, p_label, p_signal, p_meta);
-}
-
-void _OS::global_menu_add_separator(const String &p_menu) {
-
-	OS::get_singleton()->global_menu_add_separator(p_menu);
-}
-
-void _OS::global_menu_remove_item(const String &p_menu, int p_idx) {
-
-	OS::get_singleton()->global_menu_remove_item(p_menu, p_idx);
-}
-
-void _OS::global_menu_clear(const String &p_menu) {
-
-	OS::get_singleton()->global_menu_clear(p_menu);
-}
-
-Point2 _OS::get_mouse_position() const {
-
-	return OS::get_singleton()->get_mouse_position();
-}
-
-void _OS::set_window_title(const String &p_title) {
-
-	OS::get_singleton()->set_window_title(p_title);
-}
-
-int _OS::get_mouse_button_state() const {
-
-	return OS::get_singleton()->get_mouse_button_state();
-}
-
-String _OS::get_unique_id() const {
-	return OS::get_singleton()->get_unique_id();
-}
-
-bool _OS::has_touchscreen_ui_hint() const {
-
-	return OS::get_singleton()->has_touchscreen_ui_hint();
-}
-
-void _OS::set_clipboard(const String &p_text) {
-
-	OS::get_singleton()->set_clipboard(p_text);
-}
-
-String _OS::get_clipboard() const {
-
-	return OS::get_singleton()->get_clipboard();
-}
-
-int _OS::get_video_driver_count() const {
-	return OS::get_singleton()->get_video_driver_count();
-}
-
-String _OS::get_video_driver_name(VideoDriver p_driver) const {
-	return OS::get_singleton()->get_video_driver_name((int)p_driver);
-}
-
-_OS::VideoDriver _OS::get_current_video_driver() const {
-	return (VideoDriver)OS::get_singleton()->get_current_video_driver();
-}
-
-int _OS::get_audio_driver_count() const {
-	return OS::get_singleton()->get_audio_driver_count();
-}
-
-String _OS::get_audio_driver_name(int p_driver) const {
-	return OS::get_singleton()->get_audio_driver_name(p_driver);
-}
-
 PackedStringArray _OS::get_connected_midi_inputs() {
 	return OS::get_singleton()->get_connected_midi_inputs();
 }
@@ -261,196 +206,9 @@ void _OS::close_midi_inputs() {
 	OS::get_singleton()->close_midi_inputs();
 }
 
-void _OS::set_video_mode(const Size2 &p_size, bool p_fullscreen, bool p_resizeable, int p_screen) {
-
-	OS::VideoMode vm;
-	vm.width = p_size.width;
-	vm.height = p_size.height;
-	vm.fullscreen = p_fullscreen;
-	vm.resizable = p_resizeable;
-	OS::get_singleton()->set_video_mode(vm, p_screen);
-}
-
-Size2 _OS::get_video_mode(int p_screen) const {
-
-	OS::VideoMode vm;
-	vm = OS::get_singleton()->get_video_mode(p_screen);
-	return Size2(vm.width, vm.height);
-}
-
-bool _OS::is_video_mode_fullscreen(int p_screen) const {
-
-	OS::VideoMode vm;
-	vm = OS::get_singleton()->get_video_mode(p_screen);
-	return vm.fullscreen;
-}
-
-int _OS::get_screen_count() const {
-	return OS::get_singleton()->get_screen_count();
-}
-
-int _OS::get_current_screen() const {
-	return OS::get_singleton()->get_current_screen();
-}
-
-void _OS::set_current_screen(int p_screen) {
-	OS::get_singleton()->set_current_screen(p_screen);
-}
-
-Point2 _OS::get_screen_position(int p_screen) const {
-	return OS::get_singleton()->get_screen_position(p_screen);
-}
-
-Size2 _OS::get_screen_size(int p_screen) const {
-	return OS::get_singleton()->get_screen_size(p_screen);
-}
-
-int _OS::get_screen_dpi(int p_screen) const {
-
-	return OS::get_singleton()->get_screen_dpi(p_screen);
-}
-
-Point2 _OS::get_window_position() const {
-	return OS::get_singleton()->get_window_position();
-}
-
-void _OS::set_window_position(const Point2 &p_position) {
-	OS::get_singleton()->set_window_position(p_position);
-}
-
-Size2 _OS::get_max_window_size() const {
-	return OS::get_singleton()->get_max_window_size();
-}
-
-Size2 _OS::get_min_window_size() const {
-	return OS::get_singleton()->get_min_window_size();
-}
-
-Size2 _OS::get_window_size() const {
-	return OS::get_singleton()->get_window_size();
-}
-
-Size2 _OS::get_real_window_size() const {
-	return OS::get_singleton()->get_real_window_size();
-}
-
-void _OS::set_max_window_size(const Size2 &p_size) {
-	OS::get_singleton()->set_max_window_size(p_size);
-}
-
-void _OS::set_min_window_size(const Size2 &p_size) {
-	OS::get_singleton()->set_min_window_size(p_size);
-}
-
-void _OS::set_window_size(const Size2 &p_size) {
-	OS::get_singleton()->set_window_size(p_size);
-}
-
-Rect2 _OS::get_window_safe_area() const {
-	return OS::get_singleton()->get_window_safe_area();
-}
-
-void _OS::set_window_fullscreen(bool p_enabled) {
-	OS::get_singleton()->set_window_fullscreen(p_enabled);
-}
-
-bool _OS::is_window_fullscreen() const {
-	return OS::get_singleton()->is_window_fullscreen();
-}
-
-void _OS::set_window_resizable(bool p_enabled) {
-	OS::get_singleton()->set_window_resizable(p_enabled);
-}
-
-bool _OS::is_window_resizable() const {
-	return OS::get_singleton()->is_window_resizable();
-}
-
-void _OS::set_window_minimized(bool p_enabled) {
-	OS::get_singleton()->set_window_minimized(p_enabled);
-}
-
-bool _OS::is_window_minimized() const {
-	return OS::get_singleton()->is_window_minimized();
-}
-
-void _OS::set_window_maximized(bool p_enabled) {
-	OS::get_singleton()->set_window_maximized(p_enabled);
-}
-
-bool _OS::is_window_maximized() const {
-	return OS::get_singleton()->is_window_maximized();
-}
-
-void _OS::set_window_always_on_top(bool p_enabled) {
-	OS::get_singleton()->set_window_always_on_top(p_enabled);
-}
-
-bool _OS::is_window_always_on_top() const {
-	return OS::get_singleton()->is_window_always_on_top();
-}
-
-bool _OS::is_window_focused() const {
-	return OS::get_singleton()->is_window_focused();
-}
-
-void _OS::set_borderless_window(bool p_borderless) {
-	OS::get_singleton()->set_borderless_window(p_borderless);
-}
-
-bool _OS::get_window_per_pixel_transparency_enabled() const {
-	return OS::get_singleton()->get_window_per_pixel_transparency_enabled();
-}
-
-void _OS::set_window_per_pixel_transparency_enabled(bool p_enabled) {
-	OS::get_singleton()->set_window_per_pixel_transparency_enabled(p_enabled);
-}
-
-bool _OS::get_borderless_window() const {
-	return OS::get_singleton()->get_borderless_window();
-}
-
-void _OS::set_ime_active(const bool p_active) {
-
-	OS::get_singleton()->set_ime_active(p_active);
-}
-
-void _OS::set_ime_position(const Point2 &p_pos) {
-
-	OS::get_singleton()->set_ime_position(p_pos);
-}
-
-Point2 _OS::get_ime_selection() const {
-	return OS::get_singleton()->get_ime_selection();
-}
-
-String _OS::get_ime_text() const {
-	return OS::get_singleton()->get_ime_text();
-}
-
 void _OS::set_use_file_access_save_and_swap(bool p_enable) {
 
 	FileAccess::set_backup_save(p_enable);
-}
-
-bool _OS::is_video_mode_resizable(int p_screen) const {
-
-	OS::VideoMode vm;
-	vm = OS::get_singleton()->get_video_mode(p_screen);
-	return vm.resizable;
-}
-
-Array _OS::get_fullscreen_mode_list(int p_screen) const {
-
-	List<OS::VideoMode> vmlist;
-	OS::get_singleton()->get_fullscreen_mode_list(&vmlist, p_screen);
-	Array vmarr;
-	for (List<OS::VideoMode>::Element *E = vmlist.front(); E; E = E->next()) {
-
-		vmarr.push_back(Size2(E->get().width, E->get().height));
-	}
-
-	return vmarr;
 }
 
 void _OS::set_low_processor_usage_mode(bool p_enabled) {
@@ -541,51 +299,15 @@ String _OS::get_locale() const {
 	return OS::get_singleton()->get_locale();
 }
 
-String _OS::get_latin_keyboard_variant() const {
-	switch (OS::get_singleton()->get_latin_keyboard_variant()) {
-		case OS::LATIN_KEYBOARD_QWERTY: return "QWERTY";
-		case OS::LATIN_KEYBOARD_QWERTZ: return "QWERTZ";
-		case OS::LATIN_KEYBOARD_AZERTY: return "AZERTY";
-		case OS::LATIN_KEYBOARD_QZERTY: return "QZERTY";
-		case OS::LATIN_KEYBOARD_DVORAK: return "DVORAK";
-		case OS::LATIN_KEYBOARD_NEO: return "NEO";
-		case OS::LATIN_KEYBOARD_COLEMAK: return "COLEMAK";
-		default: return "ERROR";
-	}
-}
-
 String _OS::get_model_name() const {
 
 	return OS::get_singleton()->get_model_name();
-}
-
-bool _OS::is_ok_left_and_cancel_right() const {
-
-	return OS::get_singleton()->get_swap_ok_cancel();
 }
 
 Error _OS::set_thread_name(const String &p_name) {
 
 	return Thread::set_name(p_name);
 };
-
-void _OS::set_use_vsync(bool p_enable) {
-	OS::get_singleton()->set_use_vsync(p_enable);
-}
-
-bool _OS::is_vsync_enabled() const {
-
-	return OS::get_singleton()->is_vsync_enabled();
-}
-
-void _OS::set_vsync_via_compositor(bool p_enable) {
-	OS::get_singleton()->set_vsync_via_compositor(p_enable);
-}
-
-bool _OS::is_vsync_via_compositor_enabled() const {
-
-	return OS::get_singleton()->is_vsync_via_compositor_enabled();
-}
 
 bool _OS::has_feature(const String &p_feature) const {
 
@@ -644,16 +366,6 @@ uint64_t _OS::get_static_memory_usage() const {
 uint64_t _OS::get_static_memory_peak_usage() const {
 
 	return OS::get_singleton()->get_static_memory_peak_usage();
-}
-
-void _OS::set_native_icon(const String &p_filename) {
-
-	OS::get_singleton()->set_native_icon(p_filename);
-}
-
-void _OS::set_icon(const Ref<Image> &p_icon) {
-
-	OS::get_singleton()->set_icon(p_icon);
 }
 
 int _OS::get_exit_code() const {
@@ -903,11 +615,6 @@ bool _OS::can_use_threads() const {
 	return OS::get_singleton()->can_use_threads();
 }
 
-bool _OS::can_draw() const {
-
-	return OS::get_singleton()->can_draw();
-}
-
 bool _OS::is_userfs_persistent() const {
 
 	return OS::get_singleton()->is_userfs_persistent();
@@ -943,10 +650,10 @@ void _OS::print_all_textures_by_size() {
 	List<_OSCoreBindImg> imgs;
 	int total = 0;
 	{
-		List<Ref<Resource> > rsrc;
+		List<Ref<Resource>> rsrc;
 		ResourceCache::get_cached_resources(&rsrc);
 
-		for (List<Ref<Resource> >::Element *E = rsrc.front(); E; E = E->next()) {
+		for (List<Ref<Resource>>::Element *E = rsrc.front(); E; E = E->next()) {
 
 			if (!E->get()->is_class("ImageTexture"))
 				continue;
@@ -977,13 +684,13 @@ void _OS::print_resources_by_type(const Vector<String> &p_types) {
 
 	Map<String, int> type_count;
 
-	List<Ref<Resource> > resources;
+	List<Ref<Resource>> resources;
 	ResourceCache::get_cached_resources(&resources);
 
-	List<Ref<Resource> > rsrc;
+	List<Ref<Resource>> rsrc;
 	ResourceCache::get_cached_resources(&rsrc);
 
-	for (List<Ref<Resource> >::Element *E = rsrc.front(); E; E = E->next()) {
+	for (List<Ref<Resource>>::Element *E = rsrc.front(); E; E = E->next()) {
 
 		Ref<Resource> r = E->get();
 
@@ -1003,22 +710,6 @@ void _OS::print_resources_by_type(const Vector<String> &p_types) {
 		type_count[r->get_class()]++;
 	}
 };
-
-bool _OS::has_virtual_keyboard() const {
-	return OS::get_singleton()->has_virtual_keyboard();
-}
-
-void _OS::show_virtual_keyboard(const String &p_existing_text) {
-	OS::get_singleton()->show_virtual_keyboard(p_existing_text, Rect2());
-}
-
-void _OS::hide_virtual_keyboard() {
-	OS::get_singleton()->hide_virtual_keyboard();
-}
-
-int _OS::get_virtual_keyboard_height() {
-	return OS::get_singleton()->get_virtual_keyboard_height();
-}
 
 void _OS::print_all_resources(const String &p_to_file) {
 
@@ -1040,45 +731,6 @@ String _OS::get_user_data_dir() const {
 	return OS::get_singleton()->get_user_data_dir();
 };
 
-Error _OS::native_video_play(String p_path, float p_volume, String p_audio_track, String p_subtitle_track) {
-
-	return OS::get_singleton()->native_video_play(p_path, p_volume, p_audio_track, p_subtitle_track);
-};
-
-bool _OS::native_video_is_playing() {
-
-	return OS::get_singleton()->native_video_is_playing();
-};
-
-void _OS::native_video_pause() {
-
-	OS::get_singleton()->native_video_pause();
-};
-
-void _OS::native_video_unpause() {
-	OS::get_singleton()->native_video_unpause();
-};
-
-void _OS::native_video_stop() {
-
-	OS::get_singleton()->native_video_stop();
-};
-
-void _OS::request_attention() {
-
-	OS::get_singleton()->request_attention();
-}
-
-void _OS::center_window() {
-
-	OS::get_singleton()->center_window();
-}
-
-void _OS::move_window_to_foreground() {
-
-	OS::get_singleton()->move_window_to_foreground();
-}
-
 bool _OS::is_debug_build() const {
 
 #ifdef DEBUG_ENABLED
@@ -1088,47 +740,24 @@ bool _OS::is_debug_build() const {
 #endif
 }
 
-void _OS::set_screen_orientation(ScreenOrientation p_orientation) {
-
-	OS::get_singleton()->set_screen_orientation(OS::ScreenOrientation(p_orientation));
-}
-
-_OS::ScreenOrientation _OS::get_screen_orientation() const {
-
-	return ScreenOrientation(OS::get_singleton()->get_screen_orientation());
-}
-
-void _OS::set_keep_screen_on(bool p_enabled) {
-
-	OS::get_singleton()->set_keep_screen_on(p_enabled);
-}
-
-bool _OS::is_keep_screen_on() const {
-
-	return OS::get_singleton()->is_keep_screen_on();
-}
-
 String _OS::get_system_dir(SystemDir p_dir) const {
 
 	return OS::get_singleton()->get_system_dir(OS::SystemDir(p_dir));
 }
 
-String _OS::get_scancode_string(uint32_t p_code) const {
+String _OS::get_keycode_string(uint32_t p_code) const {
 
 	return keycode_get_string(p_code);
 }
-bool _OS::is_scancode_unicode(uint32_t p_unicode) const {
+
+bool _OS::is_keycode_unicode(uint32_t p_unicode) const {
 
 	return keycode_has_unicode(p_unicode);
 }
-int _OS::find_scancode_from_string(const String &p_code) const {
+
+int _OS::find_keycode_from_string(const String &p_code) const {
 
 	return find_keycode(p_code);
-}
-
-void _OS::alert(const String &p_alert, const String &p_title) {
-
-	OS::get_singleton()->alert(p_alert, p_title);
 }
 
 bool _OS::request_permission(const String &p_name) {
@@ -1146,89 +775,16 @@ Vector<String> _OS::get_granted_permissions() const {
 	return OS::get_singleton()->get_granted_permissions();
 }
 
-_OS *_OS::singleton = NULL;
+String _OS::get_unique_id() const {
+	return OS::get_singleton()->get_unique_id();
+}
+_OS *_OS::singleton = nullptr;
 
 void _OS::_bind_methods() {
 
-	//ClassDB::bind_method(D_METHOD("get_mouse_position"),&_OS::get_mouse_position);
-	//ClassDB::bind_method(D_METHOD("is_mouse_grab_enabled"),&_OS::is_mouse_grab_enabled);
-
-	ClassDB::bind_method(D_METHOD("set_clipboard", "clipboard"), &_OS::set_clipboard);
-	ClassDB::bind_method(D_METHOD("get_clipboard"), &_OS::get_clipboard);
-
-	//will not delete for now, just unexpose
-	//ClassDB::bind_method(D_METHOD("set_video_mode","size","fullscreen","resizable","screen"),&_OS::set_video_mode,DEFVAL(0));
-	//ClassDB::bind_method(D_METHOD("get_video_mode_size","screen"),&_OS::get_video_mode,DEFVAL(0));
-	//ClassDB::bind_method(D_METHOD("is_video_mode_fullscreen","screen"),&_OS::is_video_mode_fullscreen,DEFVAL(0));
-	//ClassDB::bind_method(D_METHOD("is_video_mode_resizable","screen"),&_OS::is_video_mode_resizable,DEFVAL(0));
-	//ClassDB::bind_method(D_METHOD("get_fullscreen_mode_list","screen"),&_OS::get_fullscreen_mode_list,DEFVAL(0));
-
-	ClassDB::bind_method(D_METHOD("global_menu_add_item", "menu", "label", "id", "meta"), &_OS::global_menu_add_item);
-	ClassDB::bind_method(D_METHOD("global_menu_add_separator", "menu"), &_OS::global_menu_add_separator);
-	ClassDB::bind_method(D_METHOD("global_menu_remove_item", "menu", "idx"), &_OS::global_menu_remove_item);
-	ClassDB::bind_method(D_METHOD("global_menu_clear", "menu"), &_OS::global_menu_clear);
-
-	ClassDB::bind_method(D_METHOD("get_video_driver_count"), &_OS::get_video_driver_count);
-	ClassDB::bind_method(D_METHOD("get_video_driver_name", "driver"), &_OS::get_video_driver_name);
-	ClassDB::bind_method(D_METHOD("get_current_video_driver"), &_OS::get_current_video_driver);
-
-	ClassDB::bind_method(D_METHOD("get_audio_driver_count"), &_OS::get_audio_driver_count);
-	ClassDB::bind_method(D_METHOD("get_audio_driver_name", "driver"), &_OS::get_audio_driver_name);
 	ClassDB::bind_method(D_METHOD("get_connected_midi_inputs"), &_OS::get_connected_midi_inputs);
 	ClassDB::bind_method(D_METHOD("open_midi_inputs"), &_OS::open_midi_inputs);
 	ClassDB::bind_method(D_METHOD("close_midi_inputs"), &_OS::close_midi_inputs);
-
-	ClassDB::bind_method(D_METHOD("get_screen_count"), &_OS::get_screen_count);
-	ClassDB::bind_method(D_METHOD("get_current_screen"), &_OS::get_current_screen);
-	ClassDB::bind_method(D_METHOD("set_current_screen", "screen"), &_OS::set_current_screen);
-	ClassDB::bind_method(D_METHOD("get_screen_position", "screen"), &_OS::get_screen_position, DEFVAL(-1));
-	ClassDB::bind_method(D_METHOD("get_screen_size", "screen"), &_OS::get_screen_size, DEFVAL(-1));
-	ClassDB::bind_method(D_METHOD("get_screen_dpi", "screen"), &_OS::get_screen_dpi, DEFVAL(-1));
-	ClassDB::bind_method(D_METHOD("get_window_position"), &_OS::get_window_position);
-	ClassDB::bind_method(D_METHOD("set_window_position", "position"), &_OS::set_window_position);
-	ClassDB::bind_method(D_METHOD("get_window_size"), &_OS::get_window_size);
-	ClassDB::bind_method(D_METHOD("get_max_window_size"), &_OS::get_max_window_size);
-	ClassDB::bind_method(D_METHOD("get_min_window_size"), &_OS::get_min_window_size);
-	ClassDB::bind_method(D_METHOD("set_max_window_size", "size"), &_OS::set_max_window_size);
-	ClassDB::bind_method(D_METHOD("set_min_window_size", "size"), &_OS::set_min_window_size);
-	ClassDB::bind_method(D_METHOD("set_window_size", "size"), &_OS::set_window_size);
-	ClassDB::bind_method(D_METHOD("get_window_safe_area"), &_OS::get_window_safe_area);
-	ClassDB::bind_method(D_METHOD("set_window_fullscreen", "enabled"), &_OS::set_window_fullscreen);
-	ClassDB::bind_method(D_METHOD("is_window_fullscreen"), &_OS::is_window_fullscreen);
-	ClassDB::bind_method(D_METHOD("set_window_resizable", "enabled"), &_OS::set_window_resizable);
-	ClassDB::bind_method(D_METHOD("is_window_resizable"), &_OS::is_window_resizable);
-	ClassDB::bind_method(D_METHOD("set_window_minimized", "enabled"), &_OS::set_window_minimized);
-	ClassDB::bind_method(D_METHOD("is_window_minimized"), &_OS::is_window_minimized);
-	ClassDB::bind_method(D_METHOD("set_window_maximized", "enabled"), &_OS::set_window_maximized);
-	ClassDB::bind_method(D_METHOD("is_window_maximized"), &_OS::is_window_maximized);
-	ClassDB::bind_method(D_METHOD("set_window_always_on_top", "enabled"), &_OS::set_window_always_on_top);
-	ClassDB::bind_method(D_METHOD("is_window_always_on_top"), &_OS::is_window_always_on_top);
-	ClassDB::bind_method(D_METHOD("is_window_focused"), &_OS::is_window_focused);
-	ClassDB::bind_method(D_METHOD("request_attention"), &_OS::request_attention);
-	ClassDB::bind_method(D_METHOD("get_real_window_size"), &_OS::get_real_window_size);
-	ClassDB::bind_method(D_METHOD("center_window"), &_OS::center_window);
-	ClassDB::bind_method(D_METHOD("move_window_to_foreground"), &_OS::move_window_to_foreground);
-
-	ClassDB::bind_method(D_METHOD("set_borderless_window", "borderless"), &_OS::set_borderless_window);
-	ClassDB::bind_method(D_METHOD("get_borderless_window"), &_OS::get_borderless_window);
-
-	ClassDB::bind_method(D_METHOD("get_window_per_pixel_transparency_enabled"), &_OS::get_window_per_pixel_transparency_enabled);
-	ClassDB::bind_method(D_METHOD("set_window_per_pixel_transparency_enabled", "enabled"), &_OS::set_window_per_pixel_transparency_enabled);
-
-	ClassDB::bind_method(D_METHOD("set_ime_active", "active"), &_OS::set_ime_active);
-	ClassDB::bind_method(D_METHOD("set_ime_position", "position"), &_OS::set_ime_position);
-	ClassDB::bind_method(D_METHOD("get_ime_selection"), &_OS::get_ime_selection);
-	ClassDB::bind_method(D_METHOD("get_ime_text"), &_OS::get_ime_text);
-
-	ClassDB::bind_method(D_METHOD("set_screen_orientation", "orientation"), &_OS::set_screen_orientation);
-	ClassDB::bind_method(D_METHOD("get_screen_orientation"), &_OS::get_screen_orientation);
-
-	ClassDB::bind_method(D_METHOD("set_keep_screen_on", "enabled"), &_OS::set_keep_screen_on);
-	ClassDB::bind_method(D_METHOD("is_keep_screen_on"), &_OS::is_keep_screen_on);
-
-	ClassDB::bind_method(D_METHOD("has_touchscreen_ui_hint"), &_OS::has_touchscreen_ui_hint);
-
-	ClassDB::bind_method(D_METHOD("set_window_title", "title"), &_OS::set_window_title);
 
 	ClassDB::bind_method(D_METHOD("set_low_processor_usage_mode", "enable"), &_OS::set_low_processor_usage_mode);
 	ClassDB::bind_method(D_METHOD("is_in_low_processor_usage_mode"), &_OS::is_in_low_processor_usage_mode);
@@ -1260,9 +816,6 @@ void _OS::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_system_time_secs"), &_OS::get_system_time_secs);
 	ClassDB::bind_method(D_METHOD("get_system_time_msecs"), &_OS::get_system_time_msecs);
 
-	ClassDB::bind_method(D_METHOD("set_native_icon", "filename"), &_OS::set_native_icon);
-	ClassDB::bind_method(D_METHOD("set_icon", "icon"), &_OS::set_icon);
-
 	ClassDB::bind_method(D_METHOD("get_exit_code"), &_OS::get_exit_code);
 	ClassDB::bind_method(D_METHOD("set_exit_code", "code"), &_OS::set_exit_code);
 
@@ -1272,10 +825,8 @@ void _OS::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_ticks_usec"), &_OS::get_ticks_usec);
 	ClassDB::bind_method(D_METHOD("get_splash_tick_msec"), &_OS::get_splash_tick_msec);
 	ClassDB::bind_method(D_METHOD("get_locale"), &_OS::get_locale);
-	ClassDB::bind_method(D_METHOD("get_latin_keyboard_variant"), &_OS::get_latin_keyboard_variant);
 	ClassDB::bind_method(D_METHOD("get_model_name"), &_OS::get_model_name);
 
-	ClassDB::bind_method(D_METHOD("can_draw"), &_OS::can_draw);
 	ClassDB::bind_method(D_METHOD("is_userfs_persistent"), &_OS::is_userfs_persistent);
 	ClassDB::bind_method(D_METHOD("is_stdout_verbose"), &_OS::is_stdout_verbose);
 
@@ -1287,10 +838,6 @@ void _OS::_bind_methods() {
 
 	ClassDB::bind_method(D_METHOD("dump_memory_to_file", "file"), &_OS::dump_memory_to_file);
 	ClassDB::bind_method(D_METHOD("dump_resources_to_file", "file"), &_OS::dump_resources_to_file);
-	ClassDB::bind_method(D_METHOD("has_virtual_keyboard"), &_OS::has_virtual_keyboard);
-	ClassDB::bind_method(D_METHOD("show_virtual_keyboard", "existing_text"), &_OS::show_virtual_keyboard, DEFVAL(""));
-	ClassDB::bind_method(D_METHOD("hide_virtual_keyboard"), &_OS::hide_virtual_keyboard);
-	ClassDB::bind_method(D_METHOD("get_virtual_keyboard_height"), &_OS::get_virtual_keyboard_height);
 	ClassDB::bind_method(D_METHOD("print_resources_in_use", "short"), &_OS::print_resources_in_use, DEFVAL(false));
 	ClassDB::bind_method(D_METHOD("print_all_resources", "tofile"), &_OS::print_all_resources, DEFVAL(""));
 
@@ -1301,32 +848,16 @@ void _OS::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_system_dir", "dir"), &_OS::get_system_dir);
 	ClassDB::bind_method(D_METHOD("get_unique_id"), &_OS::get_unique_id);
 
-	ClassDB::bind_method(D_METHOD("is_ok_left_and_cancel_right"), &_OS::is_ok_left_and_cancel_right);
-
 	ClassDB::bind_method(D_METHOD("print_all_textures_by_size"), &_OS::print_all_textures_by_size);
 	ClassDB::bind_method(D_METHOD("print_resources_by_type", "types"), &_OS::print_resources_by_type);
 
-	ClassDB::bind_method(D_METHOD("native_video_play", "path", "volume", "audio_track", "subtitle_track"), &_OS::native_video_play);
-	ClassDB::bind_method(D_METHOD("native_video_is_playing"), &_OS::native_video_is_playing);
-	ClassDB::bind_method(D_METHOD("native_video_stop"), &_OS::native_video_stop);
-	ClassDB::bind_method(D_METHOD("native_video_pause"), &_OS::native_video_pause);
-	ClassDB::bind_method(D_METHOD("native_video_unpause"), &_OS::native_video_unpause);
-
-	ClassDB::bind_method(D_METHOD("get_scancode_string", "code"), &_OS::get_scancode_string);
-	ClassDB::bind_method(D_METHOD("is_scancode_unicode", "code"), &_OS::is_scancode_unicode);
-	ClassDB::bind_method(D_METHOD("find_scancode_from_string", "string"), &_OS::find_scancode_from_string);
+	ClassDB::bind_method(D_METHOD("get_keycode_string", "code"), &_OS::get_keycode_string);
+	ClassDB::bind_method(D_METHOD("is_keycode_unicode", "code"), &_OS::is_keycode_unicode);
+	ClassDB::bind_method(D_METHOD("find_keycode_from_string", "string"), &_OS::find_keycode_from_string);
 
 	ClassDB::bind_method(D_METHOD("set_use_file_access_save_and_swap", "enabled"), &_OS::set_use_file_access_save_and_swap);
 
-	ClassDB::bind_method(D_METHOD("alert", "text", "title"), &_OS::alert, DEFVAL("Alert!"));
-
 	ClassDB::bind_method(D_METHOD("set_thread_name", "name"), &_OS::set_thread_name);
-
-	ClassDB::bind_method(D_METHOD("set_use_vsync", "enable"), &_OS::set_use_vsync);
-	ClassDB::bind_method(D_METHOD("is_vsync_enabled"), &_OS::is_vsync_enabled);
-
-	ClassDB::bind_method(D_METHOD("set_vsync_via_compositor", "enable"), &_OS::set_vsync_via_compositor);
-	ClassDB::bind_method(D_METHOD("is_vsync_via_compositor_enabled"), &_OS::is_vsync_via_compositor_enabled);
 
 	ClassDB::bind_method(D_METHOD("has_feature", "tag_name"), &_OS::has_feature);
 
@@ -1334,48 +865,15 @@ void _OS::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("request_permissions"), &_OS::request_permissions);
 	ClassDB::bind_method(D_METHOD("get_granted_permissions"), &_OS::get_granted_permissions);
 
-	ADD_PROPERTY(PropertyInfo(Variant::STRING, "clipboard"), "set_clipboard", "get_clipboard");
-	ADD_PROPERTY(PropertyInfo(Variant::INT, "current_screen"), "set_current_screen", "get_current_screen");
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "exit_code"), "set_exit_code", "get_exit_code");
-	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "vsync_enabled"), "set_use_vsync", "is_vsync_enabled");
-	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "vsync_via_compositor"), "set_vsync_via_compositor", "is_vsync_via_compositor_enabled");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "low_processor_usage_mode"), "set_low_processor_usage_mode", "is_in_low_processor_usage_mode");
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "low_processor_usage_mode_sleep_usec"), "set_low_processor_usage_mode_sleep_usec", "get_low_processor_usage_mode_sleep_usec");
-	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "keep_screen_on"), "set_keep_screen_on", "is_keep_screen_on");
-	ADD_PROPERTY(PropertyInfo(Variant::VECTOR2, "min_window_size"), "set_min_window_size", "get_min_window_size");
-	ADD_PROPERTY(PropertyInfo(Variant::VECTOR2, "max_window_size"), "set_max_window_size", "get_max_window_size");
-	ADD_PROPERTY(PropertyInfo(Variant::INT, "screen_orientation", PROPERTY_HINT_ENUM, "Landscape,Portrait,Reverse Landscape,Reverse Portrait,Sensor Landscape,Sensor Portrait,Sensor"), "set_screen_orientation", "get_screen_orientation");
-	ADD_GROUP("Window", "window_");
-	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "window_borderless"), "set_borderless_window", "get_borderless_window");
-	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "window_per_pixel_transparency_enabled"), "set_window_per_pixel_transparency_enabled", "get_window_per_pixel_transparency_enabled");
-	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "window_fullscreen"), "set_window_fullscreen", "is_window_fullscreen");
-	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "window_maximized"), "set_window_maximized", "is_window_maximized");
-	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "window_minimized"), "set_window_minimized", "is_window_minimized");
-	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "window_resizable"), "set_window_resizable", "is_window_resizable");
-	ADD_PROPERTY(PropertyInfo(Variant::VECTOR2, "window_position"), "set_window_position", "get_window_position");
-	ADD_PROPERTY(PropertyInfo(Variant::VECTOR2, "window_size"), "set_window_size", "get_window_size");
 
 	// Those default values need to be specified for the docs generator,
 	// to avoid using values from the documentation writer's own OS instance.
-	ADD_PROPERTY_DEFAULT("clipboard", "");
-	ADD_PROPERTY_DEFAULT("current_screen", 0);
 	ADD_PROPERTY_DEFAULT("exit_code", 0);
-	ADD_PROPERTY_DEFAULT("vsync_enabled", true);
-	ADD_PROPERTY_DEFAULT("vsync_via_compositor", false);
 	ADD_PROPERTY_DEFAULT("low_processor_usage_mode", false);
 	ADD_PROPERTY_DEFAULT("low_processor_usage_mode_sleep_usec", 6900);
-	ADD_PROPERTY_DEFAULT("keep_screen_on", true);
-	ADD_PROPERTY_DEFAULT("min_window_size", Vector2());
-	ADD_PROPERTY_DEFAULT("max_window_size", Vector2());
-	ADD_PROPERTY_DEFAULT("screen_orientation", 0);
-	ADD_PROPERTY_DEFAULT("window_borderless", false);
-	ADD_PROPERTY_DEFAULT("window_per_pixel_transparency_enabled", false);
-	ADD_PROPERTY_DEFAULT("window_fullscreen", false);
-	ADD_PROPERTY_DEFAULT("window_maximized", false);
-	ADD_PROPERTY_DEFAULT("window_minimized", false);
-	ADD_PROPERTY_DEFAULT("window_resizable", true);
-	ADD_PROPERTY_DEFAULT("window_position", Vector2());
-	ADD_PROPERTY_DEFAULT("window_size", Vector2());
 
 	BIND_ENUM_CONSTANT(VIDEO_DRIVER_GLES2);
 	BIND_ENUM_CONSTANT(VIDEO_DRIVER_VULKAN);
@@ -1401,14 +899,6 @@ void _OS::_bind_methods() {
 	BIND_ENUM_CONSTANT(MONTH_NOVEMBER);
 	BIND_ENUM_CONSTANT(MONTH_DECEMBER);
 
-	BIND_ENUM_CONSTANT(SCREEN_ORIENTATION_LANDSCAPE);
-	BIND_ENUM_CONSTANT(SCREEN_ORIENTATION_PORTRAIT);
-	BIND_ENUM_CONSTANT(SCREEN_ORIENTATION_REVERSE_LANDSCAPE);
-	BIND_ENUM_CONSTANT(SCREEN_ORIENTATION_REVERSE_PORTRAIT);
-	BIND_ENUM_CONSTANT(SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
-	BIND_ENUM_CONSTANT(SCREEN_ORIENTATION_SENSOR_PORTRAIT);
-	BIND_ENUM_CONSTANT(SCREEN_ORIENTATION_SENSOR);
-
 	BIND_ENUM_CONSTANT(SYSTEM_DIR_DESKTOP);
 	BIND_ENUM_CONSTANT(SYSTEM_DIR_DCIM);
 	BIND_ENUM_CONSTANT(SYSTEM_DIR_DOCUMENTS);
@@ -1426,7 +916,7 @@ _OS::_OS() {
 
 ///////////////////// GEOMETRY
 
-_Geometry *_Geometry::singleton = NULL;
+_Geometry *_Geometry::singleton = nullptr;
 
 _Geometry *_Geometry::get_singleton() {
 
@@ -1610,7 +1100,7 @@ Vector<Vector3> _Geometry::clip_polygon(const Vector<Vector3> &p_points, const P
 
 Array _Geometry::merge_polygons_2d(const Vector<Vector2> &p_polygon_a, const Vector<Vector2> &p_polygon_b) {
 
-	Vector<Vector<Point2> > polys = Geometry::merge_polygons_2d(p_polygon_a, p_polygon_b);
+	Vector<Vector<Point2>> polys = Geometry::merge_polygons_2d(p_polygon_a, p_polygon_b);
 
 	Array ret;
 
@@ -1622,7 +1112,7 @@ Array _Geometry::merge_polygons_2d(const Vector<Vector2> &p_polygon_a, const Vec
 
 Array _Geometry::clip_polygons_2d(const Vector<Vector2> &p_polygon_a, const Vector<Vector2> &p_polygon_b) {
 
-	Vector<Vector<Point2> > polys = Geometry::clip_polygons_2d(p_polygon_a, p_polygon_b);
+	Vector<Vector<Point2>> polys = Geometry::clip_polygons_2d(p_polygon_a, p_polygon_b);
 
 	Array ret;
 
@@ -1634,7 +1124,7 @@ Array _Geometry::clip_polygons_2d(const Vector<Vector2> &p_polygon_a, const Vect
 
 Array _Geometry::intersect_polygons_2d(const Vector<Vector2> &p_polygon_a, const Vector<Vector2> &p_polygon_b) {
 
-	Vector<Vector<Point2> > polys = Geometry::intersect_polygons_2d(p_polygon_a, p_polygon_b);
+	Vector<Vector<Point2>> polys = Geometry::intersect_polygons_2d(p_polygon_a, p_polygon_b);
 
 	Array ret;
 
@@ -1646,7 +1136,7 @@ Array _Geometry::intersect_polygons_2d(const Vector<Vector2> &p_polygon_a, const
 
 Array _Geometry::exclude_polygons_2d(const Vector<Vector2> &p_polygon_a, const Vector<Vector2> &p_polygon_b) {
 
-	Vector<Vector<Point2> > polys = Geometry::exclude_polygons_2d(p_polygon_a, p_polygon_b);
+	Vector<Vector<Point2>> polys = Geometry::exclude_polygons_2d(p_polygon_a, p_polygon_b);
 
 	Array ret;
 
@@ -1658,7 +1148,7 @@ Array _Geometry::exclude_polygons_2d(const Vector<Vector2> &p_polygon_a, const V
 
 Array _Geometry::clip_polyline_with_polygon_2d(const Vector<Vector2> &p_polyline, const Vector<Vector2> &p_polygon) {
 
-	Vector<Vector<Point2> > polys = Geometry::clip_polyline_with_polygon_2d(p_polyline, p_polygon);
+	Vector<Vector<Point2>> polys = Geometry::clip_polyline_with_polygon_2d(p_polyline, p_polygon);
 
 	Array ret;
 
@@ -1670,7 +1160,7 @@ Array _Geometry::clip_polyline_with_polygon_2d(const Vector<Vector2> &p_polyline
 
 Array _Geometry::intersect_polyline_with_polygon_2d(const Vector<Vector2> &p_polyline, const Vector<Vector2> &p_polygon) {
 
-	Vector<Vector<Point2> > polys = Geometry::intersect_polyline_with_polygon_2d(p_polyline, p_polygon);
+	Vector<Vector<Point2>> polys = Geometry::intersect_polyline_with_polygon_2d(p_polyline, p_polygon);
 
 	Array ret;
 
@@ -1682,7 +1172,7 @@ Array _Geometry::intersect_polyline_with_polygon_2d(const Vector<Vector2> &p_pol
 
 Array _Geometry::offset_polygon_2d(const Vector<Vector2> &p_polygon, real_t p_delta, PolyJoinType p_join_type) {
 
-	Vector<Vector<Point2> > polys = Geometry::offset_polygon_2d(p_polygon, p_delta, Geometry::PolyJoinType(p_join_type));
+	Vector<Vector<Point2>> polys = Geometry::offset_polygon_2d(p_polygon, p_delta, Geometry::PolyJoinType(p_join_type));
 
 	Array ret;
 
@@ -1694,7 +1184,7 @@ Array _Geometry::offset_polygon_2d(const Vector<Vector2> &p_polygon, real_t p_de
 
 Array _Geometry::offset_polyline_2d(const Vector<Vector2> &p_polygon, real_t p_delta, PolyJoinType p_join_type, PolyEndType p_end_type) {
 
-	Vector<Vector<Point2> > polys = Geometry::offset_polyline_2d(p_polygon, p_delta, Geometry::PolyJoinType(p_join_type), Geometry::PolyEndType(p_end_type));
+	Vector<Vector<Point2>> polys = Geometry::offset_polyline_2d(p_polygon, p_delta, Geometry::PolyJoinType(p_join_type), Geometry::PolyEndType(p_end_type));
 
 	Array ret;
 
@@ -1873,11 +1363,11 @@ void _File::close() {
 
 	if (f)
 		memdelete(f);
-	f = NULL;
+	f = nullptr;
 }
 bool _File::is_open() const {
 
-	return f != NULL;
+	return f != nullptr;
 }
 String _File::get_path() const {
 
@@ -2140,7 +1630,7 @@ void _File::store_var(const Variant &p_var, bool p_full_objects) {
 
 	ERR_FAIL_COND_MSG(!f, "File must be opened before use.");
 	int len;
-	Error err = encode_variant(p_var, NULL, len, p_full_objects);
+	Error err = encode_variant(p_var, nullptr, len, p_full_objects);
 	ERR_FAIL_COND_MSG(err != OK, "Error when trying to encode Variant.");
 
 	Vector<uint8_t> buff;
@@ -2164,7 +1654,7 @@ Variant _File::get_var(bool p_allow_objects) const {
 	const uint8_t *r = buff.ptr();
 
 	Variant v;
-	Error err = decode_variant(v, &r[0], len, NULL, p_allow_objects);
+	Error err = decode_variant(v, &r[0], len, nullptr, p_allow_objects);
 	ERR_FAIL_COND_V_MSG(err != OK, Variant(), "Error when trying to encode Variant.");
 
 	return v;
@@ -2243,7 +1733,7 @@ void _File::_bind_methods() {
 
 _File::_File() {
 
-	f = NULL;
+	f = nullptr;
 	eswap = false;
 }
 
@@ -2444,7 +1934,7 @@ _Directory::~_Directory() {
 		memdelete(d);
 }
 
-_Marshalls *_Marshalls::singleton = NULL;
+_Marshalls *_Marshalls::singleton = nullptr;
 
 _Marshalls *_Marshalls::get_singleton() {
 	return singleton;
@@ -2453,7 +1943,7 @@ _Marshalls *_Marshalls::get_singleton() {
 String _Marshalls::variant_to_base64(const Variant &p_var, bool p_full_objects) {
 
 	int len;
-	Error err = encode_variant(p_var, NULL, len, p_full_objects);
+	Error err = encode_variant(p_var, nullptr, len, p_full_objects);
 	ERR_FAIL_COND_V_MSG(err != OK, "", "Error when trying to encode Variant.");
 
 	Vector<uint8_t> buff;
@@ -2482,7 +1972,7 @@ Variant _Marshalls::base64_to_variant(const String &p_str, bool p_allow_objects)
 	ERR_FAIL_COND_V(CryptoCore::b64_decode(&w[0], buf.size(), &len, (unsigned char *)cstr.get_data(), strlen) != OK, Variant());
 
 	Variant v;
-	Error err = decode_variant(v, &w[0], len, NULL, p_allow_objects);
+	Error err = decode_variant(v, &w[0], len, nullptr, p_allow_objects);
 	ERR_FAIL_COND_V_MSG(err != OK, Variant(), "Error when trying to decode Variant.");
 
 	return v;
@@ -2553,47 +2043,43 @@ void _Marshalls::_bind_methods() {
 
 ////////////////
 
-Error _Semaphore::wait() {
+void _Semaphore::wait() {
 
-	return semaphore->wait();
+	semaphore.wait();
 }
 
-Error _Semaphore::post() {
+Error _Semaphore::try_wait() {
 
-	return semaphore->post();
+	return semaphore.try_wait() ? OK : ERR_BUSY;
+}
+
+void _Semaphore::post() {
+
+	semaphore.post();
 }
 
 void _Semaphore::_bind_methods() {
 
 	ClassDB::bind_method(D_METHOD("wait"), &_Semaphore::wait);
+	ClassDB::bind_method(D_METHOD("try_wait"), &_Semaphore::try_wait);
 	ClassDB::bind_method(D_METHOD("post"), &_Semaphore::post);
-}
-
-_Semaphore::_Semaphore() {
-
-	semaphore = SemaphoreOld::create();
-}
-
-_Semaphore::~_Semaphore() {
-
-	memdelete(semaphore);
 }
 
 ///////////////
 
 void _Mutex::lock() {
 
-	mutex->lock();
+	mutex.lock();
 }
 
 Error _Mutex::try_lock() {
 
-	return mutex->try_lock();
+	return mutex.try_lock();
 }
 
 void _Mutex::unlock() {
 
-	mutex->unlock();
+	mutex.unlock();
 }
 
 void _Mutex::_bind_methods() {
@@ -2601,16 +2087,6 @@ void _Mutex::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("lock"), &_Mutex::lock);
 	ClassDB::bind_method(D_METHOD("try_lock"), &_Mutex::try_lock);
 	ClassDB::bind_method(D_METHOD("unlock"), &_Mutex::unlock);
-}
-
-_Mutex::_Mutex() {
-
-	mutex = Mutex::create();
-}
-
-_Mutex::~_Mutex() {
-
-	memdelete(mutex);
 }
 
 ///////////////
@@ -2675,7 +2151,7 @@ Error _Thread::start(Object *p_instance, const StringName &p_method, const Varia
 	if (!thread) {
 		active = false;
 		target_method = StringName();
-		target_instance = NULL;
+		target_instance = nullptr;
 		userdata = Variant();
 		return ERR_CANT_CREATE;
 	}
@@ -2703,11 +2179,11 @@ Variant _Thread::wait_to_finish() {
 	Variant r = ret;
 	active = false;
 	target_method = StringName();
-	target_instance = NULL;
+	target_instance = nullptr;
 	userdata = Variant();
 	if (thread)
 		memdelete(thread);
-	thread = NULL;
+	thread = nullptr;
 
 	return r;
 }
@@ -2726,8 +2202,8 @@ void _Thread::_bind_methods() {
 _Thread::_Thread() {
 
 	active = false;
-	thread = NULL;
-	target_instance = NULL;
+	thread = nullptr;
+	target_instance = nullptr;
 }
 
 _Thread::~_Thread() {
@@ -3101,11 +2577,11 @@ void _Engine::_bind_methods() {
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "editor_hint"), "set_editor_hint", "is_editor_hint");
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "iterations_per_second"), "set_iterations_per_second", "get_iterations_per_second");
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "target_fps"), "set_target_fps", "get_target_fps");
-	ADD_PROPERTY(PropertyInfo(Variant::REAL, "time_scale"), "set_time_scale", "get_time_scale");
-	ADD_PROPERTY(PropertyInfo(Variant::REAL, "physics_jitter_fix"), "set_physics_jitter_fix", "get_physics_jitter_fix");
+	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "time_scale"), "set_time_scale", "get_time_scale");
+	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "physics_jitter_fix"), "set_physics_jitter_fix", "get_physics_jitter_fix");
 }
 
-_Engine *_Engine::singleton = NULL;
+_Engine *_Engine::singleton = nullptr;
 
 _Engine::_Engine() {
 	singleton = this;
@@ -3181,7 +2657,7 @@ Ref<JSONParseResult> _JSON::parse(const String &p_json) {
 	return result;
 }
 
-_JSON *_JSON::singleton = NULL;
+_JSON *_JSON::singleton = nullptr;
 
 _JSON::_JSON() {
 	singleton = this;

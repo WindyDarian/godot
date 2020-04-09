@@ -270,7 +270,7 @@ EditorPlugin *EditorData::get_editor(Object *p_object) {
 			return editor_plugins[i];
 	}
 
-	return NULL;
+	return nullptr;
 }
 
 EditorPlugin *EditorData::get_subeditor(Object *p_object) {
@@ -281,7 +281,7 @@ EditorPlugin *EditorData::get_subeditor(Object *p_object) {
 			return editor_plugins[i];
 	}
 
-	return NULL;
+	return nullptr;
 }
 
 Vector<EditorPlugin *> EditorData::get_subeditors(Object *p_object) {
@@ -302,7 +302,7 @@ EditorPlugin *EditorData::get_editor(String p_name) {
 			return editor_plugins[i];
 	}
 
-	return NULL;
+	return nullptr;
 }
 
 void EditorData::copy_object_params(Object *p_object) {
@@ -435,10 +435,14 @@ void EditorData::restore_editor_global_states() {
 
 void EditorData::paste_object_params(Object *p_object) {
 
+	ERR_FAIL_NULL(p_object);
+	undo_redo.create_action(TTR("Paste Params"));
 	for (List<PropertyData>::Element *E = clipboard.front(); E; E = E->next()) {
-
-		p_object->set(E->get().name, E->get().value);
+		String name = E->get().name;
+		undo_redo.add_do_property(p_object, name, E->get().value);
+		undo_redo.add_undo_property(p_object, name, p_object->get(name));
 	}
+	undo_redo.commit_action();
 }
 
 bool EditorData::call_build() {
@@ -460,7 +464,7 @@ UndoRedo &EditorData::get_undo_redo() {
 
 void EditorData::remove_editor_plugin(EditorPlugin *p_plugin) {
 
-	p_plugin->undo_redo = NULL;
+	p_plugin->undo_redo = nullptr;
 	editor_plugins.erase(p_plugin);
 }
 
@@ -475,7 +479,7 @@ int EditorData::get_editor_plugin_count() const {
 }
 EditorPlugin *EditorData::get_editor_plugin(int p_idx) {
 
-	ERR_FAIL_INDEX_V(p_idx, editor_plugins.size(), NULL);
+	ERR_FAIL_INDEX_V(p_idx, editor_plugins.size(), nullptr);
 	return editor_plugins[p_idx];
 }
 
@@ -502,7 +506,7 @@ Object *EditorData::instance_custom_type(const String &p_type, const String &p_i
 				Ref<Script> script = get_custom_types()[p_inherits][i].script;
 
 				Object *ob = ClassDB::instance(p_inherits);
-				ERR_FAIL_COND_V(!ob, NULL);
+				ERR_FAIL_COND_V(!ob, nullptr);
 				if (ob->is_class("Node")) {
 					ob->call("set_name", p_type);
 				}
@@ -512,12 +516,12 @@ Object *EditorData::instance_custom_type(const String &p_type, const String &p_i
 		}
 	}
 
-	return NULL;
+	return nullptr;
 }
 
 void EditorData::remove_custom_type(const String &p_type) {
 
-	for (Map<String, Vector<CustomType> >::Element *E = custom_types.front(); E; E = E->next()) {
+	for (Map<String, Vector<CustomType>>::Element *E = custom_types.front(); E; E = E->next()) {
 
 		for (int i = 0; i < E->get().size(); i++) {
 			if (E->get()[i].name == p_type) {
@@ -536,7 +540,7 @@ int EditorData::add_edited_scene(int p_at_pos) {
 	if (p_at_pos < 0)
 		p_at_pos = edited_scene.size();
 	EditedScene es;
-	es.root = NULL;
+	es.root = nullptr;
 	es.path = String();
 	es.history_current = -1;
 	es.version = 0;
@@ -676,10 +680,10 @@ void EditorData::set_edited_scene(int p_idx) {
 }
 Node *EditorData::get_edited_scene_root(int p_idx) {
 	if (p_idx < 0) {
-		ERR_FAIL_INDEX_V(current_edited_scene, edited_scene.size(), NULL);
+		ERR_FAIL_INDEX_V(current_edited_scene, edited_scene.size(), nullptr);
 		return edited_scene[current_edited_scene].root;
 	} else {
-		ERR_FAIL_INDEX_V(p_idx, edited_scene.size(), NULL);
+		ERR_FAIL_INDEX_V(p_idx, edited_scene.size(), nullptr);
 		return edited_scene[p_idx].root;
 	}
 }
@@ -911,7 +915,7 @@ Object *EditorData::script_class_instance(const String &p_class) {
 			return obj;
 		}
 	}
-	return NULL;
+	return nullptr;
 }
 
 Ref<Script> EditorData::script_class_load_script(const String &p_class) const {
@@ -1014,7 +1018,7 @@ void EditorSelection::add_node(Node *p_node) {
 
 	changed = true;
 	nl_changed = true;
-	Object *meta = NULL;
+	Object *meta = nullptr;
 	for (List<Object *>::Element *E = editor_plugins.front(); E; E = E->next()) {
 
 		meta = E->get()->call("_get_editor_data", p_node);
@@ -1024,7 +1028,7 @@ void EditorSelection::add_node(Node *p_node) {
 	}
 	selection[p_node] = meta;
 
-	p_node->connect_compat("tree_exiting", this, "_node_removed", varray(p_node), CONNECT_ONESHOT);
+	p_node->connect("tree_exiting", callable_mp(this, &EditorSelection::_node_removed), varray(p_node), CONNECT_ONESHOT);
 
 	//emit_signal("selection_changed");
 }
@@ -1042,7 +1046,7 @@ void EditorSelection::remove_node(Node *p_node) {
 	if (meta)
 		memdelete(meta);
 	selection.erase(p_node);
-	p_node->disconnect_compat("tree_exiting", this, "_node_removed");
+	p_node->disconnect("tree_exiting", callable_mp(this, &EditorSelection::_node_removed));
 	//emit_signal("selection_changed");
 }
 bool EditorSelection::is_selected(Node *p_node) const {
@@ -1076,7 +1080,6 @@ Array EditorSelection::get_selected_nodes() {
 
 void EditorSelection::_bind_methods() {
 
-	ClassDB::bind_method(D_METHOD("_node_removed"), &EditorSelection::_node_removed);
 	ClassDB::bind_method(D_METHOD("clear"), &EditorSelection::clear);
 	ClassDB::bind_method(D_METHOD("add_node", "node"), &EditorSelection::add_node);
 	ClassDB::bind_method(D_METHOD("remove_node", "node"), &EditorSelection::remove_node);

@@ -162,12 +162,12 @@ void HTTPRequest::cancel_request() {
 		thread_request_quit = true;
 		Thread::wait_to_finish(thread);
 		memdelete(thread);
-		thread = NULL;
+		thread = nullptr;
 	}
 
 	if (file) {
 		memdelete(file);
-		file = NULL;
+		file = nullptr;
 	}
 	client->close();
 	body.resize(0);
@@ -539,8 +539,6 @@ void HTTPRequest::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_download_chunk_size"), &HTTPRequest::set_download_chunk_size);
 	ClassDB::bind_method(D_METHOD("get_download_chunk_size"), &HTTPRequest::get_download_chunk_size);
 
-	ClassDB::bind_method(D_METHOD("_timeout"), &HTTPRequest::_timeout);
-
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "download_file", PROPERTY_HINT_FILE), "set_download_file", "get_download_file");
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "download_chunk_size", PROPERTY_HINT_RANGE, "256,16777216"), "set_download_chunk_size", "get_download_chunk_size");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "use_threads"), "set_use_threads", "is_using_threads");
@@ -568,7 +566,7 @@ void HTTPRequest::_bind_methods() {
 
 HTTPRequest::HTTPRequest() {
 
-	thread = NULL;
+	thread = nullptr;
 
 	port = 80;
 	redirections = 0;
@@ -585,11 +583,11 @@ HTTPRequest::HTTPRequest() {
 	thread_done = false;
 	downloaded = 0;
 	body_size_limit = -1;
-	file = NULL;
+	file = nullptr;
 
 	timer = memnew(Timer);
 	timer->set_one_shot(true);
-	timer->connect_compat("timeout", this, "_timeout");
+	timer->connect("timeout", callable_mp(this, &HTTPRequest::_timeout));
 	add_child(timer);
 	timeout = 0;
 }

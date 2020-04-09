@@ -114,7 +114,7 @@ Variant PackedDataContainer::_get_at_ofs(uint32_t p_ofs, const uint8_t *p_buf, b
 	} else {
 
 		Variant v;
-		Error rerr = decode_variant(v, p_buf + p_ofs, datalen - p_ofs, NULL, false);
+		Error rerr = decode_variant(v, p_buf + p_ofs, datalen - p_ofs, nullptr, false);
 
 		if (rerr != OK) {
 
@@ -225,12 +225,12 @@ uint32_t PackedDataContainer::_pack(const Variant &p_data, Vector<uint8_t> &tmpd
 
 			string_cache[s] = tmpdata.size();
 
-			FALLTHROUGH;
-		};
+			[[fallthrough]];
+		}
 		case Variant::NIL:
 		case Variant::BOOL:
 		case Variant::INT:
-		case Variant::REAL:
+		case Variant::FLOAT:
 		case Variant::VECTOR2:
 		case Variant::RECT2:
 		case Variant::VECTOR3:
@@ -241,8 +241,10 @@ uint32_t PackedDataContainer::_pack(const Variant &p_data, Vector<uint8_t> &tmpd
 		case Variant::BASIS:
 		case Variant::TRANSFORM:
 		case Variant::PACKED_BYTE_ARRAY:
-		case Variant::PACKED_INT_ARRAY:
-		case Variant::PACKED_REAL_ARRAY:
+		case Variant::PACKED_INT32_ARRAY:
+		case Variant::PACKED_INT64_ARRAY:
+		case Variant::PACKED_FLOAT32_ARRAY:
+		case Variant::PACKED_FLOAT64_ARRAY:
 		case Variant::PACKED_STRING_ARRAY:
 		case Variant::PACKED_VECTOR2_ARRAY:
 		case Variant::PACKED_VECTOR3_ARRAY:
@@ -252,7 +254,7 @@ uint32_t PackedDataContainer::_pack(const Variant &p_data, Vector<uint8_t> &tmpd
 
 			uint32_t pos = tmpdata.size();
 			int len;
-			encode_variant(p_data, NULL, len, false);
+			encode_variant(p_data, nullptr, len, false);
 			tmpdata.resize(tmpdata.size() + len);
 			encode_variant(p_data, &tmpdata.write[pos], len, false);
 			return pos;

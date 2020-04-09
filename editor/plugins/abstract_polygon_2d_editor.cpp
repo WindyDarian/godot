@@ -204,13 +204,13 @@ void AbstractPolygon2DEditor::_notification(int p_what) {
 
 			disable_polygon_editing(false, String());
 
-			button_create->set_icon(EditorNode::get_singleton()->get_gui_base()->get_icon("CurveCreate", "EditorIcons"));
-			button_edit->set_icon(EditorNode::get_singleton()->get_gui_base()->get_icon("CurveEdit", "EditorIcons"));
-			button_delete->set_icon(EditorNode::get_singleton()->get_gui_base()->get_icon("CurveDelete", "EditorIcons"));
+			button_create->set_icon(EditorNode::get_singleton()->get_gui_base()->get_theme_icon("CurveCreate", "EditorIcons"));
+			button_edit->set_icon(EditorNode::get_singleton()->get_gui_base()->get_theme_icon("CurveEdit", "EditorIcons"));
+			button_delete->set_icon(EditorNode::get_singleton()->get_gui_base()->get_theme_icon("CurveDelete", "EditorIcons"));
 			button_edit->set_pressed(true);
 
-			get_tree()->connect_compat("node_removed", this, "_node_removed");
-			create_resource->connect_compat("confirmed", this, "_create_resource");
+			get_tree()->connect("node_removed", callable_mp(this, &AbstractPolygon2DEditor::_node_removed));
+			create_resource->connect("confirmed", callable_mp(this, &AbstractPolygon2DEditor::_create_resource));
 		} break;
 	}
 }
@@ -218,7 +218,7 @@ void AbstractPolygon2DEditor::_notification(int p_what) {
 void AbstractPolygon2DEditor::_node_removed(Node *p_node) {
 
 	if (p_node == _get_node()) {
-		edit(NULL);
+		edit(nullptr);
 		hide();
 
 		canvas_item_editor->update_viewport();
@@ -310,7 +310,7 @@ bool AbstractPolygon2DEditor::forward_gui_input(const Ref<InputEvent> &p_event) 
 
 		if (mb.is_valid() && mb->get_button_index() == 1 && mb->is_pressed()) {
 			create_resource->set_text(String("No polygon resource on this node.\nCreate and assign one?"));
-			create_resource->popup_centered_minsize();
+			create_resource->popup_centered();
 		}
 		return (mb.is_valid() && mb->get_button_index() == 1);
 	}
@@ -533,7 +533,7 @@ bool AbstractPolygon2DEditor::forward_gui_input(const Ref<InputEvent> &p_event) 
 
 	if (k.is_valid() && k->is_pressed()) {
 
-		if (k->get_scancode() == KEY_DELETE || k->get_scancode() == KEY_BACKSPACE) {
+		if (k->get_keycode() == KEY_DELETE || k->get_keycode() == KEY_BACKSPACE) {
 
 			if (wip_active && selected_point.polygon == -1) {
 
@@ -555,10 +555,10 @@ bool AbstractPolygon2DEditor::forward_gui_input(const Ref<InputEvent> &p_event) 
 					return true;
 				}
 			}
-		} else if (wip_active && k->get_scancode() == KEY_ENTER) {
+		} else if (wip_active && k->get_keycode() == KEY_ENTER) {
 
 			_wip_close();
-		} else if (wip_active && k->get_scancode() == KEY_ESCAPE) {
+		} else if (wip_active && k->get_keycode() == KEY_ESCAPE) {
 			_wip_cancel();
 		}
 	}
@@ -573,7 +573,7 @@ void AbstractPolygon2DEditor::forward_canvas_draw_over_viewport(Control *p_overl
 
 	Transform2D xform = canvas_item_editor->get_canvas_transform() * _get_node()->get_global_transform();
 	// All polygon points are sharp, so use the sharp handle icon
-	const Ref<Texture2D> handle = get_icon("EditorPathSharpHandle", "EditorIcons");
+	const Ref<Texture2D> handle = get_theme_icon("EditorPathSharpHandle", "EditorIcons");
 
 	const Vertex active_point = get_active_point();
 	const int n_polygons = _get_polygon_count();
@@ -651,7 +651,7 @@ void AbstractPolygon2DEditor::forward_canvas_draw_over_viewport(Control *p_overl
 			p_overlay->draw_texture(handle, point - handle->get_size() * 0.5, modulate);
 
 			if (vertex == hover_point) {
-				Ref<Font> font = get_font("font", "Label");
+				Ref<Font> font = get_theme_font("font", "Label");
 				String num = String::num(vertex.vertex);
 				Size2 num_size = font->get_string_size(num);
 				p_overlay->draw_string(font, point - num_size * 0.5, num, Color(1.0, 1.0, 1.0, 0.5));
@@ -661,7 +661,7 @@ void AbstractPolygon2DEditor::forward_canvas_draw_over_viewport(Control *p_overl
 
 	if (edge_point.valid()) {
 
-		Ref<Texture2D> add_handle = get_icon("EditorHandleAdd", "EditorIcons");
+		Ref<Texture2D> add_handle = get_theme_icon("EditorHandleAdd", "EditorIcons");
 		p_overlay->draw_texture(add_handle, edge_point.pos - add_handle->get_size() * 0.5);
 	}
 }
@@ -690,15 +690,11 @@ void AbstractPolygon2DEditor::edit(Node *p_polygon) {
 		canvas_item_editor->update_viewport();
 	} else {
 
-		_set_node(NULL);
+		_set_node(nullptr);
 	}
 }
 
 void AbstractPolygon2DEditor::_bind_methods() {
-
-	ClassDB::bind_method(D_METHOD("_node_removed"), &AbstractPolygon2DEditor::_node_removed);
-	ClassDB::bind_method(D_METHOD("_menu_option"), &AbstractPolygon2DEditor::_menu_option);
-	ClassDB::bind_method(D_METHOD("_create_resource"), &AbstractPolygon2DEditor::_create_resource);
 }
 
 void AbstractPolygon2DEditor::remove_point(const Vertex &p_vertex) {
@@ -805,7 +801,7 @@ AbstractPolygon2DEditor::PosVertex AbstractPolygon2DEditor::closest_edge_point(c
 
 AbstractPolygon2DEditor::AbstractPolygon2DEditor(EditorNode *p_editor, bool p_wip_destructive) {
 
-	canvas_item_editor = NULL;
+	canvas_item_editor = nullptr;
 	editor = p_editor;
 	undo_redo = EditorNode::get_undo_redo();
 
@@ -820,17 +816,17 @@ AbstractPolygon2DEditor::AbstractPolygon2DEditor(EditorNode *p_editor, bool p_wi
 	add_child(memnew(VSeparator));
 	button_create = memnew(ToolButton);
 	add_child(button_create);
-	button_create->connect_compat("pressed", this, "_menu_option", varray(MODE_CREATE));
+	button_create->connect("pressed", callable_mp(this, &AbstractPolygon2DEditor::_menu_option), varray(MODE_CREATE));
 	button_create->set_toggle_mode(true);
 
 	button_edit = memnew(ToolButton);
 	add_child(button_edit);
-	button_edit->connect_compat("pressed", this, "_menu_option", varray(MODE_EDIT));
+	button_edit->connect("pressed", callable_mp(this, &AbstractPolygon2DEditor::_menu_option), varray(MODE_EDIT));
 	button_edit->set_toggle_mode(true);
 
 	button_delete = memnew(ToolButton);
 	add_child(button_delete);
-	button_delete->connect_compat("pressed", this, "_menu_option", varray(MODE_DELETE));
+	button_delete->connect("pressed", callable_mp(this, &AbstractPolygon2DEditor::_menu_option), varray(MODE_DELETE));
 	button_delete->set_toggle_mode(true);
 
 	create_resource = memnew(ConfirmationDialog);
@@ -858,7 +854,7 @@ void AbstractPolygon2DEditorPlugin::make_visible(bool p_visible) {
 	} else {
 
 		polygon_editor->hide();
-		polygon_editor->edit(NULL);
+		polygon_editor->edit(nullptr);
 	}
 }
 

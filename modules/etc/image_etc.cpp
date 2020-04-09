@@ -106,9 +106,15 @@ static void _compress_etc(Image *p_img, float p_lossy_quality, bool force_etc1_f
 		// If VRAM compression is using ETC, but image has alpha, convert to RGBA4444 or LA8
 		// This saves space while maintaining the alpha channel
 		if (detected_channels == Image::USED_CHANNELS_RGBA) {
+			
+			if (p_img->has_mipmaps()) {
+				// Image doesn't support mipmaps with RGBA4444 textures
+				p_img->clear_mipmaps();
+			}
 			p_img->convert(Image::FORMAT_RGBA4444);
 			return;
 		} else if (detected_channels == Image::USE_CHANNELS_LA) {
+
 			p_img->convert(Image::FORMAT_LA8);
 			return;
 		}
@@ -186,7 +192,7 @@ static void _compress_etc(Image *p_img, float p_lossy_quality, bool force_etc1_f
 			src_rgba_f[j] = Etc::ColorFloatRGBA::ConvertFromRGBA8(src[si], src[si + 1], src[si + 2], src[si + 3]);
 		}
 
-		unsigned char *etc_data = NULL;
+		unsigned char *etc_data = nullptr;
 		unsigned int etc_data_len = 0;
 		unsigned int extended_width = 0, extended_height = 0;
 		Etc::Encode((float *)src_rgba_f, mipmap_w, mipmap_h, etc2comp_etc_format, error_metric, effort, num_cpus, num_cpus, &etc_data, &etc_data_len, &extended_width, &extended_height, &encoding_time);

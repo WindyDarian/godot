@@ -31,6 +31,8 @@
 #include "script_language.h"
 
 #include "core/core_string_names.h"
+#include "core/debugger/engine_debugger.h"
+#include "core/debugger/script_debugger.h"
 #include "core/project_settings.h"
 #include <stdint.h>
 
@@ -40,14 +42,14 @@ int ScriptServer::_language_count = 0;
 bool ScriptServer::scripting_enabled = true;
 bool ScriptServer::reload_scripts_on_save = false;
 bool ScriptServer::languages_finished = false;
-ScriptEditRequestFunction ScriptServer::edit_request_func = NULL;
+ScriptEditRequestFunction ScriptServer::edit_request_func = nullptr;
 
 void Script::_notification(int p_what) {
 
 	if (p_what == NOTIFICATION_POSTINITIALIZE) {
 
-		if (ScriptDebugger::get_singleton())
-			ScriptDebugger::get_singleton()->set_break_language(get_language());
+		if (EngineDebugger::is_active())
+			EngineDebugger::get_script_debugger()->set_break_language(get_language());
 	}
 }
 
@@ -134,7 +136,7 @@ bool ScriptServer::is_scripting_enabled() {
 
 ScriptLanguage *ScriptServer::get_language(int p_idx) {
 
-	ERR_FAIL_INDEX_V(p_idx, _language_count, NULL);
+	ERR_FAIL_INDEX_V(p_idx, _language_count, nullptr);
 
 	return _languages[p_idx];
 }
@@ -254,7 +256,7 @@ StringName ScriptServer::get_global_class_native_base(const String &p_class) {
 	return base;
 }
 void ScriptServer::get_global_class_list(List<StringName> *r_global_classes) {
-	const StringName *K = NULL;
+	const StringName *K = nullptr;
 	List<StringName> classes;
 	while ((K = global_classes.next(K))) {
 		classes.push_back(*K);
@@ -282,7 +284,7 @@ void ScriptServer::save_global_classes() {
 }
 
 ////////////////////
-void ScriptInstance::get_property_state(List<Pair<StringName, Variant> > &state) {
+void ScriptInstance::get_property_state(List<Pair<StringName, Variant>> &state) {
 
 	List<PropertyInfo> pinfo;
 	get_property_list(&pinfo);
@@ -348,95 +350,12 @@ void ScriptInstance::call_multilevel(const StringName &p_method, VARIANT_ARG_DEC
 ScriptInstance::~ScriptInstance() {
 }
 
-ScriptCodeCompletionCache *ScriptCodeCompletionCache::singleton = NULL;
+ScriptCodeCompletionCache *ScriptCodeCompletionCache::singleton = nullptr;
 ScriptCodeCompletionCache::ScriptCodeCompletionCache() {
 	singleton = this;
 }
 
 void ScriptLanguage::frame() {
-}
-
-ScriptDebugger *ScriptDebugger::singleton = NULL;
-
-void ScriptDebugger::set_lines_left(int p_left) {
-
-	lines_left = p_left;
-}
-
-int ScriptDebugger::get_lines_left() const {
-
-	return lines_left;
-}
-
-void ScriptDebugger::set_depth(int p_depth) {
-
-	depth = p_depth;
-}
-
-int ScriptDebugger::get_depth() const {
-
-	return depth;
-}
-
-void ScriptDebugger::insert_breakpoint(int p_line, const StringName &p_source) {
-
-	if (!breakpoints.has(p_line))
-		breakpoints[p_line] = Set<StringName>();
-	breakpoints[p_line].insert(p_source);
-}
-
-void ScriptDebugger::remove_breakpoint(int p_line, const StringName &p_source) {
-
-	if (!breakpoints.has(p_line))
-		return;
-
-	breakpoints[p_line].erase(p_source);
-	if (breakpoints[p_line].size() == 0)
-		breakpoints.erase(p_line);
-}
-bool ScriptDebugger::is_breakpoint(int p_line, const StringName &p_source) const {
-
-	if (!breakpoints.has(p_line))
-		return false;
-	return breakpoints[p_line].has(p_source);
-}
-bool ScriptDebugger::is_breakpoint_line(int p_line) const {
-
-	return breakpoints.has(p_line);
-}
-
-String ScriptDebugger::breakpoint_find_source(const String &p_source) const {
-
-	return p_source;
-}
-
-void ScriptDebugger::clear_breakpoints() {
-
-	breakpoints.clear();
-}
-
-void ScriptDebugger::idle_poll() {
-}
-
-void ScriptDebugger::line_poll() {
-}
-
-void ScriptDebugger::set_break_language(ScriptLanguage *p_lang) {
-
-	break_lang = p_lang;
-}
-
-ScriptLanguage *ScriptDebugger::get_break_language() const {
-
-	return break_lang;
-}
-
-ScriptDebugger::ScriptDebugger() {
-
-	singleton = this;
-	lines_left = -1;
-	depth = -1;
-	break_lang = NULL;
 }
 
 bool PlaceHolderScriptInstance::set(const StringName &p_name, const Variant &p_value) {

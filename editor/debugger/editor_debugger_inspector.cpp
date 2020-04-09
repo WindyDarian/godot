@@ -30,8 +30,8 @@
 
 #include "editor_debugger_inspector.h"
 
+#include "core/debugger/debugger_marshalls.h"
 #include "core/io/marshalls.h"
-#include "core/script_debugger_remote.h"
 #include "editor/editor_node.h"
 #include "scene/debugger/scene_debugger.h"
 
@@ -91,12 +91,11 @@ EditorDebuggerInspector::EditorDebuggerInspector() {
 }
 
 EditorDebuggerInspector::~EditorDebuggerInspector() {
+	clear_cache();
 	memdelete(variables);
 }
 
 void EditorDebuggerInspector::_bind_methods() {
-	ClassDB::bind_method(D_METHOD("_object_edited", "name", "value"), &EditorDebuggerInspector::_object_edited);
-	ClassDB::bind_method(D_METHOD("_object_selected", "id"), &EditorDebuggerInspector::_object_selected);
 	ADD_SIGNAL(MethodInfo("object_selected", PropertyInfo(Variant::INT, "id")));
 	ADD_SIGNAL(MethodInfo("object_edited", PropertyInfo(Variant::INT, "id"), PropertyInfo(Variant::STRING, "property"), PropertyInfo("value")));
 	ADD_SIGNAL(MethodInfo("object_property_updated", PropertyInfo(Variant::INT, "id"), PropertyInfo(Variant::STRING, "property")));
@@ -105,7 +104,7 @@ void EditorDebuggerInspector::_bind_methods() {
 void EditorDebuggerInspector::_notification(int p_what) {
 	switch (p_what) {
 		case NOTIFICATION_POSTINITIALIZE:
-			connect_compat("object_id_selected", this, "_object_selected");
+			connect("object_id_selected", callable_mp(this, &EditorDebuggerInspector::_object_selected));
 			break;
 		case NOTIFICATION_ENTER_TREE:
 			edit(variables);
@@ -126,7 +125,7 @@ void EditorDebuggerInspector::_object_selected(ObjectID p_object) {
 }
 
 ObjectID EditorDebuggerInspector::add_object(const Array &p_arr) {
-	EditorDebuggerRemoteObject *debugObj = NULL;
+	EditorDebuggerRemoteObject *debugObj = nullptr;
 
 	SceneDebuggerObject obj;
 	obj.deserialize(p_arr);
@@ -139,7 +138,7 @@ ObjectID EditorDebuggerInspector::add_object(const Array &p_arr) {
 		debugObj->remote_object_id = obj.id;
 		debugObj->type_name = obj.class_name;
 		remote_objects[obj.id] = debugObj;
-		debugObj->connect_compat("value_edited", this, "_object_edited");
+		debugObj->connect("value_edited", callable_mp(this, &EditorDebuggerInspector::_object_edited));
 	}
 
 	int old_prop_size = debugObj->prop_list.size();
@@ -212,7 +211,7 @@ void EditorDebuggerInspector::clear_cache() {
 	for (Map<ObjectID, EditorDebuggerRemoteObject *>::Element *E = remote_objects.front(); E; E = E->next()) {
 		EditorNode *editor = EditorNode::get_singleton();
 		if (editor->get_editor_history()->get_current() == E->value()->get_instance_id()) {
-			editor->push_item(NULL);
+			editor->push_item(nullptr);
 		}
 		memdelete(E->value());
 	}
@@ -222,12 +221,12 @@ void EditorDebuggerInspector::clear_cache() {
 Object *EditorDebuggerInspector::get_object(ObjectID p_id) {
 	if (remote_objects.has(p_id))
 		return remote_objects[p_id];
-	return NULL;
+	return nullptr;
 }
 
 void EditorDebuggerInspector::add_stack_variable(const Array &p_array) {
 
-	ScriptDebuggerRemote::ScriptStackVariable var;
+	DebuggerMarshalls::ScriptStackVariable var;
 	var.deserialize(p_array);
 	String n = var.name;
 	Variant v = var.value;

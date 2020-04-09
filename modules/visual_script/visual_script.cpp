@@ -30,13 +30,13 @@
 
 #include "visual_script.h"
 
-#include <stdint.h>
-
 #include "core/core_string_names.h"
 #include "core/os/os.h"
 #include "core/project_settings.h"
 #include "scene/main/node.h"
 #include "visual_script_nodes.h"
+
+#include <stdint.h>
 
 //used by editor, this is not really saved
 void VisualScriptNode::set_breakpoint(bool p_breakpoint) {
@@ -94,7 +94,7 @@ void VisualScriptNode::validate_input_default_values() {
 			default_input_values[i] = Variant::construct(expected, &existingp, 1, ce, false);
 			if (ce.error != Callable::CallError::CALL_OK) {
 				//could not convert? force..
-				default_input_values[i] = Variant::construct(expected, NULL, 0, ce, false);
+				default_input_values[i] = Variant::construct(expected, nullptr, 0, ce, false);
 			}
 		}
 	}
@@ -158,8 +158,8 @@ VisualScriptNode::VisualScriptNode() {
 
 VisualScriptNodeInstance::VisualScriptNodeInstance() {
 
-	sequence_outputs = NULL;
-	input_ports = NULL;
+	sequence_outputs = nullptr;
+	input_ports = nullptr;
 }
 
 VisualScriptNodeInstance::~VisualScriptNodeInstance() {
@@ -198,7 +198,7 @@ void VisualScript::remove_function(const StringName &p_name) {
 
 	for (Map<int, Function::NodeData>::Element *E = functions[p_name].nodes.front(); E; E = E->next()) {
 
-		E->get().node->disconnect_compat("ports_changed", this, "_node_ports_changed");
+		E->get().node->disconnect("ports_changed", callable_mp(this, &VisualScript::_node_ports_changed));
 		E->get().node->scripts_used.erase(this);
 	}
 
@@ -340,7 +340,7 @@ void VisualScript::add_node(const StringName &p_func, int p_id, const Ref<Visual
 	nd.pos = p_pos;
 
 	Ref<VisualScriptNode> vsn = p_node;
-	vsn->connect_compat("ports_changed", this, "_node_ports_changed", varray(p_id));
+	vsn->connect("ports_changed", callable_mp(this, &VisualScript::_node_ports_changed), varray(p_id));
 	vsn->scripts_used.insert(this);
 	vsn->validate_input_default_values(); // Validate when fully loaded
 
@@ -389,7 +389,7 @@ void VisualScript::remove_node(const StringName &p_func, int p_id) {
 		func.function_id = -1; //revert to invalid
 	}
 
-	func.nodes[p_id].node->disconnect_compat("ports_changed", this, "_node_ports_changed");
+	func.nodes[p_id].node->disconnect("ports_changed", callable_mp(this, &VisualScript::_node_ports_changed));
 	func.nodes[p_id].node->scripts_used.erase(this);
 
 	func.nodes.erase(p_id);
@@ -827,7 +827,7 @@ void VisualScript::rename_custom_signal(const StringName &p_name, const StringNa
 
 void VisualScript::get_custom_signal_list(List<StringName> *r_custom_signals) const {
 
-	for (const Map<StringName, Vector<Argument> >::Element *E = custom_signals.front(); E; E = E->next()) {
+	for (const Map<StringName, Vector<Argument>>::Element *E = custom_signals.front(); E; E = E->next()) {
 		r_custom_signals->push_back(E->key());
 	}
 
@@ -928,13 +928,11 @@ ScriptInstance *VisualScript::instance_create(Object *p_this) {
 	VisualScriptInstance *instance = memnew(VisualScriptInstance);
 	instance->create(Ref<VisualScript>(this), p_this);
 
-	if (VisualScriptLanguage::singleton->lock)
-		VisualScriptLanguage::singleton->lock->lock();
+	{
+		MutexLock lock(VisualScriptLanguage::singleton->lock);
 
-	instances[p_this] = instance;
-
-	if (VisualScriptLanguage::singleton->lock)
-		VisualScriptLanguage::singleton->lock->unlock();
+		instances[p_this] = instance;
+	}
 
 	return instance;
 }
@@ -983,7 +981,7 @@ bool VisualScript::has_script_signal(const StringName &p_signal) const {
 
 void VisualScript::get_script_signal_list(List<MethodInfo> *r_signals) const {
 
-	for (const Map<StringName, Vector<Argument> >::Element *E = custom_signals.front(); E; E = E->next()) {
+	for (const Map<StringName, Vector<Argument>>::Element *E = custom_signals.front(); E; E = E->next()) {
 
 		MethodInfo mi;
 		mi.name = E->key();
@@ -1150,8 +1148,8 @@ StringName VisualScript::get_rset_property(const uint16_t p_rset_property_id) co
 }
 
 MultiplayerAPI::RPCMode VisualScript::get_rset_mode_by_id(const uint16_t p_rset_variable_id) const {
-	ERR_FAIL_COND_V(p_rset_variable_id >= rpc_functions.size(), MultiplayerAPI::RPC_MODE_DISABLED);
-	return rpc_functions[p_rset_variable_id].mode;
+	ERR_FAIL_COND_V(p_rset_variable_id >= rpc_variables.size(), MultiplayerAPI::RPC_MODE_DISABLED);
+	return rpc_variables[p_rset_variable_id].mode;
 }
 
 MultiplayerAPI::RPCMode VisualScript::get_rset_mode(const StringName &p_variable) const {
@@ -1304,7 +1302,7 @@ Dictionary VisualScript::_get_data() const {
 	d["variables"] = vars;
 
 	Array sigs;
-	for (const Map<StringName, Vector<Argument> >::Element *E = custom_signals.front(); E; E = E->next()) {
+	for (const Map<StringName, Vector<Argument>>::Element *E = custom_signals.front(); E; E = E->next()) {
 
 		Dictionary cs;
 		cs["name"] = E->key();
@@ -1374,8 +1372,6 @@ Dictionary VisualScript::_get_data() const {
 }
 
 void VisualScript::_bind_methods() {
-
-	ClassDB::bind_method(D_METHOD("_node_ports_changed"), &VisualScript::_node_ports_changed);
 
 	ClassDB::bind_method(D_METHOD("add_function", "name"), &VisualScript::add_function);
 	ClassDB::bind_method(D_METHOD("has_function", "name"), &VisualScript::has_function);
@@ -1598,7 +1594,7 @@ void VisualScriptInstance::_dependency_step(VisualScriptNodeInstance *node, int 
 		output_args[i] = &variant_stack[node->output_ports[i]];
 	}
 
-	Variant *working_mem = node->working_mem_idx >= 0 ? &variant_stack[node->working_mem_idx] : (Variant *)NULL;
+	Variant *working_mem = node->working_mem_idx >= 0 ? &variant_stack[node->working_mem_idx] : (Variant *)nullptr;
 
 	node->step(input_args, output_args, VisualScriptNodeInstance::START_MODE_BEGIN_SEQUENCE, working_mem, r_error, error_str);
 	//ignore return
@@ -1619,8 +1615,8 @@ Variant VisualScriptInstance::_call_internal(const StringName &p_method, void *p
 	const Variant **input_args = (const Variant **)(sequence_bits + f->node_count);
 	Variant **output_args = (Variant **)(input_args + max_input_args);
 	int flow_max = f->flow_stack_size;
-	int *flow_stack = flow_max ? (int *)(output_args + max_output_args) : (int *)NULL;
-	int *pass_stack = flow_stack ? (int *)(flow_stack + flow_max) : (int *)NULL;
+	int *flow_stack = flow_max ? (int *)(output_args + max_output_args) : (int *)nullptr;
+	int *pass_stack = flow_stack ? (int *)(flow_stack + flow_max) : (int *)nullptr;
 
 	String error_str;
 
@@ -1628,12 +1624,12 @@ Variant VisualScriptInstance::_call_internal(const StringName &p_method, void *p
 	bool error = false;
 	int current_node_id = f->node;
 	Variant return_value;
-	Variant *working_mem = NULL;
+	Variant *working_mem = nullptr;
 
 	int flow_stack_pos = p_flow_stack_pos;
 
 #ifdef DEBUG_ENABLED
-	if (ScriptDebugger::get_singleton()) {
+	if (EngineDebugger::is_active()) {
 		VisualScriptLanguage::singleton->enter_function(this, &p_method, variant_stack, &working_mem, &current_node_id);
 	}
 #endif
@@ -1647,7 +1643,7 @@ Variant VisualScriptInstance::_call_internal(const StringName &p_method, void *p
 		VSDEBUG("AT STACK POS: " + itos(flow_stack_pos));
 
 		//setup working mem
-		working_mem = node->working_mem_idx >= 0 ? &variant_stack[node->working_mem_idx] : (Variant *)NULL;
+		working_mem = node->working_mem_idx >= 0 ? &variant_stack[node->working_mem_idx] : (Variant *)nullptr;
 
 		VSDEBUG("WORKING MEM: " + itos(node->working_mem_idx));
 
@@ -1770,7 +1766,7 @@ Variant VisualScriptInstance::_call_internal(const StringName &p_method, void *p
 
 #ifdef DEBUG_ENABLED
 				//will re-enter later, so exiting
-				if (ScriptDebugger::get_singleton()) {
+				if (EngineDebugger::is_active()) {
 					VisualScriptLanguage::singleton->exit_function();
 				}
 #endif
@@ -1780,26 +1776,26 @@ Variant VisualScriptInstance::_call_internal(const StringName &p_method, void *p
 		}
 
 #ifdef DEBUG_ENABLED
-		if (ScriptDebugger::get_singleton()) {
+		if (EngineDebugger::is_active()) {
 			// line
 			bool do_break = false;
 
-			if (ScriptDebugger::get_singleton()->get_lines_left() > 0) {
+			if (EngineDebugger::get_script_debugger()->get_lines_left() > 0) {
 
-				if (ScriptDebugger::get_singleton()->get_depth() <= 0)
-					ScriptDebugger::get_singleton()->set_lines_left(ScriptDebugger::get_singleton()->get_lines_left() - 1);
-				if (ScriptDebugger::get_singleton()->get_lines_left() <= 0)
+				if (EngineDebugger::get_script_debugger()->get_depth() <= 0)
+					EngineDebugger::get_script_debugger()->set_lines_left(EngineDebugger::get_script_debugger()->get_lines_left() - 1);
+				if (EngineDebugger::get_script_debugger()->get_lines_left() <= 0)
 					do_break = true;
 			}
 
-			if (ScriptDebugger::get_singleton()->is_breakpoint(current_node_id, source))
+			if (EngineDebugger::get_script_debugger()->is_breakpoint(current_node_id, source))
 				do_break = true;
 
 			if (do_break) {
 				VisualScriptLanguage::singleton->debug_break("Breakpoint", true);
 			}
 
-			ScriptDebugger::get_singleton()->line_poll();
+			EngineDebugger::get_singleton()->line_poll();
 		}
 #endif
 		int output = ret & VisualScriptNodeInstance::STEP_MASK;
@@ -1821,7 +1817,7 @@ Variant VisualScriptInstance::_call_internal(const StringName &p_method, void *p
 			break; //exit function requested, bye
 		}
 
-		VisualScriptNodeInstance *next = NULL; //next node
+		VisualScriptNodeInstance *next = nullptr; //next node
 
 		if ((ret == output || ret & VisualScriptNodeInstance::STEP_FLAG_PUSH_STACK_BIT) && node->sequence_output_count) {
 			//if no exit bit was set, and has sequence outputs, guess next node
@@ -1987,7 +1983,7 @@ Variant VisualScriptInstance::_call_internal(const StringName &p_method, void *p
 	}
 
 #ifdef DEBUG_ENABLED
-	if (ScriptDebugger::get_singleton()) {
+	if (EngineDebugger::is_active()) {
 		VisualScriptLanguage::singleton->exit_function();
 	}
 #endif
@@ -2037,8 +2033,8 @@ Variant VisualScriptInstance::call(const StringName &p_method, const Variant **p
 	const Variant **input_args = (const Variant **)(sequence_bits + f->node_count);
 	Variant **output_args = (Variant **)(input_args + max_input_args);
 	int flow_max = f->flow_stack_size;
-	int *flow_stack = flow_max ? (int *)(output_args + max_output_args) : (int *)NULL;
-	int *pass_stack = flow_stack ? (int *)(flow_stack + flow_max) : (int *)NULL;
+	int *flow_stack = flow_max ? (int *)(output_args + max_output_args) : (int *)nullptr;
+	int *pass_stack = flow_stack ? (int *)(flow_stack + flow_max) : (int *)nullptr;
 
 	for (int i = 0; i < f->node_count; i++) {
 		sequence_bits[i] = false; //all starts as false
@@ -2101,7 +2097,7 @@ void VisualScriptInstance::notification(int p_notification) {
 String VisualScriptInstance::to_string(bool *r_valid) {
 	if (has_method(CoreStringNames::get_singleton()->_to_string)) {
 		Callable::CallError ce;
-		Variant ret = call(CoreStringNames::get_singleton()->_to_string, NULL, 0, ce);
+		Variant ret = call(CoreStringNames::get_singleton()->_to_string, nullptr, 0, ce);
 		if (ce.error == Callable::CallError::CALL_OK) {
 			if (ret.get_type() != Variant::STRING) {
 				if (r_valid)
@@ -2241,12 +2237,12 @@ void VisualScriptInstance::create(const Ref<VisualScript> &p_script, Object *p_o
 
 			instance->id = F->key();
 			instance->input_port_count = node->get_input_value_port_count();
-			instance->input_ports = NULL;
+			instance->input_ports = nullptr;
 			instance->output_port_count = node->get_output_value_port_count();
-			instance->output_ports = NULL;
+			instance->output_ports = nullptr;
 			instance->sequence_output_count = node->get_output_sequence_port_count();
 			instance->sequence_index = function.node_count++;
-			instance->sequence_outputs = NULL;
+			instance->sequence_outputs = nullptr;
 			instance->pass_idx = -1;
 
 			if (instance->input_port_count) {
@@ -2267,7 +2263,7 @@ void VisualScriptInstance::create(const Ref<VisualScript> &p_script, Object *p_o
 			if (instance->sequence_output_count) {
 				instance->sequence_outputs = memnew_arr(VisualScriptNodeInstance *, instance->sequence_output_count);
 				for (int i = 0; i < instance->sequence_output_count; i++) {
-					instance->sequence_outputs[i] = NULL; //if it remains null, flow ends here
+					instance->sequence_outputs[i] = nullptr; //if it remains null, flow ends here
 				}
 			}
 
@@ -2391,13 +2387,11 @@ VisualScriptInstance::VisualScriptInstance() {
 
 VisualScriptInstance::~VisualScriptInstance() {
 
-	if (VisualScriptLanguage::singleton->lock)
-		VisualScriptLanguage::singleton->lock->lock();
+	{
+		MutexLock lock(VisualScriptLanguage::singleton->lock);
 
-	script->instances.erase(owner);
-
-	if (VisualScriptLanguage::singleton->lock)
-		VisualScriptLanguage::singleton->lock->unlock();
+		script->instances.erase(owner);
+	}
 
 	for (Map<int, VisualScriptNodeInstance *>::Element *E = instances.front(); E; E = E->next()) {
 		memdelete(E->get());
@@ -2599,12 +2593,12 @@ void VisualScriptLanguage::add_global_constant(const StringName &p_variable, con
 bool VisualScriptLanguage::debug_break_parse(const String &p_file, int p_node, const String &p_error) {
 	//break because of parse error
 
-	if (ScriptDebugger::get_singleton() && Thread::get_caller_id() == Thread::get_main_id()) {
+	if (EngineDebugger::is_active() && Thread::get_caller_id() == Thread::get_main_id()) {
 
 		_debug_parse_err_node = p_node;
 		_debug_parse_err_file = p_file;
 		_debug_error = p_error;
-		ScriptDebugger::get_singleton()->debug(this, false, true);
+		EngineDebugger::get_script_debugger()->debug(this, false, true);
 		return true;
 	} else {
 		return false;
@@ -2613,12 +2607,12 @@ bool VisualScriptLanguage::debug_break_parse(const String &p_file, int p_node, c
 
 bool VisualScriptLanguage::debug_break(const String &p_error, bool p_allow_continue) {
 
-	if (ScriptDebugger::get_singleton() && Thread::get_caller_id() == Thread::get_main_id()) {
+	if (EngineDebugger::is_active() && Thread::get_caller_id() == Thread::get_main_id()) {
 
 		_debug_parse_err_node = -1;
 		_debug_parse_err_file = "";
 		_debug_error = p_error;
-		ScriptDebugger::get_singleton()->debug(this, p_allow_continue, true);
+		EngineDebugger::get_script_debugger()->debug(this, p_allow_continue, true);
 		return true;
 	} else {
 		return false;
@@ -2785,7 +2779,7 @@ void VisualScriptLanguage::get_recognized_extensions(List<String> *p_extensions)
 }
 void VisualScriptLanguage::get_public_functions(List<MethodInfo> *p_functions) const {
 }
-void VisualScriptLanguage::get_public_constants(List<Pair<String, Variant> > *p_constants) const {
+void VisualScriptLanguage::get_public_constants(List<Pair<String, Variant>> *p_constants) const {
 }
 
 void VisualScriptLanguage::profiling_start() {
@@ -2803,7 +2797,7 @@ int VisualScriptLanguage::profiling_get_frame_data(ProfilingInfo *p_info_arr, in
 	return 0;
 }
 
-VisualScriptLanguage *VisualScriptLanguage::singleton = NULL;
+VisualScriptLanguage *VisualScriptLanguage::singleton = nullptr;
 
 void VisualScriptLanguage::add_register_func(const String &p_name, VisualScriptNodeRegisterFunc p_func) {
 
@@ -2836,9 +2830,6 @@ VisualScriptLanguage::VisualScriptLanguage() {
 	_step = "_step";
 	_subcall = "_subcall";
 	singleton = this;
-#ifndef NO_THREADS
-	lock = Mutex::create();
-#endif
 
 	_debug_parse_err_node = -1;
 	_debug_parse_err_file = "";
@@ -2846,24 +2837,21 @@ VisualScriptLanguage::VisualScriptLanguage() {
 	int dmcs = GLOBAL_DEF("debug/settings/visual_script/max_call_stack", 1024);
 	ProjectSettings::get_singleton()->set_custom_property_info("debug/settings/visual_script/max_call_stack", PropertyInfo(Variant::INT, "debug/settings/visual_script/max_call_stack", PROPERTY_HINT_RANGE, "1024,4096,1,or_greater")); //minimum is 1024
 
-	if (ScriptDebugger::get_singleton()) {
+	if (EngineDebugger::is_active()) {
 		//debugging enabled!
 		_debug_max_call_stack = dmcs;
 		_call_stack = memnew_arr(CallLevel, _debug_max_call_stack + 1);
 
 	} else {
 		_debug_max_call_stack = 0;
-		_call_stack = NULL;
+		_call_stack = nullptr;
 	}
 }
 
 VisualScriptLanguage::~VisualScriptLanguage() {
 
-	if (lock)
-		memdelete(lock);
-
 	if (_call_stack) {
 		memdelete_arr(_call_stack);
 	}
-	singleton = NULL;
+	singleton = nullptr;
 }

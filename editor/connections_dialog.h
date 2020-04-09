@@ -105,6 +105,8 @@ private:
 
 	void ok_pressed();
 	void _cancel_pressed();
+	void _item_activated();
+	void _text_entered(const String &_text);
 	void _tree_node_selected();
 	void _add_bind();
 	void _remove_bind();
@@ -171,7 +173,7 @@ class ConnectionsDock : public VBoxContainer {
 	PopupMenu *slot_menu;
 	UndoRedo *undo_redo;
 
-	Map<StringName, Map<StringName, String> > descr_cache;
+	Map<StringName, Map<StringName, String>> descr_cache;
 
 	void _make_or_edit_connection();
 	void _connect(ConnectDialog::ConnectionData cToMake);
@@ -201,7 +203,7 @@ public:
 	void set_node(Node *p_node);
 	void update_tree();
 
-	ConnectionsDock(EditorNode *p_editor = NULL);
+	ConnectionsDock(EditorNode *p_editor = nullptr);
 	~ConnectionsDock();
 };
 

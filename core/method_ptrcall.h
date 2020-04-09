@@ -118,6 +118,9 @@ MAKE_PTRARG(String);
 MAKE_PTRARG(Vector2);
 MAKE_PTRARG(Rect2);
 MAKE_PTRARG_BY_REFERENCE(Vector3);
+MAKE_PTRARG(Vector2i);
+MAKE_PTRARG(Rect2i);
+MAKE_PTRARG_BY_REFERENCE(Vector3i);
 MAKE_PTRARG(Transform2D);
 MAKE_PTRARG_BY_REFERENCE(Plane);
 MAKE_PTRARG(Quat);
@@ -133,8 +136,10 @@ MAKE_PTRARG(Callable);
 MAKE_PTRARG(Signal);
 MAKE_PTRARG(Array);
 MAKE_PTRARG(PackedByteArray);
-MAKE_PTRARG(PackedIntArray);
-MAKE_PTRARG(PackedRealArray);
+MAKE_PTRARG(PackedInt32Array);
+MAKE_PTRARG(PackedInt64Array);
+MAKE_PTRARG(PackedFloat32Array);
+MAKE_PTRARG(PackedFloat64Array);
 MAKE_PTRARG(PackedStringArray);
 MAKE_PTRARG(PackedVector2Array);
 MAKE_PTRARG(PackedVector3Array);
@@ -190,7 +195,7 @@ struct PtrToArg<ObjectID> {
 
 #define MAKE_VECARG(m_type)                                                              \
 	template <>                                                                          \
-	struct PtrToArg<Vector<m_type> > {                                                   \
+	struct PtrToArg<Vector<m_type>> {                                                    \
 		_FORCE_INLINE_ static Vector<m_type> convert(const void *p_ptr) {                \
 			const Vector<m_type> *dvs = reinterpret_cast<const Vector<m_type> *>(p_ptr); \
 			Vector<m_type> ret;                                                          \
@@ -235,7 +240,7 @@ struct PtrToArg<ObjectID> {
 
 #define MAKE_VECARG_ALT(m_type, m_type_alt)                                              \
 	template <>                                                                          \
-	struct PtrToArg<Vector<m_type_alt> > {                                               \
+	struct PtrToArg<Vector<m_type_alt>> {                                                \
 		_FORCE_INLINE_ static Vector<m_type_alt> convert(const void *p_ptr) {            \
 			const Vector<m_type> *dvs = reinterpret_cast<const Vector<m_type> *>(p_ptr); \
 			Vector<m_type_alt> ret;                                                      \
@@ -291,7 +296,7 @@ MAKE_VECARG_ALT(String, StringName);
 //for stuff that gets converted to Array vectors
 #define MAKE_VECARR(m_type)                                                    \
 	template <>                                                                \
-	struct PtrToArg<Vector<m_type> > {                                         \
+	struct PtrToArg<Vector<m_type>> {                                          \
 		_FORCE_INLINE_ static Vector<m_type> convert(const void *p_ptr) {      \
 			const Array *arr = reinterpret_cast<const Array *>(p_ptr);         \
 			Vector<m_type> ret;                                                \
@@ -331,7 +336,7 @@ MAKE_VECARR(Plane);
 
 #define MAKE_DVECARR(m_type)                                                   \
 	template <>                                                                \
-	struct PtrToArg<Vector<m_type> > {                                         \
+	struct PtrToArg<Vector<m_type>> {                                          \
 		_FORCE_INLINE_ static Vector<m_type> convert(const void *p_ptr) {      \
 			const Array *arr = reinterpret_cast<const Array *>(p_ptr);         \
 			Vector<m_type> ret;                                                \
@@ -400,7 +405,7 @@ MAKE_VECARR(Plane);
 MAKE_STRINGCONV_BY_REFERENCE(IP_Address);
 
 template <>
-struct PtrToArg<Vector<Face3> > {
+struct PtrToArg<Vector<Face3>> {
 	_FORCE_INLINE_ static Vector<Face3> convert(const void *p_ptr) {
 		const Vector<Vector3> *dvs = reinterpret_cast<const Vector<Vector3> *>(p_ptr);
 		Vector<Face3> ret;

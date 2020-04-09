@@ -30,7 +30,7 @@
 
 #include "multimesh.h"
 
-#include "servers/visual_server.h"
+#include "servers/rendering_server.h"
 
 #ifndef DISABLE_DEPRECATED
 // Kept for compatibility from 3.x to 4.0.
@@ -198,20 +198,20 @@ Vector<Color> MultiMesh::_get_custom_data_array() const {
 #endif // DISABLE_DEPRECATED
 
 void MultiMesh::set_buffer(const Vector<float> &p_buffer) {
-	VS::get_singleton()->multimesh_set_buffer(multimesh, p_buffer);
+	RS::get_singleton()->multimesh_set_buffer(multimesh, p_buffer);
 }
 
 Vector<float> MultiMesh::get_buffer() const {
-	return VS::get_singleton()->multimesh_get_buffer(multimesh);
+	return RS::get_singleton()->multimesh_get_buffer(multimesh);
 }
 
 void MultiMesh::set_mesh(const Ref<Mesh> &p_mesh) {
 
 	mesh = p_mesh;
 	if (!mesh.is_null())
-		VisualServer::get_singleton()->multimesh_set_mesh(multimesh, mesh->get_rid());
+		RenderingServer::get_singleton()->multimesh_set_mesh(multimesh, mesh->get_rid());
 	else
-		VisualServer::get_singleton()->multimesh_set_mesh(multimesh, RID());
+		RenderingServer::get_singleton()->multimesh_set_mesh(multimesh, RID());
 }
 
 Ref<Mesh> MultiMesh::get_mesh() const {
@@ -221,7 +221,7 @@ Ref<Mesh> MultiMesh::get_mesh() const {
 
 void MultiMesh::set_instance_count(int p_count) {
 	ERR_FAIL_COND(p_count < 0);
-	VisualServer::get_singleton()->multimesh_allocate(multimesh, p_count, VS::MultimeshTransformFormat(transform_format), use_colors, use_custom_data);
+	RenderingServer::get_singleton()->multimesh_allocate(multimesh, p_count, RS::MultimeshTransformFormat(transform_format), use_colors, use_custom_data);
 	instance_count = p_count;
 }
 int MultiMesh::get_instance_count() const {
@@ -232,7 +232,7 @@ int MultiMesh::get_instance_count() const {
 void MultiMesh::set_visible_instance_count(int p_count) {
 	ERR_FAIL_COND(p_count < -1);
 	ERR_FAIL_COND(p_count > instance_count);
-	VisualServer::get_singleton()->multimesh_set_visible_instances(multimesh, p_count);
+	RenderingServer::get_singleton()->multimesh_set_visible_instances(multimesh, p_count);
 	visible_instance_count = p_count;
 }
 int MultiMesh::get_visible_instance_count() const {
@@ -242,45 +242,45 @@ int MultiMesh::get_visible_instance_count() const {
 
 void MultiMesh::set_instance_transform(int p_instance, const Transform &p_transform) {
 
-	VisualServer::get_singleton()->multimesh_instance_set_transform(multimesh, p_instance, p_transform);
+	RenderingServer::get_singleton()->multimesh_instance_set_transform(multimesh, p_instance, p_transform);
 }
 
 void MultiMesh::set_instance_transform_2d(int p_instance, const Transform2D &p_transform) {
 
-	VisualServer::get_singleton()->multimesh_instance_set_transform_2d(multimesh, p_instance, p_transform);
+	RenderingServer::get_singleton()->multimesh_instance_set_transform_2d(multimesh, p_instance, p_transform);
 }
 
 Transform MultiMesh::get_instance_transform(int p_instance) const {
 
-	return VisualServer::get_singleton()->multimesh_instance_get_transform(multimesh, p_instance);
+	return RenderingServer::get_singleton()->multimesh_instance_get_transform(multimesh, p_instance);
 }
 
 Transform2D MultiMesh::get_instance_transform_2d(int p_instance) const {
 
-	return VisualServer::get_singleton()->multimesh_instance_get_transform_2d(multimesh, p_instance);
+	return RenderingServer::get_singleton()->multimesh_instance_get_transform_2d(multimesh, p_instance);
 }
 
 void MultiMesh::set_instance_color(int p_instance, const Color &p_color) {
 
-	VisualServer::get_singleton()->multimesh_instance_set_color(multimesh, p_instance, p_color);
+	RenderingServer::get_singleton()->multimesh_instance_set_color(multimesh, p_instance, p_color);
 }
 Color MultiMesh::get_instance_color(int p_instance) const {
 
-	return VisualServer::get_singleton()->multimesh_instance_get_color(multimesh, p_instance);
+	return RenderingServer::get_singleton()->multimesh_instance_get_color(multimesh, p_instance);
 }
 
 void MultiMesh::set_instance_custom_data(int p_instance, const Color &p_custom_data) {
 
-	VisualServer::get_singleton()->multimesh_instance_set_custom_data(multimesh, p_instance, p_custom_data);
+	RenderingServer::get_singleton()->multimesh_instance_set_custom_data(multimesh, p_instance, p_custom_data);
 }
 Color MultiMesh::get_instance_custom_data(int p_instance) const {
 
-	return VisualServer::get_singleton()->multimesh_instance_get_custom_data(multimesh, p_instance);
+	return RenderingServer::get_singleton()->multimesh_instance_get_custom_data(multimesh, p_instance);
 }
 
 AABB MultiMesh::get_aabb() const {
 
-	return VisualServer::get_singleton()->multimesh_get_aabb(multimesh);
+	return RenderingServer::get_singleton()->multimesh_get_aabb(multimesh);
 }
 
 RID MultiMesh::get_rid() const {
@@ -350,7 +350,7 @@ void MultiMesh::_bind_methods() {
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "instance_count", PROPERTY_HINT_RANGE, "0,16384,1,or_greater"), "set_instance_count", "get_instance_count");
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "visible_instance_count", PROPERTY_HINT_RANGE, "-1,16384,1,or_greater"), "set_visible_instance_count", "get_visible_instance_count");
 	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "mesh", PROPERTY_HINT_RESOURCE_TYPE, "Mesh"), "set_mesh", "get_mesh");
-	ADD_PROPERTY(PropertyInfo(Variant::PACKED_REAL_ARRAY, "buffer", PROPERTY_HINT_NONE), "set_buffer", "get_buffer");
+	ADD_PROPERTY(PropertyInfo(Variant::PACKED_FLOAT32_ARRAY, "buffer", PROPERTY_HINT_NONE), "set_buffer", "get_buffer");
 
 #ifndef DISABLE_DEPRECATED
 	// Kept for compatibility from 3.x to 4.0.
@@ -375,7 +375,7 @@ void MultiMesh::_bind_methods() {
 
 MultiMesh::MultiMesh() {
 
-	multimesh = VisualServer::get_singleton()->multimesh_create();
+	multimesh = RenderingServer::get_singleton()->multimesh_create();
 	use_colors = false;
 	use_custom_data = false;
 	transform_format = TRANSFORM_2D;
@@ -385,5 +385,5 @@ MultiMesh::MultiMesh() {
 
 MultiMesh::~MultiMesh() {
 
-	VisualServer::get_singleton()->free(multimesh);
+	RenderingServer::get_singleton()->free(multimesh);
 }

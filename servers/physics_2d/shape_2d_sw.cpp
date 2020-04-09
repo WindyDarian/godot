@@ -639,11 +639,11 @@ real_t ConvexPolygonShape2DSW::get_moment_of_inertia(real_t p_mass, const Size2 
 
 void ConvexPolygonShape2DSW::set_data(const Variant &p_data) {
 
-	ERR_FAIL_COND(p_data.get_type() != Variant::PACKED_VECTOR2_ARRAY && p_data.get_type() != Variant::PACKED_REAL_ARRAY);
+	ERR_FAIL_COND(p_data.get_type() != Variant::PACKED_VECTOR2_ARRAY && p_data.get_type() != Variant::PACKED_FLOAT32_ARRAY);
 
 	if (points)
 		memdelete_arr(points);
-	points = NULL;
+	points = nullptr;
 	point_count = 0;
 
 	if (p_data.get_type() == Variant::PACKED_VECTOR2_ARRAY) {
@@ -706,7 +706,7 @@ Variant ConvexPolygonShape2DSW::get_data() const {
 
 ConvexPolygonShape2DSW::ConvexPolygonShape2DSW() {
 
-	points = NULL;
+	points = nullptr;
 	point_count = 0;
 }
 
@@ -899,7 +899,7 @@ int ConcavePolygonShape2DSW::_generate_bvh(BVH *p_bvh, int p_len, int p_depth) {
 
 void ConcavePolygonShape2DSW::set_data(const Variant &p_data) {
 
-	ERR_FAIL_COND(p_data.get_type() != Variant::PACKED_VECTOR2_ARRAY && p_data.get_type() != Variant::PACKED_REAL_ARRAY);
+	ERR_FAIL_COND(p_data.get_type() != Variant::PACKED_VECTOR2_ARRAY && p_data.get_type() != Variant::PACKED_FLOAT32_ARRAY);
 
 	Rect2 aabb;
 

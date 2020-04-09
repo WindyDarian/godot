@@ -113,12 +113,12 @@ class JavaClass : public Reference {
 				break;
 			case ARG_TYPE_FLOAT | ARG_NUMBER_CLASS_BIT:
 			case ARG_TYPE_FLOAT:
-				r_type = Variant::REAL;
+				r_type = Variant::FLOAT;
 				likelihood = 1.0;
 				break;
 			case ARG_TYPE_DOUBLE | ARG_NUMBER_CLASS_BIT:
 			case ARG_TYPE_DOUBLE:
-				r_type = Variant::REAL;
+				r_type = Variant::FLOAT;
 				likelihood = 0.5;
 				break;
 			case ARG_TYPE_STRING: r_type = Variant::STRING; break;
@@ -134,23 +134,23 @@ class JavaClass : public Reference {
 				likelihood = 0.5;
 				break;
 			case ARG_ARRAY_BIT | ARG_TYPE_SHORT:
-				r_type = Variant::PACKED_INT_ARRAY;
+				r_type = Variant::PACKED_INT32_ARRAY;
 				likelihood = 0.3;
 				break;
 			case ARG_ARRAY_BIT | ARG_TYPE_INT:
-				r_type = Variant::PACKED_INT_ARRAY;
+				r_type = Variant::PACKED_INT32_ARRAY;
 				likelihood = 1.0;
 				break;
 			case ARG_ARRAY_BIT | ARG_TYPE_LONG:
-				r_type = Variant::PACKED_INT_ARRAY;
+				r_type = Variant::PACKED_INT32_ARRAY;
 				likelihood = 0.5;
 				break;
 			case ARG_ARRAY_BIT | ARG_TYPE_FLOAT:
-				r_type = Variant::PACKED_REAL_ARRAY;
+				r_type = Variant::PACKED_FLOAT32_ARRAY;
 				likelihood = 1.0;
 				break;
 			case ARG_ARRAY_BIT | ARG_TYPE_DOUBLE:
-				r_type = Variant::PACKED_REAL_ARRAY;
+				r_type = Variant::PACKED_FLOAT32_ARRAY;
 				likelihood = 0.5;
 				break;
 			case ARG_ARRAY_BIT | ARG_TYPE_STRING: r_type = Variant::PACKED_STRING_ARRAY; break;
@@ -163,7 +163,7 @@ class JavaClass : public Reference {
 	bool _call_method(JavaObject *p_instance, const StringName &p_method, const Variant **p_args, int p_argcount, Callable::CallError &r_error, Variant &ret);
 
 	friend class JavaClassWrapper;
-	Map<StringName, List<MethodInfo> > methods;
+	Map<StringName, List<MethodInfo>> methods;
 	jclass _class;
 #endif
 
@@ -198,7 +198,7 @@ class JavaClassWrapper : public Object {
 	GDCLASS(JavaClassWrapper, Object);
 
 #ifdef ANDROID_ENABLED
-	Map<String, Ref<JavaClass> > class_cache;
+	Map<String, Ref<JavaClass>> class_cache;
 	friend class JavaClass;
 	jclass activityClass;
 	jmethodID findClass;
@@ -236,7 +236,7 @@ public:
 	Ref<JavaClass> wrap(const String &p_class);
 
 #ifdef ANDROID_ENABLED
-	JavaClassWrapper(jobject p_activity = NULL);
+	JavaClassWrapper(jobject p_activity = nullptr);
 #else
 	JavaClassWrapper();
 #endif
