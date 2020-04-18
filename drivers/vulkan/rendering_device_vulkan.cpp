@@ -1568,17 +1568,22 @@ RID RenderingDeviceVulkan::texture_create(const TextureFormat &p_format, const T
 #ifndef _MSC_VER
 #warning TODO check for support via RenderingDevice to enable on mobile when possible
 #endif
-	// vkCreateImage fails with format list on Android (VK_ERROR_OUT_OF_HOST_MEMORY)
+
 #ifndef ANDROID_ENABLED
+
+	// vkCreateImage fails with format list on Android (VK_ERROR_OUT_OF_HOST_MEMORY)
+	VkImageFormatListCreateInfoKHR format_list_create_info; //keep out of the if, needed for creation
+	Vector<VkFormat> allowed_formats; //keep out of the if, needed for creation
+#endif
 	if (p_format.shareable_formats.size()) {
 		image_create_info.flags |= VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT;
 
-		Vector<VkFormat> allowed_formats;
+#ifndef ANDROID_ENABLED
+
 		for (int i = 0; i < p_format.shareable_formats.size(); i++) {
 			allowed_formats.push_back(vulkan_formats[p_format.shareable_formats[i]]);
 		}
 
-		VkImageFormatListCreateInfoKHR format_list_create_info;
 		format_list_create_info.sType = VK_STRUCTURE_TYPE_IMAGE_FORMAT_LIST_CREATE_INFO_KHR;
 		format_list_create_info.pNext = nullptr;
 		format_list_create_info.viewFormatCount = allowed_formats.size();
@@ -1589,8 +1594,9 @@ RID RenderingDeviceVulkan::texture_create(const TextureFormat &p_format, const T
 				"If supplied a list of shareable formats, the current format must be present in the list");
 		ERR_FAIL_COND_V_MSG(p_view.format_override != DATA_FORMAT_MAX && p_format.shareable_formats.find(p_view.format_override) == -1, RID(),
 				"If supplied a list of shareable formats, the current view format override must be present in the list");
-	}
 #endif
+	}
+
 	if (p_format.type == TEXTURE_TYPE_CUBE || p_format.type == TEXTURE_TYPE_CUBE_ARRAY) {
 		image_create_info.flags |= VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
 	}
@@ -1766,6 +1772,8 @@ RID RenderingDeviceVulkan::texture_create(const TextureFormat &p_format, const T
 	texture.depth = image_create_info.extent.depth;
 	texture.layers = image_create_info.arrayLayers;
 	texture.mipmaps = image_create_info.mipLevels;
+	texture.base_mipmap = 0;
+	texture.base_layer = 0;
 	texture.usage_flags = p_format.usage_bits;
 	texture.samples = p_format.samples;
 	texture.allowed_shared_formats = p_format.shareable_formats;
@@ -2006,6 +2014,8 @@ RID RenderingDeviceVulkan::texture_create_shared_from_slice(const TextureView &p
 	get_image_format_required_size(texture.format, texture.width, texture.height, texture.depth, p_mipmap + 1, &texture.width, &texture.height);
 	texture.mipmaps = 1;
 	texture.layers = p_slice_type == TEXTURE_SLICE_CUBEMAP ? 6 : 1;
+	texture.base_mipmap = p_mipmap;
+	texture.base_layer = p_layer;
 
 	VkImageViewCreateInfo image_view_create_info;
 	image_view_create_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
@@ -2666,6 +2676,159 @@ Error RenderingDeviceVulkan::texture_copy(RID p_from_texture, RID p_to_texture, 
 
 	return OK;
 }
+Error RenderingDeviceVulkan::texture_resolve_multisample(RID p_from_texture, RID p_to_texture, bool p_sync_with_draw) {
+	_THREAD_SAFE_METHOD_
+
+	Texture *src_tex = texture_owner.getornull(p_from_texture);
+	ERR_FAIL_COND_V(!src_tex, ERR_INVALID_PARAMETER);
+
+	ERR_FAIL_COND_V_MSG(p_sync_with_draw && src_tex->bound, ERR_INVALID_PARAMETER,
+			"Source texture can't be copied while a render pass that uses it is being created. Ensure render pass is finalized (and that it was created with RENDER_PASS_CONTENTS_FINISH) to unbind this texture.");
+	ERR_FAIL_COND_V_MSG(!(src_tex->usage_flags & TEXTURE_USAGE_CAN_COPY_FROM_BIT), ERR_INVALID_PARAMETER,
+			"Source texture requires the TEXTURE_USAGE_CAN_COPY_FROM_BIT in order to be retrieved.");
+
+	ERR_FAIL_COND_V_MSG(src_tex->type != TEXTURE_TYPE_2D, ERR_INVALID_PARAMETER, "Source texture must be 2D (or a slice of a 3D/Cube texture)");
+	ERR_FAIL_COND_V_MSG(src_tex->samples == TEXTURE_SAMPLES_1, ERR_INVALID_PARAMETER, "Source texture must be multisampled.");
+
+	Texture *dst_tex = texture_owner.getornull(p_to_texture);
+	ERR_FAIL_COND_V(!dst_tex, ERR_INVALID_PARAMETER);
+
+	ERR_FAIL_COND_V_MSG(p_sync_with_draw && dst_tex->bound, ERR_INVALID_PARAMETER,
+			"Destination texture can't be copied while a render pass that uses it is being created. Ensure render pass is finalized (and that it was created with RENDER_PASS_CONTENTS_FINISH) to unbind this texture.");
+	ERR_FAIL_COND_V_MSG(!(dst_tex->usage_flags & TEXTURE_USAGE_CAN_COPY_TO_BIT), ERR_INVALID_PARAMETER,
+			"Destination texture requires the TEXTURE_USAGE_CAN_COPY_TO_BIT in order to be retrieved.");
+
+	ERR_FAIL_COND_V_MSG(dst_tex->type != TEXTURE_TYPE_2D, ERR_INVALID_PARAMETER, "Destination texture must be 2D (or a slice of a 3D/Cube texture).");
+	ERR_FAIL_COND_V_MSG(dst_tex->samples != TEXTURE_SAMPLES_1, ERR_INVALID_PARAMETER, "Destination texture must not be multisampled.");
+
+	ERR_FAIL_COND_V_MSG(src_tex->format != dst_tex->format, ERR_INVALID_PARAMETER, "Source and Destionation textures must be the same format.");
+	ERR_FAIL_COND_V_MSG(src_tex->width != dst_tex->width && src_tex->height != dst_tex->height && src_tex->depth != dst_tex->depth, ERR_INVALID_PARAMETER, "Source and Destionation textures must have the same dimensions.");
+
+	ERR_FAIL_COND_V_MSG(src_tex->read_aspect_mask != dst_tex->read_aspect_mask, ERR_INVALID_PARAMETER,
+			"Source and destination texture must be of the same type (color or depth).");
+
+	VkCommandBuffer command_buffer = p_sync_with_draw ? frames[frame].draw_command_buffer : frames[frame].setup_command_buffer;
+
+	{
+
+		//PRE Copy the image
+
+		{ //Source
+			VkImageMemoryBarrier image_memory_barrier;
+			image_memory_barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+			image_memory_barrier.pNext = nullptr;
+			image_memory_barrier.srcAccessMask = 0;
+			image_memory_barrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+			image_memory_barrier.oldLayout = src_tex->layout;
+			image_memory_barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+
+			image_memory_barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+			image_memory_barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+			image_memory_barrier.image = src_tex->image;
+			image_memory_barrier.subresourceRange.aspectMask = src_tex->barrier_aspect_mask;
+			image_memory_barrier.subresourceRange.baseMipLevel = src_tex->base_mipmap;
+			image_memory_barrier.subresourceRange.levelCount = 1;
+			image_memory_barrier.subresourceRange.baseArrayLayer = src_tex->base_layer;
+			image_memory_barrier.subresourceRange.layerCount = 1;
+
+			vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &image_memory_barrier);
+		}
+		{ //Dest
+			VkImageMemoryBarrier image_memory_barrier;
+			image_memory_barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+			image_memory_barrier.pNext = nullptr;
+			image_memory_barrier.srcAccessMask = 0;
+			image_memory_barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+			image_memory_barrier.oldLayout = dst_tex->layout;
+			image_memory_barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+
+			image_memory_barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+			image_memory_barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+			image_memory_barrier.image = dst_tex->image;
+			image_memory_barrier.subresourceRange.aspectMask = dst_tex->read_aspect_mask;
+			image_memory_barrier.subresourceRange.baseMipLevel = dst_tex->base_mipmap;
+			image_memory_barrier.subresourceRange.levelCount = 1;
+			image_memory_barrier.subresourceRange.baseArrayLayer = dst_tex->base_layer;
+			image_memory_barrier.subresourceRange.layerCount = 1;
+
+			vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &image_memory_barrier);
+		}
+
+		//COPY
+
+		{
+
+			VkImageResolve image_copy_region;
+			image_copy_region.srcSubresource.aspectMask = src_tex->read_aspect_mask;
+			image_copy_region.srcSubresource.baseArrayLayer = src_tex->base_layer;
+			image_copy_region.srcSubresource.layerCount = 1;
+			image_copy_region.srcSubresource.mipLevel = src_tex->base_mipmap;
+			image_copy_region.srcOffset.x = 0;
+			image_copy_region.srcOffset.y = 0;
+			image_copy_region.srcOffset.z = 0;
+
+			image_copy_region.dstSubresource.aspectMask = dst_tex->read_aspect_mask;
+			image_copy_region.dstSubresource.baseArrayLayer = dst_tex->base_layer;
+			image_copy_region.dstSubresource.layerCount = 1;
+			image_copy_region.dstSubresource.mipLevel = dst_tex->base_mipmap;
+			image_copy_region.dstOffset.x = 0;
+			image_copy_region.dstOffset.y = 0;
+			image_copy_region.dstOffset.z = 0;
+
+			image_copy_region.extent.width = src_tex->width;
+			image_copy_region.extent.height = src_tex->height;
+			image_copy_region.extent.depth = src_tex->depth;
+
+			vkCmdResolveImage(command_buffer, src_tex->image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, dst_tex->image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &image_copy_region);
+		}
+
+		// RESTORE LAYOUT for SRC and DST
+
+		{ //restore src
+			VkImageMemoryBarrier image_memory_barrier;
+			image_memory_barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+			image_memory_barrier.pNext = nullptr;
+			image_memory_barrier.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+			image_memory_barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT;
+			image_memory_barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+			image_memory_barrier.newLayout = src_tex->layout;
+			image_memory_barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+			image_memory_barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+			image_memory_barrier.image = src_tex->image;
+			image_memory_barrier.subresourceRange.aspectMask = src_tex->barrier_aspect_mask;
+			image_memory_barrier.subresourceRange.baseMipLevel = src_tex->base_mipmap;
+			image_memory_barrier.subresourceRange.levelCount = 1;
+			image_memory_barrier.subresourceRange.baseArrayLayer = src_tex->base_layer;
+			image_memory_barrier.subresourceRange.layerCount = 1;
+
+			vkCmdPipelineBarrier(command_buffer, VK_ACCESS_TRANSFER_WRITE_BIT, VK_PIPELINE_STAGE_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 1, &image_memory_barrier);
+		}
+
+		{ //make dst readable
+
+			VkImageMemoryBarrier image_memory_barrier;
+			image_memory_barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+			image_memory_barrier.pNext = nullptr;
+			image_memory_barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+			image_memory_barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT;
+			image_memory_barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+			image_memory_barrier.newLayout = dst_tex->layout;
+
+			image_memory_barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+			image_memory_barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+			image_memory_barrier.image = dst_tex->image;
+			image_memory_barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+			image_memory_barrier.subresourceRange.baseMipLevel = dst_tex->base_mipmap;
+			image_memory_barrier.subresourceRange.levelCount = 1;
+			image_memory_barrier.subresourceRange.baseArrayLayer = dst_tex->base_layer;
+			image_memory_barrier.subresourceRange.layerCount = 1;
+
+			vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 1, &image_memory_barrier);
+		}
+	}
+
+	return OK;
+}
 
 Error RenderingDeviceVulkan::texture_clear(RID p_texture, const Color &p_color, uint32_t p_base_mipmap, uint32_t p_mipmaps, uint32_t p_base_layer, uint32_t p_layers, bool p_sync_with_draw) {
 
@@ -2708,9 +2871,9 @@ Error RenderingDeviceVulkan::texture_clear(RID p_texture, const Color &p_color, 
 		image_memory_barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 		image_memory_barrier.image = src_tex->image;
 		image_memory_barrier.subresourceRange.aspectMask = src_tex->read_aspect_mask;
-		image_memory_barrier.subresourceRange.baseMipLevel = p_base_mipmap;
+		image_memory_barrier.subresourceRange.baseMipLevel = src_tex->base_mipmap + p_base_mipmap;
 		image_memory_barrier.subresourceRange.levelCount = p_mipmaps;
-		image_memory_barrier.subresourceRange.baseArrayLayer = p_base_layer;
+		image_memory_barrier.subresourceRange.baseArrayLayer = src_tex->base_layer + p_base_layer;
 		image_memory_barrier.subresourceRange.layerCount = p_layers;
 
 		layout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
@@ -2725,9 +2888,9 @@ Error RenderingDeviceVulkan::texture_clear(RID p_texture, const Color &p_color, 
 
 	VkImageSubresourceRange range;
 	range.aspectMask = src_tex->read_aspect_mask;
-	range.baseArrayLayer = p_base_layer;
+	range.baseArrayLayer = src_tex->base_layer + p_base_layer;
 	range.layerCount = p_layers;
-	range.baseMipLevel = p_base_mipmap;
+	range.baseMipLevel = src_tex->base_mipmap + p_base_mipmap;
 	range.levelCount = p_mipmaps;
 
 	vkCmdClearColorImage(command_buffer, src_tex->image, layout, &clear_color, 1, &range);
@@ -2746,9 +2909,9 @@ Error RenderingDeviceVulkan::texture_clear(RID p_texture, const Color &p_color, 
 		image_memory_barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 		image_memory_barrier.image = src_tex->image;
 		image_memory_barrier.subresourceRange.aspectMask = src_tex->read_aspect_mask;
-		image_memory_barrier.subresourceRange.baseMipLevel = p_base_mipmap;
+		image_memory_barrier.subresourceRange.baseMipLevel = src_tex->base_mipmap + p_base_mipmap;
 		image_memory_barrier.subresourceRange.levelCount = p_mipmaps;
-		image_memory_barrier.subresourceRange.baseArrayLayer = p_base_layer;
+		image_memory_barrier.subresourceRange.baseArrayLayer = src_tex->base_layer + p_base_layer;
 		image_memory_barrier.subresourceRange.layerCount = p_layers;
 
 		vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 1, &image_memory_barrier);
@@ -2840,6 +3003,21 @@ VkRenderPass RenderingDeviceVulkan::_render_pass_create(const Vector<AttachmentF
 					description.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 					description.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED; //don't care what is there
 					description.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+				} else {
+					description.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+					description.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+					description.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED; //don't care what is there
+				}
+			} break;
+			case INITIAL_ACTION_DROP: {
+				if (p_format[i].usage_flags & TEXTURE_USAGE_COLOR_ATTACHMENT_BIT) {
+					description.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+					description.initialLayout = is_sampled ? VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL : (is_storage ? VK_IMAGE_LAYOUT_GENERAL : VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+					description.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+				} else if (p_format[i].usage_flags & TEXTURE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT) {
+					description.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+					description.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED; //don't care what is there
+					description.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 				} else {
 					description.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 					description.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
@@ -4325,6 +4503,10 @@ RID RenderingDeviceVulkan::uniform_set_create(const Vector<Uniform> &p_uniforms,
 						attachable_textures.push_back(texture->owner.is_valid() ? texture->owner : uniform.ids[j + 1]);
 					}
 
+					if (texture->usage_flags & TEXTURE_USAGE_STORAGE_BIT) {
+						//can also be used as storage, add to mutable sampled
+						mutable_sampled_textures.push_back(texture);
+					}
 					if (texture->owner.is_valid()) {
 						texture = texture_owner.getornull(texture->owner);
 						ERR_FAIL_COND_V(!texture, RID()); //bug, should never happen
@@ -4333,11 +4515,6 @@ RID RenderingDeviceVulkan::uniform_set_create(const Vector<Uniform> &p_uniforms,
 					img_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
 					image_info.push_back(img_info);
-
-					if (texture->usage_flags & TEXTURE_USAGE_STORAGE_BIT) {
-						//can also be used as storage, add to mutable sampled
-						mutable_sampled_textures.push_back(texture);
-					}
 				}
 
 				write.dstArrayElement = 0;
@@ -4377,6 +4554,11 @@ RID RenderingDeviceVulkan::uniform_set_create(const Vector<Uniform> &p_uniforms,
 						attachable_textures.push_back(texture->owner.is_valid() ? texture->owner : uniform.ids[j]);
 					}
 
+					if (texture->usage_flags & TEXTURE_USAGE_STORAGE_BIT) {
+						//can also be used as storage, add to mutable sampled
+						mutable_sampled_textures.push_back(texture);
+					}
+
 					if (texture->owner.is_valid()) {
 						texture = texture_owner.getornull(texture->owner);
 						ERR_FAIL_COND_V(!texture, RID()); //bug, should never happen
@@ -4385,11 +4567,6 @@ RID RenderingDeviceVulkan::uniform_set_create(const Vector<Uniform> &p_uniforms,
 					img_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
 					image_info.push_back(img_info);
-
-					if (texture->usage_flags & TEXTURE_USAGE_STORAGE_BIT) {
-						//can also be used as storage, add to mutable sampled
-						mutable_sampled_textures.push_back(texture);
-					}
 				}
 
 				write.dstArrayElement = 0;
@@ -4426,6 +4603,11 @@ RID RenderingDeviceVulkan::uniform_set_create(const Vector<Uniform> &p_uniforms,
 					img_info.sampler = VK_NULL_HANDLE;
 					img_info.imageView = texture->view;
 
+					if (texture->usage_flags & TEXTURE_USAGE_SAMPLING_BIT) {
+						//can also be used as storage, add to mutable sampled
+						mutable_storage_textures.push_back(texture);
+					}
+
 					if (texture->owner.is_valid()) {
 						texture = texture_owner.getornull(texture->owner);
 						ERR_FAIL_COND_V(!texture, RID()); //bug, should never happen
@@ -4434,11 +4616,6 @@ RID RenderingDeviceVulkan::uniform_set_create(const Vector<Uniform> &p_uniforms,
 					img_info.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
 
 					image_info.push_back(img_info);
-
-					if (texture->usage_flags & TEXTURE_USAGE_SAMPLING_BIT) {
-						//can also be used as storage, add to mutable sampled
-						mutable_storage_textures.push_back(texture);
-					}
 				}
 
 				write.dstArrayElement = 0;
@@ -6206,9 +6383,9 @@ void RenderingDeviceVulkan::compute_list_bind_uniform_set(ComputeListID p_list, 
 			image_memory_barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 			image_memory_barrier.image = textures_to_sampled[i]->image;
 			image_memory_barrier.subresourceRange.aspectMask = textures_to_sampled[i]->read_aspect_mask;
-			image_memory_barrier.subresourceRange.baseMipLevel = 0;
+			image_memory_barrier.subresourceRange.baseMipLevel = textures_to_sampled[i]->base_mipmap;
 			image_memory_barrier.subresourceRange.levelCount = textures_to_sampled[i]->mipmaps;
-			image_memory_barrier.subresourceRange.baseArrayLayer = 0;
+			image_memory_barrier.subresourceRange.baseArrayLayer = textures_to_sampled[i]->base_layer;
 			image_memory_barrier.subresourceRange.layerCount = textures_to_sampled[i]->layers;
 
 			vkCmdPipelineBarrier(cl->command_buffer, VK_PIPELINE_STAGE_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 1, &image_memory_barrier);
@@ -6237,9 +6414,9 @@ void RenderingDeviceVulkan::compute_list_bind_uniform_set(ComputeListID p_list, 
 			image_memory_barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 			image_memory_barrier.image = textures_to_storage[i]->image;
 			image_memory_barrier.subresourceRange.aspectMask = textures_to_storage[i]->read_aspect_mask;
-			image_memory_barrier.subresourceRange.baseMipLevel = 0;
+			image_memory_barrier.subresourceRange.baseMipLevel = textures_to_storage[i]->base_mipmap;
 			image_memory_barrier.subresourceRange.levelCount = textures_to_storage[i]->mipmaps;
-			image_memory_barrier.subresourceRange.baseArrayLayer = 0;
+			image_memory_barrier.subresourceRange.baseArrayLayer = textures_to_storage[i]->base_layer;
 			image_memory_barrier.subresourceRange.layerCount = textures_to_storage[i]->layers;
 
 			vkCmdPipelineBarrier(cl->command_buffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 1, &image_memory_barrier);
@@ -6369,9 +6546,9 @@ void RenderingDeviceVulkan::compute_list_end() {
 		image_memory_barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 		image_memory_barrier.image = E->get()->image;
 		image_memory_barrier.subresourceRange.aspectMask = E->get()->read_aspect_mask;
-		image_memory_barrier.subresourceRange.baseMipLevel = 0;
+		image_memory_barrier.subresourceRange.baseMipLevel = E->get()->base_mipmap;
 		image_memory_barrier.subresourceRange.levelCount = E->get()->mipmaps;
-		image_memory_barrier.subresourceRange.baseArrayLayer = 0;
+		image_memory_barrier.subresourceRange.baseArrayLayer = E->get()->base_layer;
 		image_memory_barrier.subresourceRange.layerCount = E->get()->layers;
 
 		vkCmdPipelineBarrier(compute_list->command_buffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 1, &image_memory_barrier);
@@ -6935,9 +7112,42 @@ uint64_t RenderingDeviceVulkan::get_captured_timestamps_frame() const {
 	return frames[frame].index;
 }
 
+static void mult64to128(uint64_t u, uint64_t v, uint64_t &h, uint64_t &l) {
+	uint64_t u1 = (u & 0xffffffff);
+	uint64_t v1 = (v & 0xffffffff);
+	uint64_t t = (u1 * v1);
+	uint64_t w3 = (t & 0xffffffff);
+	uint64_t k = (t >> 32);
+
+	u >>= 32;
+	t = (u * v1) + k;
+	k = (t & 0xffffffff);
+	uint64_t w1 = (t >> 32);
+
+	v >>= 32;
+	t = (u1 * v) + k;
+	k = (t >> 32);
+
+	h = (u * v) + w1 + k;
+	l = (t << 32) + w3;
+}
+
 uint64_t RenderingDeviceVulkan::get_captured_timestamp_gpu_time(uint32_t p_index) const {
 	ERR_FAIL_UNSIGNED_INDEX_V(p_index, frames[frame].timestamp_result_count, 0);
-	return frames[frame].timestamp_result_values[p_index] * limits.timestampPeriod;
+
+	// this sucks because timestampPeriod multiplier is a float, while the timestamp is 64 bits nanosecs.
+	// so, in cases like nvidia which give you enormous numbers and 1 as multiplier, multiplying is next to impossible
+	// need to do 128 bits fixed point multiplication to get the rigth value
+
+	uint64_t shift_bits = 16;
+
+	uint64_t h, l;
+
+	mult64to128(frames[frame].timestamp_result_values[p_index], uint64_t(double(limits.timestampPeriod) * double(1 << shift_bits)), h, l);
+	l >>= shift_bits;
+	l |= h << (64 - shift_bits);
+
+	return l;
 }
 uint64_t RenderingDeviceVulkan::get_captured_timestamp_cpu_time(uint32_t p_index) const {
 	ERR_FAIL_UNSIGNED_INDEX_V(p_index, frames[frame].timestamp_result_count, 0);
@@ -7063,6 +7273,11 @@ void RenderingDeviceVulkan::finalize() {
 		memdelete_arr(temp->get().attributes);
 		vertex_formats.erase(temp);
 	}
+
+	for (int i = 0; i < framebuffer_formats.size(); i++) {
+		vkDestroyRenderPass(device, framebuffer_formats[i].render_pass, nullptr);
+	}
+	framebuffer_formats.clear();
 
 	//all these should be clear at this point
 	ERR_FAIL_COND(descriptor_pools.size());

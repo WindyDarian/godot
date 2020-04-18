@@ -202,7 +202,7 @@ class Node3DEditorViewport : public Control {
 		VIEW_AUDIO_DOPPLER,
 		VIEW_GIZMOS,
 		VIEW_INFORMATION,
-		VIEW_FPS,
+		VIEW_FRAME_TIME,
 		VIEW_DISPLAY_NORMAL,
 		VIEW_DISPLAY_WIREFRAME,
 		VIEW_DISPLAY_OVERDRAW,
@@ -219,6 +219,7 @@ class Node3DEditorViewport : public Control {
 		VIEW_DISPLAY_DEBUG_SSAO,
 		VIEW_DISPLAY_DEBUG_ROUGHNESS_LIMITER,
 		VIEW_DISPLAY_DEBUG_PSSM_SPLITS,
+		VIEW_DISPLAY_DEBUG_DECAL_ATLAS,
 		VIEW_LOCK_ROTATION,
 		VIEW_CINEMATIC_PREVIEW,
 		VIEW_AUTO_ORTHOGONAL,
@@ -229,7 +230,9 @@ public:
 	enum {
 		GIZMO_BASE_LAYER = 27,
 		GIZMO_EDIT_LAYER = 26,
-		GIZMO_GRID_LAYER = 25
+		GIZMO_GRID_LAYER = 25,
+
+		FRAME_TIME_HISTORY = 20,
 	};
 
 	enum NavigationScheme {
@@ -239,6 +242,11 @@ public:
 	};
 
 private:
+	float cpu_time_history[FRAME_TIME_HISTORY];
+	int cpu_time_history_index;
+	float gpu_time_history[FRAME_TIME_HISTORY];
+	int gpu_time_history_index;
+
 	int index;
 	String name;
 	void _menu_option(int p_option);

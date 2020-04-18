@@ -3067,15 +3067,15 @@
 				Sets when the viewport should be updated. See [enum ViewportUpdateMode] constants for options.
 			</description>
 		</method>
-		<method name="viewport_set_use_arvr">
+		<method name="viewport_set_use_xr">
 			<return type="void">
 			</return>
 			<argument index="0" name="viewport" type="RID">
 			</argument>
-			<argument index="1" name="use_arvr" type="bool">
+			<argument index="1" name="use_xr" type="bool">
 			</argument>
 			<description>
-				If [code]true[/code], the viewport uses augmented or virtual reality technologies. See [ARVRInterface].
+				If [code]true[/code], the viewport uses augmented or virtual reality technologies. See [XRInterface].
 			</description>
 		</method>
 	</methods>
@@ -3282,17 +3282,17 @@
 		<constant name="LIGHT_PARAM_RANGE" value="3" enum="LightParam">
 			The light's range.
 		</constant>
-		<constant name="LIGHT_PARAM_ATTENUATION" value="4" enum="LightParam">
+		<constant name="LIGHT_PARAM_SIZE" value="4" enum="LightParam">
+			The size of the light when using spot light or omni light. The angular size of the light when using directional light.
+		</constant>
+		<constant name="LIGHT_PARAM_ATTENUATION" value="5" enum="LightParam">
 			The light's attenuation.
 		</constant>
-		<constant name="LIGHT_PARAM_SPOT_ANGLE" value="5" enum="LightParam">
+		<constant name="LIGHT_PARAM_SPOT_ANGLE" value="6" enum="LightParam">
 			The spotlight's angle.
 		</constant>
-		<constant name="LIGHT_PARAM_SPOT_ATTENUATION" value="6" enum="LightParam">
+		<constant name="LIGHT_PARAM_SPOT_ATTENUATION" value="7" enum="LightParam">
 			The spotlight's attenuation.
-		</constant>
-		<constant name="LIGHT_PARAM_CONTACT_SHADOW_SIZE" value="7" enum="LightParam">
-			Scales the shadow color.
 		</constant>
 		<constant name="LIGHT_PARAM_SHADOW_MAX_DISTANCE" value="8" enum="LightParam">
 			Max distance that shadows will be rendered.

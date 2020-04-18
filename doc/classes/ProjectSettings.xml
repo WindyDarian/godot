@@ -92,8 +92,10 @@
 			</argument>
 			<argument index="1" name="replace_files" type="bool" default="true">
 			</argument>
+			<argument index="2" name="destination" type="String" default="">
+			</argument>
 			<description>
-				Loads the contents of the .pck or .zip file specified by [code]pack[/code] into the resource filesystem ([code]res://[/code]). Returns [code]true[/code] on success.
+				Loads the contents of the .pck or .zip file specified by [code]pack[/code] into the resource filesystem ([code]res://[/code]) at the [code]destination[/code] path, if given. Returns [code]true[/code] on success.
 				[b]Note:[/b] If a file from [code]pack[/code] shares the same path as a file already in the resource filesystem, any attempts to load that file will use the file from [code]pack[/code] unless [code]replace_files[/code] is set to [code]false[/code].
 			</description>
 		</method>
@@ -911,7 +913,7 @@
 		</member>
 		<member name="physics/2d/physics_engine" type="String" setter="" getter="" default="&quot;DEFAULT&quot;">
 			Sets which physics engine to use for 2D physics.
-			"DEFAULT" and "GodotPhysics" are the same, as there is currently no alternative 2D physics server implemented.
+			"DEFAULT" and "GodotPhysics2D" are the same, as there is currently no alternative 2D physics server implemented.
 		</member>
 		<member name="physics/2d/sleep_threshold_angular" type="float" setter="" getter="" default="0.139626">
 			Threshold angular velocity under which a 2D physics body will be considered inactive. See [constant PhysicsServer2D.SPACE_PARAM_BODY_ANGULAR_VELOCITY_SLEEP_THRESHOLD].
@@ -953,7 +955,7 @@
 		</member>
 		<member name="physics/3d/physics_engine" type="String" setter="" getter="" default="&quot;DEFAULT&quot;">
 			Sets which physics engine to use for 3D physics.
-			"DEFAULT" is currently the [url=https://bulletphysics.org]Bullet[/url] physics engine. The "GodotPhysics" engine is still supported as an alternative.
+			"DEFAULT" is currently the [url=https://bulletphysics.org]Bullet[/url] physics engine. The "GodotPhysics3D" engine is still supported as an alternative.
 		</member>
 		<member name="physics/common/enable_object_picking" type="bool" setter="" getter="" default="true">
 			Enables [member Viewport.physics_object_picking] on the root viewport.
@@ -993,6 +995,12 @@
 		</member>
 		<member name="rendering/quality/directional_shadow/size.mobile" type="int" setter="" getter="" default="2048">
 			Lower-end override for [member rendering/quality/directional_shadow/size] on mobile devices, due to performance concerns or driver support.
+		</member>
+		<member name="rendering/quality/directional_shadow/soft_shadow_quality" type="int" setter="" getter="" default="2">
+			Quality setting for shadows cast by [DirectionalLight3D]s. Higher quality settings use more samples when reading from shadow maps and are thus slower. Low quality settings may result in shadows looking grainy.
+		</member>
+		<member name="rendering/quality/directional_shadow/soft_shadow_quality.mobile" type="int" setter="" getter="" default="0">
+		Lower-end override for [member rendering/quality/directional_shadow/soft_shadow_quality] on mobile devices, due to performance concerns or driver support.
 		</member>
 		<member name="rendering/quality/driver/driver_name" type="String" setter="" getter="" default="&quot;Vulkan&quot;">
 			The video driver to use ("GLES2" or "Vulkan").
@@ -1098,11 +1106,11 @@
 		<member name="rendering/quality/shadow_atlas/size.mobile" type="int" setter="" getter="" default="2048">
 			Lower-end override for [member rendering/quality/shadow_atlas/size] on mobile devices, due to performance concerns or driver support.
 		</member>
-		<member name="rendering/quality/shadows/filter_mode" type="int" setter="" getter="" default="1">
-			Shadow filter mode. Higher-quality settings result in smoother shadows that flicker less when moving. "Disabled" is the fastest option, but also has the lowest quality. "PCF5" is smoother but is also slower. "PCF13" is the smoothest option, but is also the slowest.
+		<member name="rendering/quality/shadows/soft_shadow_quality" type="int" setter="" getter="" default="2">
+			Quality setting for shadows cast by [OmniLight3D]s and [SpotLight3D]s. Higher quality settings use more samples when reading from shadow maps and are thus slower. Low quality settings may result in shadows looking grainy.
 		</member>
-		<member name="rendering/quality/shadows/filter_mode.mobile" type="int" setter="" getter="" default="0">
-			Lower-end override for [member rendering/quality/shadows/filter_mode] on mobile devices, due to performance concerns or driver support.
+		<member name="rendering/quality/shadows/soft_shadow_quality.mobile" type="int" setter="" getter="" default="0">
+			Lower-end override for [member rendering/quality/shadows/soft_shadow_quality] on mobile devices, due to performance concerns or driver support.
 		</member>
 		<member name="rendering/quality/ssao/half_size" type="bool" setter="" getter="" default="false">
 		</member>

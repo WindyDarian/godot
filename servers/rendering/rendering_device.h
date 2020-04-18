@@ -428,6 +428,7 @@ public:
 
 	virtual Error texture_copy(RID p_from_texture, RID p_to_texture, const Vector3 &p_from, const Vector3 &p_to, const Vector3 &p_size, uint32_t p_src_mipmap, uint32_t p_dst_mipmap, uint32_t p_src_layer, uint32_t p_dst_layer, bool p_sync_with_draw = false) = 0;
 	virtual Error texture_clear(RID p_texture, const Color &p_color, uint32_t p_base_mipmap, uint32_t p_mipmaps, uint32_t p_base_layer, uint32_t p_layers, bool p_sync_with_draw = false) = 0;
+	virtual Error texture_resolve_multisample(RID p_from_texture, RID p_to_texture, bool p_sync_with_draw = false) = 0;
 
 	/*********************/
 	/**** FRAMEBUFFER ****/
@@ -908,6 +909,7 @@ public:
 	enum InitialAction {
 		INITIAL_ACTION_CLEAR, //start rendering and clear the framebuffer (supply params)
 		INITIAL_ACTION_KEEP, //start rendering, but keep attached color texture contents (depth will be cleared)
+		INITIAL_ACTION_DROP, //start rendering, ignore what is there, just write above it
 		INITIAL_ACTION_CONTINUE, //continue rendering (framebuffer must have been left in "continue" state as final action previously)
 		INITIAL_ACTION_MAX
 	};
@@ -1023,7 +1025,6 @@ public:
 	virtual uint32_t get_frame_delay() const = 0;
 
 	static RenderingDevice *get_singleton();
-
 	RenderingDevice();
 };
 
