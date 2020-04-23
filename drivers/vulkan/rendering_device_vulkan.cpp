@@ -3327,7 +3327,7 @@ RID RenderingDeviceVulkan::vertex_buffer_create(uint32_t p_size_bytes, const Vec
 }
 
 // Internally reference counted, this ID is warranted to be unique for the same description, but needs to be freed as many times as it was allocated
-RenderingDevice::VertexFormatID RenderingDeviceVulkan::vertex_format_create(const Vector<VertexDescription> &p_vertex_formats) {
+RenderingDevice::VertexFormatID RenderingDeviceVulkan::vertex_format_create(const Vector<VertexAttribute> &p_vertex_formats) {
 
 	_THREAD_SAFE_METHOD_
 
@@ -3402,7 +3402,7 @@ RID RenderingDeviceVulkan::vertex_array_create(uint32_t p_vertex_count, VertexFo
 
 		//validate with buffer
 		{
-			const VertexDescription &atf = vd.vertex_formats[i];
+			const VertexAttribute &atf = vd.vertex_formats[i];
 
 			uint32_t element_size = get_format_vertex_size(atf.format);
 			ERR_FAIL_COND_V(element_size == 0, RID()); //should never happens since this was prevalidated
@@ -5085,29 +5085,29 @@ RID RenderingDeviceVulkan::render_pipeline_create(RID p_shader, FramebufferForma
 	depth_stencil_state_create_info.depthBoundsTestEnable = p_depth_stencil_state.enable_depth_range;
 	depth_stencil_state_create_info.stencilTestEnable = p_depth_stencil_state.enable_stencil;
 
-	ERR_FAIL_INDEX_V(p_depth_stencil_state.stencil_operation_front.fail, STENCIL_OP_MAX, RID());
-	depth_stencil_state_create_info.front.failOp = stencil_operations[p_depth_stencil_state.stencil_operation_front.fail];
-	ERR_FAIL_INDEX_V(p_depth_stencil_state.stencil_operation_front.pass, STENCIL_OP_MAX, RID());
-	depth_stencil_state_create_info.front.passOp = stencil_operations[p_depth_stencil_state.stencil_operation_front.pass];
-	ERR_FAIL_INDEX_V(p_depth_stencil_state.stencil_operation_front.depth_fail, STENCIL_OP_MAX, RID());
-	depth_stencil_state_create_info.front.depthFailOp = stencil_operations[p_depth_stencil_state.stencil_operation_front.depth_fail];
-	ERR_FAIL_INDEX_V(p_depth_stencil_state.stencil_operation_front.compare, COMPARE_OP_MAX, RID());
-	depth_stencil_state_create_info.front.compareOp = compare_operators[p_depth_stencil_state.stencil_operation_front.compare];
-	depth_stencil_state_create_info.front.compareMask = p_depth_stencil_state.stencil_operation_front.compare_mask;
-	depth_stencil_state_create_info.front.writeMask = p_depth_stencil_state.stencil_operation_front.write_mask;
-	depth_stencil_state_create_info.front.reference = p_depth_stencil_state.stencil_operation_front.reference;
+	ERR_FAIL_INDEX_V(p_depth_stencil_state.front_op.fail, STENCIL_OP_MAX, RID());
+	depth_stencil_state_create_info.front.failOp = stencil_operations[p_depth_stencil_state.front_op.fail];
+	ERR_FAIL_INDEX_V(p_depth_stencil_state.front_op.pass, STENCIL_OP_MAX, RID());
+	depth_stencil_state_create_info.front.passOp = stencil_operations[p_depth_stencil_state.front_op.pass];
+	ERR_FAIL_INDEX_V(p_depth_stencil_state.front_op.depth_fail, STENCIL_OP_MAX, RID());
+	depth_stencil_state_create_info.front.depthFailOp = stencil_operations[p_depth_stencil_state.front_op.depth_fail];
+	ERR_FAIL_INDEX_V(p_depth_stencil_state.front_op.compare, COMPARE_OP_MAX, RID());
+	depth_stencil_state_create_info.front.compareOp = compare_operators[p_depth_stencil_state.front_op.compare];
+	depth_stencil_state_create_info.front.compareMask = p_depth_stencil_state.front_op.compare_mask;
+	depth_stencil_state_create_info.front.writeMask = p_depth_stencil_state.front_op.write_mask;
+	depth_stencil_state_create_info.front.reference = p_depth_stencil_state.front_op.reference;
 
-	ERR_FAIL_INDEX_V(p_depth_stencil_state.stencil_operation_back.fail, STENCIL_OP_MAX, RID());
-	depth_stencil_state_create_info.back.failOp = stencil_operations[p_depth_stencil_state.stencil_operation_back.fail];
-	ERR_FAIL_INDEX_V(p_depth_stencil_state.stencil_operation_back.pass, STENCIL_OP_MAX, RID());
-	depth_stencil_state_create_info.back.passOp = stencil_operations[p_depth_stencil_state.stencil_operation_back.pass];
-	ERR_FAIL_INDEX_V(p_depth_stencil_state.stencil_operation_back.depth_fail, STENCIL_OP_MAX, RID());
-	depth_stencil_state_create_info.back.depthFailOp = stencil_operations[p_depth_stencil_state.stencil_operation_back.depth_fail];
-	ERR_FAIL_INDEX_V(p_depth_stencil_state.stencil_operation_back.compare, COMPARE_OP_MAX, RID());
-	depth_stencil_state_create_info.back.compareOp = compare_operators[p_depth_stencil_state.stencil_operation_back.compare];
-	depth_stencil_state_create_info.back.compareMask = p_depth_stencil_state.stencil_operation_back.compare_mask;
-	depth_stencil_state_create_info.back.writeMask = p_depth_stencil_state.stencil_operation_back.write_mask;
-	depth_stencil_state_create_info.back.reference = p_depth_stencil_state.stencil_operation_back.reference;
+	ERR_FAIL_INDEX_V(p_depth_stencil_state.back_op.fail, STENCIL_OP_MAX, RID());
+	depth_stencil_state_create_info.back.failOp = stencil_operations[p_depth_stencil_state.back_op.fail];
+	ERR_FAIL_INDEX_V(p_depth_stencil_state.back_op.pass, STENCIL_OP_MAX, RID());
+	depth_stencil_state_create_info.back.passOp = stencil_operations[p_depth_stencil_state.back_op.pass];
+	ERR_FAIL_INDEX_V(p_depth_stencil_state.back_op.depth_fail, STENCIL_OP_MAX, RID());
+	depth_stencil_state_create_info.back.depthFailOp = stencil_operations[p_depth_stencil_state.back_op.depth_fail];
+	ERR_FAIL_INDEX_V(p_depth_stencil_state.back_op.compare, COMPARE_OP_MAX, RID());
+	depth_stencil_state_create_info.back.compareOp = compare_operators[p_depth_stencil_state.back_op.compare];
+	depth_stencil_state_create_info.back.compareMask = p_depth_stencil_state.back_op.compare_mask;
+	depth_stencil_state_create_info.back.writeMask = p_depth_stencil_state.back_op.write_mask;
+	depth_stencil_state_create_info.back.reference = p_depth_stencil_state.back_op.reference;
 
 	depth_stencil_state_create_info.minDepthBounds = p_depth_stencil_state.depth_range_min;
 	depth_stencil_state_create_info.maxDepthBounds = p_depth_stencil_state.depth_range_max;
@@ -6043,7 +6043,7 @@ void RenderingDeviceVulkan::draw_list_set_line_width(DrawListID p_list, float p_
 	vkCmdSetLineWidth(dl->command_buffer, p_width);
 }
 
-void RenderingDeviceVulkan::draw_list_set_push_constant(DrawListID p_list, void *p_data, uint32_t p_data_size) {
+void RenderingDeviceVulkan::draw_list_set_push_constant(DrawListID p_list, const void *p_data, uint32_t p_data_size) {
 	DrawList *dl = _get_draw_list_ptr(p_list);
 	ERR_FAIL_COND(!dl);
 
@@ -6446,7 +6446,7 @@ void RenderingDeviceVulkan::compute_list_bind_uniform_set(ComputeListID p_list, 
 #endif
 }
 
-void RenderingDeviceVulkan::compute_list_set_push_constant(ComputeListID p_list, void *p_data, uint32_t p_data_size) {
+void RenderingDeviceVulkan::compute_list_set_push_constant(ComputeListID p_list, const void *p_data, uint32_t p_data_size) {
 	ERR_FAIL_COND(p_list != ID_TYPE_COMPUTE_LIST);
 	ERR_FAIL_COND(!compute_list);
 
