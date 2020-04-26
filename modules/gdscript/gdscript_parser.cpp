@@ -746,6 +746,13 @@ GDScriptParser::Node *GDScriptParser::_parse_expression(Node *p_parent, bool p_s
 			if (tokenizer->get_token() == GDScriptTokenizer::TK_CURSOR) {
 				_make_completable_call(0);
 				completion_node = op;
+
+				if (op->arguments[0]->type == GDScriptParser::Node::Type::TYPE_BUILT_IN_FUNCTION) {
+					BuiltInFunctionNode *bn = static_cast<BuiltInFunctionNode *>(op->arguments[0]);
+					if (bn->function == GDScriptFunctions::Function::RESOURCE_LOAD) {
+						completion_type = COMPLETION_RESOURCE_PATH;
+					}
+				}
 			}
 			if (!replaced) {
 				if (!_parse_arguments(op, op->arguments, p_static, true, p_parsing_constant))
@@ -2794,6 +2801,7 @@ void GDScriptParser::_parse_block(BlockNode *p_block, bool p_static) {
 					return;
 				}
 
+				_mark_line_as_safe(line);
 				NewLineNode *nl2 = alloc_node<NewLineNode>();
 				nl2->line = line;
 				p_block->statements.push_back(nl2);
@@ -3307,6 +3315,8 @@ void GDScriptParser::_parse_block(BlockNode *p_block, bool p_static) {
 					return;
 				}
 
+				int assert_line = tokenizer->get_token_line();
+
 				tokenizer->advance();
 
 				Vector<Node *> args;
@@ -3320,8 +3330,14 @@ void GDScriptParser::_parse_block(BlockNode *p_block, bool p_static) {
 					return;
 				}
 
+#ifdef DEBUG_ENABLED
+				// Mark as safe, let type check mark as unsafe if needed
+				_mark_line_as_safe(assert_line);
+				_reduce_node_type(args[0]);
+#endif
 				AssertNode *an = alloc_node<AssertNode>();
 				an->condition = _reduce_expression(args[0], p_static);
+				an->line = assert_line;
 
 				if (args.size() == 2) {
 					an->message = _reduce_expression(args[1], p_static);
