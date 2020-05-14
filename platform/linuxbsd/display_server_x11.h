@@ -35,7 +35,7 @@
 
 #include "servers/display_server.h"
 
-#include "core/input/input_filter.h"
+#include "core/input/input.h"
 
 #include "drivers/alsa/audio_driver_alsa.h"
 #include "drivers/alsamidi/midi_driver_alsamidi.h"
@@ -170,10 +170,13 @@ class DisplayServerX11 : public DisplayServer {
 		int opcode;
 		Vector<int> touch_devices;
 		Map<int, Vector2> absolute_devices;
-		Map<int, Vector3> pen_devices;
+		Map<int, Vector2> pen_pressure_range;
+		Map<int, Vector2> pen_tilt_x_range;
+		Map<int, Vector2> pen_tilt_y_range;
 		XIEventMask all_event_mask;
 		Map<int, Vector2> state;
 		double pressure;
+		bool pressure_supported;
 		Vector2 tilt;
 		Vector2 mouse_pos_to_filter;
 		Vector2 relative_motion;

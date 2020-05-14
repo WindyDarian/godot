@@ -30,7 +30,7 @@
 
 #include "tree.h"
 
-#include "core/input/input_filter.h"
+#include "core/input/input.h"
 #include "core/math/math_funcs.h"
 #include "core/os/keyboard.h"
 #include "core/os/os.h"
@@ -779,6 +779,9 @@ void TreeItem::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_text", "column", "text"), &TreeItem::set_text);
 	ClassDB::bind_method(D_METHOD("get_text", "column"), &TreeItem::get_text);
 
+	ClassDB::bind_method(D_METHOD("set_suffix", "column", "text"), &TreeItem::set_suffix);
+	ClassDB::bind_method(D_METHOD("get_suffix", "column"), &TreeItem::get_suffix);
+
 	ClassDB::bind_method(D_METHOD("set_icon", "column", "texture"), &TreeItem::set_icon);
 	ClassDB::bind_method(D_METHOD("get_icon", "column"), &TreeItem::get_icon);
 
@@ -1425,7 +1428,7 @@ int Tree::draw_item(const Point2i &p_pos, const Point2 &p_draw_ofs, const Size2 
 
 					if (p_item->cells[i].custom_button) {
 						if (cache.hover_item == p_item && cache.hover_cell == i) {
-							if (InputFilter::get_singleton()->is_mouse_button_pressed(BUTTON_LEFT)) {
+							if (Input::get_singleton()->is_mouse_button_pressed(BUTTON_LEFT)) {
 								draw_style_box(cache.custom_button_pressed, ir);
 							} else {
 								draw_style_box(cache.custom_button_hover, ir);
@@ -1661,7 +1664,7 @@ Rect2 Tree::search_item_rect(TreeItem *p_from, TreeItem *p_item) {
 
 void Tree::_range_click_timeout() {
 
-	if (range_item_last && !range_drag_enabled && InputFilter::get_singleton()->is_mouse_button_pressed(BUTTON_LEFT)) {
+	if (range_item_last && !range_drag_enabled && Input::get_singleton()->is_mouse_button_pressed(BUTTON_LEFT)) {
 
 		Point2 pos = get_local_mouse_position() - cache.bg->get_offset();
 		if (show_column_titles) {
@@ -2048,9 +2051,9 @@ int Tree::propagate_mouse_event(const Point2i &p_pos, int x_ofs, int y_ofs, bool
 
 void Tree::_text_editor_modal_close() {
 
-	if (InputFilter::get_singleton()->is_key_pressed(KEY_ESCAPE) ||
-			InputFilter::get_singleton()->is_key_pressed(KEY_KP_ENTER) ||
-			InputFilter::get_singleton()->is_key_pressed(KEY_ENTER)) {
+	if (Input::get_singleton()->is_key_pressed(KEY_ESCAPE) ||
+			Input::get_singleton()->is_key_pressed(KEY_KP_ENTER) ||
+			Input::get_singleton()->is_key_pressed(KEY_ENTER)) {
 
 		return;
 	}
@@ -2274,7 +2277,8 @@ void Tree::_gui_input(Ref<InputEvent> p_event) {
 	bool is_command = k.is_valid() && k->get_command();
 	if (p_event->is_action("ui_right") && p_event->is_pressed()) {
 
-		if (!cursor_can_exit_tree) accept_event();
+		if (!cursor_can_exit_tree)
+			accept_event();
 
 		if (!selected_item || select_mode == SELECT_ROW || selected_col > (columns.size() - 1)) {
 			return;
@@ -2291,7 +2295,8 @@ void Tree::_gui_input(Ref<InputEvent> p_event) {
 		}
 	} else if (p_event->is_action("ui_left") && p_event->is_pressed()) {
 
-		if (!cursor_can_exit_tree) accept_event();
+		if (!cursor_can_exit_tree)
+			accept_event();
 
 		if (!selected_item || select_mode == SELECT_ROW || selected_col < 0) {
 			return;
@@ -2310,19 +2315,22 @@ void Tree::_gui_input(Ref<InputEvent> p_event) {
 
 	} else if (p_event->is_action("ui_up") && p_event->is_pressed() && !is_command) {
 
-		if (!cursor_can_exit_tree) accept_event();
+		if (!cursor_can_exit_tree)
+			accept_event();
 
 		_go_up();
 
 	} else if (p_event->is_action("ui_down") && p_event->is_pressed() && !is_command) {
 
-		if (!cursor_can_exit_tree) accept_event();
+		if (!cursor_can_exit_tree)
+			accept_event();
 
 		_go_down();
 
 	} else if (p_event->is_action("ui_page_down") && p_event->is_pressed()) {
 
-		if (!cursor_can_exit_tree) accept_event();
+		if (!cursor_can_exit_tree)
+			accept_event();
 
 		TreeItem *next = nullptr;
 		if (!selected_item)
@@ -2360,7 +2368,8 @@ void Tree::_gui_input(Ref<InputEvent> p_event) {
 		ensure_cursor_is_visible();
 	} else if (p_event->is_action("ui_page_up") && p_event->is_pressed()) {
 
-		if (!cursor_can_exit_tree) accept_event();
+		if (!cursor_can_exit_tree)
+			accept_event();
 
 		TreeItem *prev = nullptr;
 		if (!selected_item)
@@ -2532,7 +2541,7 @@ void Tree::_gui_input(Ref<InputEvent> p_event) {
 					range_drag_enabled = true;
 					range_drag_capture_pos = cpos;
 					range_drag_base = popup_edited_item->get_range(popup_edited_item_col);
-					InputFilter::get_singleton()->set_mouse_mode(InputFilter::MOUSE_MODE_CAPTURED);
+					Input::get_singleton()->set_mouse_mode(Input::MOUSE_MODE_CAPTURED);
 				}
 			} else {
 
@@ -2594,7 +2603,7 @@ void Tree::_gui_input(Ref<InputEvent> p_event) {
 					if (range_drag_enabled) {
 
 						range_drag_enabled = false;
-						InputFilter::get_singleton()->set_mouse_mode(InputFilter::MOUSE_MODE_VISIBLE);
+						Input::get_singleton()->set_mouse_mode(Input::MOUSE_MODE_VISIBLE);
 						warp_mouse(range_drag_capture_pos);
 					} else {
 						Rect2 rect = get_selected()->get_meta("__focus_rect");
@@ -3238,7 +3247,7 @@ void Tree::clear() {
 	if (pressing_for_editor) {
 		if (range_drag_enabled) {
 			range_drag_enabled = false;
-			InputFilter::get_singleton()->set_mouse_mode(InputFilter::MOUSE_MODE_VISIBLE);
+			Input::get_singleton()->set_mouse_mode(Input::MOUSE_MODE_VISIBLE);
 			warp_mouse(range_drag_capture_pos);
 		}
 		pressing_for_editor = false;

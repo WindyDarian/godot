@@ -38,7 +38,7 @@
 #include "core/crypto/hashing_context.h"
 #include "core/engine.h"
 #include "core/func_ref.h"
-#include "core/input/input_filter.h"
+#include "core/input/input.h"
 #include "core/input/input_map.h"
 #include "core/io/config_file.h"
 #include "core/io/dtls_server.h"
@@ -233,8 +233,8 @@ void register_core_settings() {
 	GLOBAL_DEF_RST("network/limits/packet_peer_stream/max_buffer_po2", (16));
 	ProjectSettings::get_singleton()->set_custom_property_info("network/limits/packet_peer_stream/max_buffer_po2", PropertyInfo(Variant::INT, "network/limits/packet_peer_stream/max_buffer_po2", PROPERTY_HINT_RANGE, "0,64,1,or_greater"));
 
-	GLOBAL_DEF("network/ssl/certificates", "");
-	ProjectSettings::get_singleton()->set_custom_property_info("network/ssl/certificates", PropertyInfo(Variant::STRING, "network/ssl/certificates", PROPERTY_HINT_FILE, "*.crt"));
+	GLOBAL_DEF("network/ssl/certificate_bundle_override", "");
+	ProjectSettings::get_singleton()->set_custom_property_info("network/ssl/certificate_bundle_override", PropertyInfo(Variant::STRING, "network/ssl/certificate_bundle_override", PROPERTY_HINT_FILE, "*.crt"));
 }
 
 void register_core_singletons() {
@@ -249,7 +249,7 @@ void register_core_singletons() {
 	ClassDB::register_class<_ClassDB>();
 	ClassDB::register_class<_Marshalls>();
 	ClassDB::register_class<TranslationServer>();
-	ClassDB::register_virtual_class<InputFilter>();
+	ClassDB::register_virtual_class<Input>();
 	ClassDB::register_class<InputMap>();
 	ClassDB::register_class<_JSON>();
 	ClassDB::register_class<Expression>();
@@ -264,7 +264,7 @@ void register_core_singletons() {
 	Engine::get_singleton()->add_singleton(Engine::Singleton("ClassDB", _classdb));
 	Engine::get_singleton()->add_singleton(Engine::Singleton("Marshalls", _Marshalls::get_singleton()));
 	Engine::get_singleton()->add_singleton(Engine::Singleton("TranslationServer", TranslationServer::get_singleton()));
-	Engine::get_singleton()->add_singleton(Engine::Singleton("Input", InputFilter::get_singleton()));
+	Engine::get_singleton()->add_singleton(Engine::Singleton("Input", Input::get_singleton()));
 	Engine::get_singleton()->add_singleton(Engine::Singleton("InputMap", InputMap::get_singleton()));
 	Engine::get_singleton()->add_singleton(Engine::Singleton("JSON", _JSON::get_singleton()));
 }

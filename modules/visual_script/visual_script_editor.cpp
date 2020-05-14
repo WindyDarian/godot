@@ -30,7 +30,7 @@
 
 #include "visual_script_editor.h"
 
-#include "core/input/input_filter.h"
+#include "core/input/input.h"
 #include "core/object.h"
 #include "core/os/keyboard.h"
 #include "core/script_language.h"
@@ -342,84 +342,212 @@ static Color _color_from_type(Variant::Type p_type, bool dark_theme = true) {
 	Color color;
 	if (dark_theme)
 		switch (p_type) {
-			case Variant::NIL: color = Color(0.41, 0.93, 0.74); break;
+			case Variant::NIL:
+				color = Color(0.41, 0.93, 0.74);
+				break;
 
-			case Variant::BOOL: color = Color(0.55, 0.65, 0.94); break;
-			case Variant::INT: color = Color(0.49, 0.78, 0.94); break;
-			case Variant::FLOAT: color = Color(0.38, 0.85, 0.96); break;
-			case Variant::STRING: color = Color(0.42, 0.65, 0.93); break;
+			case Variant::BOOL:
+				color = Color(0.55, 0.65, 0.94);
+				break;
+			case Variant::INT:
+				color = Color(0.49, 0.78, 0.94);
+				break;
+			case Variant::FLOAT:
+				color = Color(0.38, 0.85, 0.96);
+				break;
+			case Variant::STRING:
+				color = Color(0.42, 0.65, 0.93);
+				break;
 
-			case Variant::VECTOR2: color = Color(0.74, 0.57, 0.95); break;
-			case Variant::VECTOR2I: color = Color(0.74, 0.57, 0.95); break;
-			case Variant::RECT2: color = Color(0.95, 0.57, 0.65); break;
-			case Variant::RECT2I: color = Color(0.95, 0.57, 0.65); break;
-			case Variant::VECTOR3: color = Color(0.84, 0.49, 0.93); break;
-			case Variant::VECTOR3I: color = Color(0.84, 0.49, 0.93); break;
-			case Variant::TRANSFORM2D: color = Color(0.77, 0.93, 0.41); break;
-			case Variant::PLANE: color = Color(0.97, 0.44, 0.44); break;
-			case Variant::QUAT: color = Color(0.93, 0.41, 0.64); break;
-			case Variant::AABB: color = Color(0.93, 0.47, 0.57); break;
-			case Variant::BASIS: color = Color(0.89, 0.93, 0.41); break;
-			case Variant::TRANSFORM: color = Color(0.96, 0.66, 0.43); break;
+			case Variant::VECTOR2:
+				color = Color(0.74, 0.57, 0.95);
+				break;
+			case Variant::VECTOR2I:
+				color = Color(0.74, 0.57, 0.95);
+				break;
+			case Variant::RECT2:
+				color = Color(0.95, 0.57, 0.65);
+				break;
+			case Variant::RECT2I:
+				color = Color(0.95, 0.57, 0.65);
+				break;
+			case Variant::VECTOR3:
+				color = Color(0.84, 0.49, 0.93);
+				break;
+			case Variant::VECTOR3I:
+				color = Color(0.84, 0.49, 0.93);
+				break;
+			case Variant::TRANSFORM2D:
+				color = Color(0.77, 0.93, 0.41);
+				break;
+			case Variant::PLANE:
+				color = Color(0.97, 0.44, 0.44);
+				break;
+			case Variant::QUAT:
+				color = Color(0.93, 0.41, 0.64);
+				break;
+			case Variant::AABB:
+				color = Color(0.93, 0.47, 0.57);
+				break;
+			case Variant::BASIS:
+				color = Color(0.89, 0.93, 0.41);
+				break;
+			case Variant::TRANSFORM:
+				color = Color(0.96, 0.66, 0.43);
+				break;
 
-			case Variant::COLOR: color = Color(0.62, 1.0, 0.44); break;
-			case Variant::NODE_PATH: color = Color(0.41, 0.58, 0.93); break;
-			case Variant::_RID: color = Color(0.41, 0.93, 0.6); break;
-			case Variant::OBJECT: color = Color(0.47, 0.95, 0.91); break;
-			case Variant::DICTIONARY: color = Color(0.47, 0.93, 0.69); break;
+			case Variant::COLOR:
+				color = Color(0.62, 1.0, 0.44);
+				break;
+			case Variant::NODE_PATH:
+				color = Color(0.41, 0.58, 0.93);
+				break;
+			case Variant::_RID:
+				color = Color(0.41, 0.93, 0.6);
+				break;
+			case Variant::OBJECT:
+				color = Color(0.47, 0.95, 0.91);
+				break;
+			case Variant::DICTIONARY:
+				color = Color(0.47, 0.93, 0.69);
+				break;
 
-			case Variant::ARRAY: color = Color(0.88, 0.88, 0.88); break;
-			case Variant::PACKED_BYTE_ARRAY: color = Color(0.67, 0.96, 0.78); break;
-			case Variant::PACKED_INT32_ARRAY: color = Color(0.69, 0.86, 0.96); break;
-			case Variant::PACKED_FLOAT32_ARRAY: color = Color(0.59, 0.91, 0.97); break;
-			case Variant::PACKED_INT64_ARRAY: color = Color(0.69, 0.86, 0.96); break;
-			case Variant::PACKED_FLOAT64_ARRAY: color = Color(0.59, 0.91, 0.97); break;
-			case Variant::PACKED_STRING_ARRAY: color = Color(0.62, 0.77, 0.95); break;
-			case Variant::PACKED_VECTOR2_ARRAY: color = Color(0.82, 0.7, 0.96); break;
-			case Variant::PACKED_VECTOR3_ARRAY: color = Color(0.87, 0.61, 0.95); break;
-			case Variant::PACKED_COLOR_ARRAY: color = Color(0.91, 1.0, 0.59); break;
+			case Variant::ARRAY:
+				color = Color(0.88, 0.88, 0.88);
+				break;
+			case Variant::PACKED_BYTE_ARRAY:
+				color = Color(0.67, 0.96, 0.78);
+				break;
+			case Variant::PACKED_INT32_ARRAY:
+				color = Color(0.69, 0.86, 0.96);
+				break;
+			case Variant::PACKED_FLOAT32_ARRAY:
+				color = Color(0.59, 0.91, 0.97);
+				break;
+			case Variant::PACKED_INT64_ARRAY:
+				color = Color(0.69, 0.86, 0.96);
+				break;
+			case Variant::PACKED_FLOAT64_ARRAY:
+				color = Color(0.59, 0.91, 0.97);
+				break;
+			case Variant::PACKED_STRING_ARRAY:
+				color = Color(0.62, 0.77, 0.95);
+				break;
+			case Variant::PACKED_VECTOR2_ARRAY:
+				color = Color(0.82, 0.7, 0.96);
+				break;
+			case Variant::PACKED_VECTOR3_ARRAY:
+				color = Color(0.87, 0.61, 0.95);
+				break;
+			case Variant::PACKED_COLOR_ARRAY:
+				color = Color(0.91, 1.0, 0.59);
+				break;
 
 			default:
 				color.set_hsv(p_type / float(Variant::VARIANT_MAX), 0.7, 0.7);
 		}
 	else
 		switch (p_type) {
-			case Variant::NIL: color = Color(0.15, 0.89, 0.63); break;
+			case Variant::NIL:
+				color = Color(0.15, 0.89, 0.63);
+				break;
 
-			case Variant::BOOL: color = Color(0.43, 0.56, 0.92); break;
-			case Variant::INT: color = Color(0.31, 0.7, 0.91); break;
-			case Variant::FLOAT: color = Color(0.15, 0.8, 0.94); break;
-			case Variant::STRING: color = Color(0.27, 0.56, 0.91); break;
+			case Variant::BOOL:
+				color = Color(0.43, 0.56, 0.92);
+				break;
+			case Variant::INT:
+				color = Color(0.31, 0.7, 0.91);
+				break;
+			case Variant::FLOAT:
+				color = Color(0.15, 0.8, 0.94);
+				break;
+			case Variant::STRING:
+				color = Color(0.27, 0.56, 0.91);
+				break;
 
-			case Variant::VECTOR2: color = Color(0.68, 0.46, 0.93); break;
-			case Variant::VECTOR2I: color = Color(0.68, 0.46, 0.93); break;
-			case Variant::RECT2: color = Color(0.93, 0.46, 0.56); break;
-			case Variant::RECT2I: color = Color(0.93, 0.46, 0.56); break;
-			case Variant::VECTOR3: color = Color(0.86, 0.42, 0.93); break;
-			case Variant::VECTOR3I: color = Color(0.86, 0.42, 0.93); break;
-			case Variant::TRANSFORM2D: color = Color(0.59, 0.81, 0.1); break;
-			case Variant::PLANE: color = Color(0.97, 0.44, 0.44); break;
-			case Variant::QUAT: color = Color(0.93, 0.41, 0.64); break;
-			case Variant::AABB: color = Color(0.93, 0.47, 0.57); break;
-			case Variant::BASIS: color = Color(0.7, 0.73, 0.1); break;
-			case Variant::TRANSFORM: color = Color(0.96, 0.56, 0.28); break;
+			case Variant::VECTOR2:
+				color = Color(0.68, 0.46, 0.93);
+				break;
+			case Variant::VECTOR2I:
+				color = Color(0.68, 0.46, 0.93);
+				break;
+			case Variant::RECT2:
+				color = Color(0.93, 0.46, 0.56);
+				break;
+			case Variant::RECT2I:
+				color = Color(0.93, 0.46, 0.56);
+				break;
+			case Variant::VECTOR3:
+				color = Color(0.86, 0.42, 0.93);
+				break;
+			case Variant::VECTOR3I:
+				color = Color(0.86, 0.42, 0.93);
+				break;
+			case Variant::TRANSFORM2D:
+				color = Color(0.59, 0.81, 0.1);
+				break;
+			case Variant::PLANE:
+				color = Color(0.97, 0.44, 0.44);
+				break;
+			case Variant::QUAT:
+				color = Color(0.93, 0.41, 0.64);
+				break;
+			case Variant::AABB:
+				color = Color(0.93, 0.47, 0.57);
+				break;
+			case Variant::BASIS:
+				color = Color(0.7, 0.73, 0.1);
+				break;
+			case Variant::TRANSFORM:
+				color = Color(0.96, 0.56, 0.28);
+				break;
 
-			case Variant::COLOR: color = Color(0.24, 0.75, 0.0); break;
-			case Variant::NODE_PATH: color = Color(0.41, 0.58, 0.93); break;
-			case Variant::_RID: color = Color(0.17, 0.9, 0.45); break;
-			case Variant::OBJECT: color = Color(0.07, 0.84, 0.76); break;
-			case Variant::DICTIONARY: color = Color(0.34, 0.91, 0.62); break;
+			case Variant::COLOR:
+				color = Color(0.24, 0.75, 0.0);
+				break;
+			case Variant::NODE_PATH:
+				color = Color(0.41, 0.58, 0.93);
+				break;
+			case Variant::_RID:
+				color = Color(0.17, 0.9, 0.45);
+				break;
+			case Variant::OBJECT:
+				color = Color(0.07, 0.84, 0.76);
+				break;
+			case Variant::DICTIONARY:
+				color = Color(0.34, 0.91, 0.62);
+				break;
 
-			case Variant::ARRAY: color = Color(0.45, 0.45, 0.45); break;
-			case Variant::PACKED_BYTE_ARRAY: color = Color(0.38, 0.92, 0.6); break;
-			case Variant::PACKED_INT32_ARRAY: color = Color(0.38, 0.73, 0.92); break;
-			case Variant::PACKED_FLOAT32_ARRAY: color = Color(0.25, 0.83, 0.95); break;
-			case Variant::PACKED_INT64_ARRAY: color = Color(0.38, 0.73, 0.92); break;
-			case Variant::PACKED_FLOAT64_ARRAY: color = Color(0.25, 0.83, 0.95); break;
-			case Variant::PACKED_STRING_ARRAY: color = Color(0.38, 0.62, 0.92); break;
-			case Variant::PACKED_VECTOR2_ARRAY: color = Color(0.62, 0.36, 0.92); break;
-			case Variant::PACKED_VECTOR3_ARRAY: color = Color(0.79, 0.35, 0.92); break;
-			case Variant::PACKED_COLOR_ARRAY: color = Color(0.57, 0.73, 0.0); break;
+			case Variant::ARRAY:
+				color = Color(0.45, 0.45, 0.45);
+				break;
+			case Variant::PACKED_BYTE_ARRAY:
+				color = Color(0.38, 0.92, 0.6);
+				break;
+			case Variant::PACKED_INT32_ARRAY:
+				color = Color(0.38, 0.73, 0.92);
+				break;
+			case Variant::PACKED_FLOAT32_ARRAY:
+				color = Color(0.25, 0.83, 0.95);
+				break;
+			case Variant::PACKED_INT64_ARRAY:
+				color = Color(0.38, 0.73, 0.92);
+				break;
+			case Variant::PACKED_FLOAT64_ARRAY:
+				color = Color(0.25, 0.83, 0.95);
+				break;
+			case Variant::PACKED_STRING_ARRAY:
+				color = Color(0.38, 0.62, 0.92);
+				break;
+			case Variant::PACKED_VECTOR2_ARRAY:
+				color = Color(0.62, 0.36, 0.92);
+				break;
+			case Variant::PACKED_VECTOR3_ARRAY:
+				color = Color(0.79, 0.35, 0.92);
+				break;
+			case Variant::PACKED_COLOR_ARRAY:
+				color = Color(0.57, 0.73, 0.0);
+				break;
 
 			default:
 				color.set_hsv(p_type / float(Variant::VARIANT_MAX), 0.3, 0.3);
@@ -1073,9 +1201,9 @@ void VisualScriptEditor::_member_selected() {
 	if (ti->get_parent() == members->get_root()->get_children()) {
 
 #ifdef OSX_ENABLED
-		bool held_ctrl = InputFilter::get_singleton()->is_key_pressed(KEY_META);
+		bool held_ctrl = Input::get_singleton()->is_key_pressed(KEY_META);
 #else
-		bool held_ctrl = InputFilter::get_singleton()->is_key_pressed(KEY_CONTROL);
+		bool held_ctrl = Input::get_singleton()->is_key_pressed(KEY_CONTROL);
 #endif
 		if (held_ctrl) {
 			ERR_FAIL_COND(!script->has_function(selected));
@@ -1378,7 +1506,7 @@ void VisualScriptEditor::_member_button(Object *p_item, int p_column, int p_butt
 		}
 	} else if (ti->get_parent() == root->get_children()) {
 		selected = ti->get_text(0);
-		function_name_edit->set_position(InputFilter::get_singleton()->get_mouse_position() - Vector2(60, -10));
+		function_name_edit->set_position(Input::get_singleton()->get_mouse_position() - Vector2(60, -10));
 		function_name_edit->popup();
 		function_name_box->set_text(selected);
 		function_name_box->select_all();
@@ -1740,7 +1868,7 @@ void VisualScriptEditor::_input(const Ref<InputEvent> &p_event) {
 	Ref<InputEventMouseButton> key = p_event;
 
 	if (key.is_valid() && !key->is_pressed()) {
-		mouse_up_position = InputFilter::get_singleton()->get_mouse_position();
+		mouse_up_position = Input::get_singleton()->get_mouse_position();
 	}
 }
 
@@ -1750,7 +1878,7 @@ void VisualScriptEditor::_graph_gui_input(const Ref<InputEvent> &p_event) {
 	if (key.is_valid() && key->is_pressed() && key->get_button_mask() == BUTTON_RIGHT) {
 		saved_position = graph->get_local_mouse_position();
 
-		Point2 gpos = InputFilter::get_singleton()->get_mouse_position();
+		Point2 gpos = Input::get_singleton()->get_mouse_position();
 		_generic_search(script->get_instance_base_type(), gpos);
 	}
 }
@@ -2004,9 +2132,9 @@ void VisualScriptEditor::drop_data_fw(const Point2 &p_point, const Variant &p_da
 	if (String(d["type"]) == "visual_script_variable_drag") {
 
 #ifdef OSX_ENABLED
-		bool use_set = InputFilter::get_singleton()->is_key_pressed(KEY_META);
+		bool use_set = Input::get_singleton()->is_key_pressed(KEY_META);
 #else
-		bool use_set = InputFilter::get_singleton()->is_key_pressed(KEY_CONTROL);
+		bool use_set = Input::get_singleton()->is_key_pressed(KEY_CONTROL);
 #endif
 		Vector2 ofs = graph->get_scroll_ofs() + p_point;
 		if (graph->is_using_snap()) {
@@ -2199,9 +2327,9 @@ void VisualScriptEditor::drop_data_fw(const Point2 &p_point, const Variant &p_da
 		}
 
 #ifdef OSX_ENABLED
-		bool use_node = InputFilter::get_singleton()->is_key_pressed(KEY_META);
+		bool use_node = Input::get_singleton()->is_key_pressed(KEY_META);
 #else
-		bool use_node = InputFilter::get_singleton()->is_key_pressed(KEY_CONTROL);
+		bool use_node = Input::get_singleton()->is_key_pressed(KEY_CONTROL);
 #endif
 
 		Array nodes = d["nodes"];
@@ -2263,7 +2391,7 @@ void VisualScriptEditor::drop_data_fw(const Point2 &p_point, const Variant &p_da
 
 		Node *sn = _find_script_node(get_tree()->get_edited_scene_root(), get_tree()->get_edited_scene_root(), script);
 
-		if (!sn && !InputFilter::get_singleton()->is_key_pressed(KEY_SHIFT)) {
+		if (!sn && !Input::get_singleton()->is_key_pressed(KEY_SHIFT)) {
 			EditorNode::get_singleton()->show_warning(vformat(TTR("Can't drop properties because script '%s' is not used in this scene.\nDrop holding 'Shift' to just copy the signature."), get_name()));
 			return;
 		}
@@ -2283,12 +2411,12 @@ void VisualScriptEditor::drop_data_fw(const Point2 &p_point, const Variant &p_da
 
 		ofs /= EDSCALE;
 #ifdef OSX_ENABLED
-		bool use_get = InputFilter::get_singleton()->is_key_pressed(KEY_META);
+		bool use_get = Input::get_singleton()->is_key_pressed(KEY_META);
 #else
-		bool use_get = InputFilter::get_singleton()->is_key_pressed(KEY_CONTROL);
+		bool use_get = Input::get_singleton()->is_key_pressed(KEY_CONTROL);
 #endif
 
-		if (!node || InputFilter::get_singleton()->is_key_pressed(KEY_SHIFT)) {
+		if (!node || Input::get_singleton()->is_key_pressed(KEY_SHIFT)) {
 
 			if (use_get)
 				undo_redo->create_action(TTR("Add Getter Property"));

@@ -601,12 +601,13 @@ Error VulkanContext::_initialize_queues(VkSurfaceKHR surface) {
 	_create_device();
 
 	static PFN_vkGetDeviceProcAddr g_gdpa = nullptr;
-#define GET_DEVICE_PROC_ADDR(dev, entrypoint)                                                              \
-	{                                                                                                      \
-		if (!g_gdpa) g_gdpa = (PFN_vkGetDeviceProcAddr)vkGetInstanceProcAddr(inst, "vkGetDeviceProcAddr"); \
-		fp##entrypoint = (PFN_vk##entrypoint)g_gdpa(dev, "vk" #entrypoint);                                \
-		ERR_FAIL_COND_V_MSG(fp##entrypoint == nullptr, ERR_CANT_CREATE,                                    \
-				"vkGetDeviceProcAddr failed to find vk" #entrypoint);                                      \
+#define GET_DEVICE_PROC_ADDR(dev, entrypoint)                                                     \
+	{                                                                                             \
+		if (!g_gdpa)                                                                              \
+			g_gdpa = (PFN_vkGetDeviceProcAddr)vkGetInstanceProcAddr(inst, "vkGetDeviceProcAddr"); \
+		fp##entrypoint = (PFN_vk##entrypoint)g_gdpa(dev, "vk" #entrypoint);                       \
+		ERR_FAIL_COND_V_MSG(fp##entrypoint == nullptr, ERR_CANT_CREATE,                           \
+				"vkGetDeviceProcAddr failed to find vk" #entrypoint);                             \
 	}
 
 	GET_DEVICE_PROC_ADDR(device, CreateSwapchainKHR);
@@ -1566,6 +1567,15 @@ void VulkanContext::local_device_push_command_buffers(RID p_local_device, const 
 	submit_info.pSignalSemaphores = nullptr;
 
 	VkResult err = vkQueueSubmit(ld->queue, 1, &submit_info, VK_NULL_HANDLE);
+	if (err == VK_ERROR_OUT_OF_HOST_MEMORY) {
+		print_line("out of host memory");
+	}
+	if (err == VK_ERROR_OUT_OF_DEVICE_MEMORY) {
+		print_line("out of device memory");
+	}
+	if (err == VK_ERROR_DEVICE_LOST) {
+		print_line("device lost");
+	}
 	ERR_FAIL_COND(err);
 
 	ld->waiting = true;

@@ -30,7 +30,7 @@
 
 #include "code_editor.h"
 
-#include "core/input/input_filter.h"
+#include "core/input/input.h"
 #include "core/os/keyboard.h"
 #include "core/string_builder.h"
 #include "editor/editor_scale.h"
@@ -309,7 +309,8 @@ void FindReplaceBar::_update_results_count() {
 	results_count = 0;
 
 	String searched = get_search_text();
-	if (searched.empty()) return;
+	if (searched.empty())
+		return;
 
 	String full_text = text_edit->get_text();
 
@@ -317,7 +318,8 @@ void FindReplaceBar::_update_results_count() {
 
 	while (true) {
 		int pos = is_case_sensitive() ? full_text.find(searched, from_pos) : full_text.findn(searched, from_pos);
-		if (pos == -1) break;
+		if (pos == -1)
+			break;
 
 		if (is_whole_words()) {
 			from_pos++; // Making sure we won't hit the same match next time, if we get out via a continue.
@@ -513,7 +515,7 @@ void FindReplaceBar::_search_text_changed(const String &p_text) {
 
 void FindReplaceBar::_search_text_entered(const String &p_text) {
 
-	if (InputFilter::get_singleton()->is_key_pressed(KEY_SHIFT)) {
+	if (Input::get_singleton()->is_key_pressed(KEY_SHIFT)) {
 		search_prev();
 	} else {
 		search_next();
@@ -525,7 +527,7 @@ void FindReplaceBar::_replace_text_entered(const String &p_text) {
 	if (selection_only->is_pressed() && text_edit->is_selection_active()) {
 		_replace_all();
 		_hide_bar();
-	} else if (InputFilter::get_singleton()->is_key_pressed(KEY_SHIFT)) {
+	} else if (Input::get_singleton()->is_key_pressed(KEY_SHIFT)) {
 		_replace();
 		search_prev();
 	} else {

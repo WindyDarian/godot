@@ -349,12 +349,24 @@ bool Animation::_get(const StringName &p_name, Variant &r_ret) const {
 
 			switch (track_get_type(track)) {
 
-				case TYPE_TRANSFORM: r_ret = "transform"; break;
-				case TYPE_VALUE: r_ret = "value"; break;
-				case TYPE_METHOD: r_ret = "method"; break;
-				case TYPE_BEZIER: r_ret = "bezier"; break;
-				case TYPE_AUDIO: r_ret = "audio"; break;
-				case TYPE_ANIMATION: r_ret = "animation"; break;
+				case TYPE_TRANSFORM:
+					r_ret = "transform";
+					break;
+				case TYPE_VALUE:
+					r_ret = "value";
+					break;
+				case TYPE_METHOD:
+					r_ret = "method";
+					break;
+				case TYPE_BEZIER:
+					r_ret = "bezier";
+					break;
+				case TYPE_AUDIO:
+					r_ret = "audio";
+					break;
+				case TYPE_ANIMATION:
+					r_ret = "animation";
+					break;
 			}
 
 			return true;
@@ -1570,7 +1582,7 @@ Animation::TransformKey Animation::_interpolate(const Animation::TransformKey &p
 
 Vector3 Animation::_interpolate(const Vector3 &p_a, const Vector3 &p_b, float p_c) const {
 
-	return p_a.linear_interpolate(p_b, p_c);
+	return p_a.lerp(p_b, p_c);
 }
 Quat Animation::_interpolate(const Quat &p_a, const Quat &p_b, float p_c) const {
 
@@ -1842,7 +1854,8 @@ T Animation::_interpolate(const Vector<TKey<T>> &p_keys, float p_time, Interpola
 			return _cubic_interpolate(p_keys[pre].value, p_keys[idx].value, p_keys[next].value, p_keys[post].value, c);
 
 		} break;
-		default: return p_keys[idx].value;
+		default:
+			return p_keys[idx].value;
 	}
 
 	// do a barrel roll
@@ -2432,7 +2445,7 @@ float Animation::bezier_track_interpolate(int p_track, float p_time) const {
 	Vector2 high_pos = _bezier_interp(high, start, start_out, end_in, end);
 	float c = (t - low_pos.x) / (high_pos.x - low_pos.x);
 
-	return low_pos.linear_interpolate(high_pos, c).y;
+	return low_pos.lerp(high_pos, c).y;
 }
 
 int Animation::audio_track_insert_key(int p_track, float p_time, const RES &p_stream, float p_start_offset, float p_end_offset) {

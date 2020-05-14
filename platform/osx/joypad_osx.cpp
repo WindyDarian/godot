@@ -374,7 +374,8 @@ bool joypad::check_ff_features() {
 	if (ret == FF_OK && (features.supportedEffects & FFCAP_ET_CONSTANTFORCE)) {
 		uint32_t val;
 		ret = FFDeviceGetForceFeedbackProperty(ff_device, FFPROP_FFGAIN, &val, sizeof(val));
-		if (ret != FF_OK) return false;
+		if (ret != FF_OK)
+			return false;
 		int num_axes = features.numFfAxes;
 		ff_axes = (DWORD *)memalloc(sizeof(DWORD) * num_axes);
 		ff_directions = (LONG *)memalloc(sizeof(LONG) * num_axes);
@@ -395,38 +396,38 @@ bool joypad::check_ff_features() {
 static int process_hat_value(int p_min, int p_max, int p_value) {
 	int range = (p_max - p_min + 1);
 	int value = p_value - p_min;
-	int hat_value = InputFilter::HAT_MASK_CENTER;
+	int hat_value = Input::HAT_MASK_CENTER;
 	if (range == 4) {
 		value *= 2;
 	}
 
 	switch (value) {
 		case 0:
-			hat_value = InputFilter::HAT_MASK_UP;
+			hat_value = Input::HAT_MASK_UP;
 			break;
 		case 1:
-			hat_value = InputFilter::HAT_MASK_UP | InputFilter::HAT_MASK_RIGHT;
+			hat_value = Input::HAT_MASK_UP | Input::HAT_MASK_RIGHT;
 			break;
 		case 2:
-			hat_value = InputFilter::HAT_MASK_RIGHT;
+			hat_value = Input::HAT_MASK_RIGHT;
 			break;
 		case 3:
-			hat_value = InputFilter::HAT_MASK_DOWN | InputFilter::HAT_MASK_RIGHT;
+			hat_value = Input::HAT_MASK_DOWN | Input::HAT_MASK_RIGHT;
 			break;
 		case 4:
-			hat_value = InputFilter::HAT_MASK_DOWN;
+			hat_value = Input::HAT_MASK_DOWN;
 			break;
 		case 5:
-			hat_value = InputFilter::HAT_MASK_DOWN | InputFilter::HAT_MASK_LEFT;
+			hat_value = Input::HAT_MASK_DOWN | Input::HAT_MASK_LEFT;
 			break;
 		case 6:
-			hat_value = InputFilter::HAT_MASK_LEFT;
+			hat_value = Input::HAT_MASK_LEFT;
 			break;
 		case 7:
-			hat_value = InputFilter::HAT_MASK_UP | InputFilter::HAT_MASK_LEFT;
+			hat_value = Input::HAT_MASK_UP | Input::HAT_MASK_LEFT;
 			break;
 		default:
-			hat_value = InputFilter::HAT_MASK_CENTER;
+			hat_value = Input::HAT_MASK_CENTER;
 			break;
 	}
 	return hat_value;
@@ -438,8 +439,8 @@ void JoypadOSX::poll_joypads() const {
 	}
 }
 
-static const InputFilter::JoyAxis axis_correct(int p_value, int p_min, int p_max) {
-	InputFilter::JoyAxis jx;
+static const Input::JoyAxis axis_correct(int p_value, int p_min, int p_max) {
+	Input::JoyAxis jx;
 	if (p_min < 0) {
 		jx.min = -1;
 		if (p_value < 0) {
@@ -509,14 +510,16 @@ void JoypadOSX::joypad_vibration_stop(int p_id, uint64_t p_timestamp) {
 
 int JoypadOSX::get_joy_index(int p_id) const {
 	for (int i = 0; i < device_list.size(); i++) {
-		if (device_list[i].id == p_id) return i;
+		if (device_list[i].id == p_id)
+			return i;
 	}
 	return -1;
 }
 
 int JoypadOSX::get_joy_ref(IOHIDDeviceRef p_device) const {
 	for (int i = 0; i < device_list.size(); i++) {
-		if (device_list[i].device_ref == p_device) return i;
+		if (device_list[i].device_ref == p_device)
+			return i;
 	}
 	return -1;
 }
@@ -571,7 +574,7 @@ void JoypadOSX::config_hid_manager(CFArrayRef p_matching_array) const {
 	}
 }
 
-JoypadOSX::JoypadOSX(InputFilter *in) {
+JoypadOSX::JoypadOSX(Input *in) {
 	self = this;
 	input = in;
 

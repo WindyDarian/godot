@@ -32,7 +32,7 @@
 
 #include "core/crypto/crypto.h"
 #include "core/debugger/engine_debugger.h"
-#include "core/input/input_filter.h"
+#include "core/input/input.h"
 #include "core/input/input_map.h"
 #include "core/io/file_access_network.h"
 #include "core/io/file_access_pack.h"
@@ -90,7 +90,7 @@
 // Initialized in setup()
 static Engine *engine = nullptr;
 static ProjectSettings *globals = nullptr;
-static InputFilter *input = nullptr;
+static Input *input = nullptr;
 static InputMap *input_map = nullptr;
 static TranslationServer *translation_server = nullptr;
 static Performance *performance = nullptr;
@@ -139,6 +139,7 @@ static DisplayServer::ScreenOrientation window_orientation = DisplayServer::SCRE
 static uint32_t window_flags = 0;
 static Size2i window_size = Size2i(1024, 600);
 static bool window_vsync_via_compositor = false;
+static bool disable_wintab = false;
 
 static int init_screen = -1;
 static bool init_fullscreen = false;
@@ -314,6 +315,7 @@ void Main::print_help(const char *p_binary) {
 	OS::get_singleton()->print("  --enable-vsync-via-compositor    When vsync is enabled, vsync via the OS' window compositor (Windows only).\n");
 	OS::get_singleton()->print("  --disable-vsync-via-compositor   Disable vsync via the OS' window compositor (Windows only).\n");
 	OS::get_singleton()->print("  --single-window                  Use a single window (no separate subwindows).\n");
+	OS::get_singleton()->print("  --disable-wintab                 Disable WinTab API and always use Windows Ink API for the pen input (Windows only).\n");
 	OS::get_singleton()->print("\n");
 #endif
 
@@ -322,7 +324,7 @@ void Main::print_help(const char *p_binary) {
 	OS::get_singleton()->print("  -b, --breakpoints                Breakpoint list as source::line comma-separated pairs, no spaces (use %%20 instead).\n");
 	OS::get_singleton()->print("  --profiling                      Enable profiling in the script debugger.\n");
 	OS::get_singleton()->print("  --gpu-abort                      Abort on GPU errors (usually validation layer errors), may help see the problem if your system freezes.\n");
-	OS::get_singleton()->print("  --remote-debug <address>         Remote debug (<host/IP>:<port> address).\n");
+	OS::get_singleton()->print("  --remote-debug <uri>             Remote debug (<protocol>://<host/IP>[:<port>], e.g. tcp://127.0.0.1:6007).\n");
 #if defined(DEBUG_ENABLED) && !defined(SERVER_ENABLED)
 	OS::get_singleton()->print("  --debug-collisions               Show collision shapes when running the scene.\n");
 	OS::get_singleton()->print("  --debug-navigation               Show navigation polygons when running the scene.\n");
@@ -595,6 +597,9 @@ Error Main::setup(const char *execpath, int argc, char *argv[], bool p_second_ph
 		} else if (I->get() == "--gpu-abort") { // force windowed window
 
 			Engine::singleton->abort_on_gpu_errors = true;
+		} else if (I->get() == "--disable-wintab") {
+
+			disable_wintab = true;
 		} else if (I->get() == "--single-window") { // force single window
 
 			single_window = true;
@@ -839,11 +844,10 @@ Error Main::setup(const char *execpath, int argc, char *argv[], bool p_second_ph
 			if (I->next()) {
 
 				debug_uri = I->next()->get();
-				if (debug_uri.find(":") == -1) { // wrong address
-					OS::get_singleton()->print("Invalid debug host address, it should be of the form <host/IP>:<port>.\n");
+				if (debug_uri.find("://") == -1) { // wrong address
+					OS::get_singleton()->print("Invalid debug host address, it should be of the form <protocol>://<host/IP>:<port>.\n");
 					goto error;
 				}
-				debug_uri = "tcp://" + debug_uri; // will support multiple protocols eventually.
 				N = I->next()->next();
 			} else {
 				OS::get_singleton()->print("Missing remote debug host address, aborting.\n");
@@ -1079,6 +1083,13 @@ Error Main::setup(const char *execpath, int argc, char *argv[], bool p_second_ph
 
 	OS::get_singleton()->_vsync_via_compositor = window_vsync_via_compositor;
 
+	if (!disable_wintab) {
+		// No "--disable_wintab" option
+		disable_wintab = GLOBAL_DEF("display/window/disable_wintab_api", false);
+	}
+
+	OS::get_singleton()->_disable_wintab = disable_wintab;
+
 	/* todo restore
 	OS::get_singleton()->_allow_layered = GLOBAL_DEF("display/window/per_pixel_transparency/allowed", false);
 	video_mode.layered = GLOBAL_DEF("display/window/per_pixel_transparency/enabled", false);
@@ -1249,7 +1260,7 @@ Error Main::setup2(Thread::ID p_main_tid_override) {
 
 	/* Initialize Input */
 
-	input = memnew(InputFilter);
+	input = memnew(Input);
 
 	/* Iniitalize Display Server */
 
@@ -1403,7 +1414,7 @@ Error Main::setup2(Thread::ID p_main_tid_override) {
 	GLOBAL_DEF("application/config/windows_native_icon", String());
 	ProjectSettings::get_singleton()->set_custom_property_info("application/config/windows_native_icon", PropertyInfo(Variant::STRING, "application/config/windows_native_icon", PROPERTY_HINT_FILE, "*.ico"));
 
-	InputFilter *id = InputFilter::get_singleton();
+	Input *id = Input::get_singleton();
 	if (id) {
 		if (bool(GLOBAL_DEF("input_devices/pointing/emulate_touch_from_mouse", false)) && !(editor || project_manager)) {
 
@@ -1438,7 +1449,7 @@ Error Main::setup2(Thread::ID p_main_tid_override) {
 		Ref<Texture2D> cursor = ResourceLoader::load(ProjectSettings::get_singleton()->get("display/mouse_cursor/custom_image"));
 		if (cursor.is_valid()) {
 			Vector2 hotspot = ProjectSettings::get_singleton()->get("display/mouse_cursor/custom_image_hotspot");
-			InputFilter::get_singleton()->set_custom_mouse_cursor(cursor, InputFilter::CURSOR_ARROW, hotspot);
+			Input::get_singleton()->set_custom_mouse_cursor(cursor, Input::CURSOR_ARROW, hotspot);
 		}
 	}
 #ifdef TOOLS_ENABLED
@@ -1999,7 +2010,7 @@ bool Main::start() {
 		if (!project_manager && !editor) { // game
 
 			// Load SSL Certificates from Project Settings (or builtin).
-			Crypto::load_default_certificates(GLOBAL_DEF("network/ssl/certificates", ""));
+			Crypto::load_default_certificates(GLOBAL_DEF("network/ssl/certificate_bundle_override", ""));
 
 			if (game_path != "") {
 				Node *scene = nullptr;
@@ -2051,9 +2062,11 @@ bool Main::start() {
 		}
 
 		if (project_manager || editor) {
-			// Hide console window if requested (Windows-only).
-			bool hide_console = EditorSettings::get_singleton()->get_setting("interface/editor/hide_console_window");
-			DisplayServer::get_singleton()->console_set_visible(!hide_console);
+			if (DisplayServer::get_singleton()->has_feature(DisplayServer::FEATURE_CONSOLE_WINDOW)) {
+				// Hide console window if requested (Windows-only).
+				bool hide_console = EditorSettings::get_singleton()->get_setting("interface/editor/hide_console_window");
+				DisplayServer::get_singleton()->console_set_visible(!hide_console);
+			}
 
 			// Load SSL Certificates from Editor Settings (or builtin)
 			Crypto::load_default_certificates(EditorSettings::get_singleton()->get_setting("network/ssl/editor_ssl_certificates").operator String());
@@ -2248,7 +2261,8 @@ bool Main::iteration() {
 		uint64_t time_step = 1000000L / target_fps;
 		target_ticks += time_step;
 		uint64_t current_ticks = OS::get_singleton()->get_ticks_usec();
-		if (current_ticks < target_ticks) OS::get_singleton()->delay_usec(target_ticks - current_ticks);
+		if (current_ticks < target_ticks)
+			OS::get_singleton()->delay_usec(target_ticks - current_ticks);
 		current_ticks = OS::get_singleton()->get_ticks_usec();
 		target_ticks = MIN(MAX(target_ticks, current_ticks - time_step), current_ticks + time_step);
 	}

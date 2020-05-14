@@ -32,7 +32,7 @@
 
 #include "core/bind/core_bind.h"
 #include "core/class_db.h"
-#include "core/input/input_filter.h"
+#include "core/input/input.h"
 #include "core/io/config_file.h"
 #include "core/io/image_loader.h"
 #include "core/io/resource_loader.h"
@@ -158,6 +158,7 @@
 #include "editor/plugins/style_box_editor_plugin.h"
 #include "editor/plugins/text_editor.h"
 #include "editor/plugins/texture_editor_plugin.h"
+#include "editor/plugins/texture_layered_editor_plugin.h"
 #include "editor/plugins/texture_region_editor_plugin.h"
 #include "editor/plugins/theme_editor_plugin.h"
 #include "editor/plugins/tile_map_editor_plugin.h"
@@ -381,6 +382,8 @@ void EditorNode::_notification(int p_what) {
 				RS::get_singleton()->shadows_quality_set(shadows_quality);
 				RS::ShadowQuality directional_shadow_quality = RS::ShadowQuality(int(GLOBAL_GET("rendering/quality/directional_shadow/soft_shadow_quality")));
 				RS::get_singleton()->directional_shadow_quality_set(directional_shadow_quality);
+				float probe_update_speed = GLOBAL_GET("rendering/lightmapper/probe_capture_update_speed");
+				RS::get_singleton()->lightmap_set_probe_capture_update_speed(probe_update_speed);
 			}
 
 			ResourceImporterTexture::get_singleton()->update_imports();
@@ -713,7 +716,6 @@ void EditorNode::_sources_changed(bool p_exist) {
 
 		// Reload the global shader variables, but this time
 		// loading texures, as they are now properly imported.
-		print_line("done scanning, reload textures");
 		RenderingServer::get_singleton()->global_variables_load_settings(true);
 
 		// Start preview thread now that it's safe.
@@ -1194,8 +1196,6 @@ void EditorNode::_save_scene_with_preview(String p_file, int p_idx) {
 				img->resize(preview_size, preview_size, Image::INTERPOLATE_LANCZOS);
 			}
 			img->convert(Image::FORMAT_RGB8);
-
-			img->flip_y();
 
 			//save thumbnail directly, as thumbnailer may not update due to actual scene not changing md5
 			String temp_path = EditorSettings::get_singleton()->get_cache_dir();
@@ -1749,7 +1749,7 @@ void EditorNode::push_item(Object *p_object, const String &p_property, bool p_in
 
 void EditorNode::_save_default_environment() {
 
-	Ref<Environment> fallback = get_tree()->get_root()->get_world()->get_fallback_environment();
+	Ref<Environment> fallback = get_tree()->get_root()->get_world_3d()->get_fallback_environment();
 
 	if (fallback.is_valid() && fallback->get_path().is_resource_file()) {
 		Map<RES, bool> processed;
@@ -2072,9 +2072,11 @@ void EditorNode::_run(bool p_current, const String &p_custom) {
 	args = ProjectSettings::get_singleton()->get("editor/main_run_args");
 	skip_breakpoints = EditorDebuggerNode::get_singleton()->is_skip_breakpoints();
 
+	EditorDebuggerNode::get_singleton()->start();
 	Error error = editor_run.run(run_filename, args, breakpoints, skip_breakpoints);
 	if (error != OK) {
 
+		EditorDebuggerNode::get_singleton()->stop();
 		show_accept(TTR("Could not start subprocess!"), TTR("OK"));
 		return;
 	}
@@ -2094,6 +2096,24 @@ void EditorNode::_run(bool p_current, const String &p_custom) {
 	stop_button->set_disabled(false);
 
 	_playing_edited = p_current;
+}
+
+void EditorNode::_run_native(const Ref<EditorExportPreset> &p_preset) {
+
+	bool autosave = EDITOR_GET("run/auto_save/save_before_running");
+	if (autosave) {
+		_menu_option_confirm(FILE_SAVE_ALL_SCENES, false);
+	}
+	if (run_native->is_deploy_debug_remote_enabled()) {
+		_menu_option_confirm(RUN_STOP, true);
+
+		if (!call_build())
+			return; // build failed
+
+		EditorDebuggerNode::get_singleton()->start(p_preset->get_platform()->get_debug_protocol());
+		emit_signal("play_pressed");
+		editor_run.run_native_notify();
+	}
 }
 
 void EditorNode::_menu_option_confirm(int p_option, bool p_confirmed) {
@@ -2366,7 +2386,7 @@ void EditorNode::_menu_option_confirm(int p_option, bool p_confirmed) {
 
 		case EDIT_UNDO: {
 
-			if (InputFilter::get_singleton()->get_mouse_button_mask() & 0x7) {
+			if (Input::get_singleton()->get_mouse_button_mask() & 0x7) {
 				log->add_message("Can't undo while mouse buttons are pressed.", EditorLog::MSG_TYPE_EDITOR);
 			} else {
 				String action = editor_data.get_undo_redo().get_current_action_name();
@@ -2380,7 +2400,7 @@ void EditorNode::_menu_option_confirm(int p_option, bool p_confirmed) {
 		} break;
 		case EDIT_REDO: {
 
-			if (InputFilter::get_singleton()->get_mouse_button_mask() & 0x7) {
+			if (Input::get_singleton()->get_mouse_button_mask() & 0x7) {
 				log->add_message("Can't redo while mouse buttons are pressed.", EditorLog::MSG_TYPE_EDITOR);
 			} else {
 				if (!editor_data.get_undo_redo().redo()) {
@@ -2392,7 +2412,7 @@ void EditorNode::_menu_option_confirm(int p_option, bool p_confirmed) {
 			}
 		} break;
 
-		case EDIT_REVERT: {
+		case EDIT_RELOAD_SAVED_SCENE: {
 
 			Node *scene = get_edited_scene();
 
@@ -2407,8 +2427,9 @@ void EditorNode::_menu_option_confirm(int p_option, bool p_confirmed) {
 			}
 
 			if (unsaved_cache && !p_confirmed) {
-				confirmation->get_ok()->set_text(TTR("Revert"));
-				confirmation->set_text(TTR("This action cannot be undone. Revert anyway?"));
+				confirmation->get_ok()->set_text(TTR("Reload Saved Scene"));
+				confirmation->set_text(
+						TTR("The current scene has unsaved changes.\nReload the saved scene anyway? This action cannot be undone."));
 				confirmation->popup_centered();
 				break;
 			}
@@ -2464,6 +2485,7 @@ void EditorNode::_menu_option_confirm(int p_option, bool p_confirmed) {
 					}
 				}
 			}
+			EditorDebuggerNode::get_singleton()->stop();
 			emit_signal("stop_pressed");
 
 		} break;
@@ -2481,22 +2503,6 @@ void EditorNode::_menu_option_confirm(int p_option, bool p_confirmed) {
 			_menu_option_confirm(RUN_STOP, true);
 			_run(true);
 
-		} break;
-		case RUN_PLAY_NATIVE: {
-
-			bool autosave = EDITOR_GET("run/auto_save/save_before_running");
-			if (autosave) {
-				_menu_option_confirm(FILE_SAVE_ALL_SCENES, false);
-			}
-			if (run_native->is_deploy_debug_remote_enabled()) {
-				_menu_option_confirm(RUN_STOP, true);
-
-				if (!call_build())
-					break; // build failed
-
-				emit_signal("play_pressed");
-				editor_run.run_native_notify();
-			}
 		} break;
 		case RUN_SCENE_SETTINGS: {
 
@@ -3084,7 +3090,8 @@ void EditorNode::_remove_edited_scene(bool p_change_tab) {
 		ScriptEditor::get_singleton()->close_builtin_scripts_from_scene(editor_data.get_scene_path(old_index));
 	}
 
-	if (p_change_tab) _scene_tab_changed(new_index);
+	if (p_change_tab)
+		_scene_tab_changed(new_index);
 	editor_data.remove_scene(old_index);
 	editor_data.get_undo_redo().clear_history(false);
 	_update_title();
@@ -5566,7 +5573,7 @@ int EditorNode::execute_and_show_output(const String &p_title, const String &p_p
 
 EditorNode::EditorNode() {
 
-	InputFilter::get_singleton()->set_use_accumulated_input(true);
+	Input::get_singleton()->set_use_accumulated_input(true);
 	Resource::_get_local_scene_func = _resource_get_edited_scene;
 
 	RenderingServer::get_singleton()->set_debug_generate_wireframes(true);
@@ -5582,7 +5589,7 @@ EditorNode::EditorNode() {
 	ResourceLoader::clear_translation_remaps(); //no remaps using during editor
 	ResourceLoader::clear_path_remaps();
 
-	InputFilter *id = InputFilter::get_singleton();
+	Input *id = Input::get_singleton();
 
 	if (id) {
 
@@ -5593,7 +5600,7 @@ EditorNode::EditorNode() {
 			}
 		}
 
-		if (!found_touchscreen && InputFilter::get_singleton()) {
+		if (!found_touchscreen && Input::get_singleton()) {
 			//only if no touchscreen ui hint, set emulation
 			id->set_emulate_touch_from_mouse(false); //just disable just in case
 		}
@@ -5679,7 +5686,7 @@ EditorNode::EditorNode() {
 		import_texture.instance();
 		ResourceFormatImporter::get_singleton()->add_importer(import_texture);
 
-		/*		Ref<ResourceImporterLayeredTexture> import_cubemap;
+		Ref<ResourceImporterLayeredTexture> import_cubemap;
 		import_cubemap.instance();
 		import_cubemap->set_mode(ResourceImporterLayeredTexture::MODE_CUBEMAP);
 		ResourceFormatImporter::get_singleton()->add_importer(import_cubemap);
@@ -5693,7 +5700,12 @@ EditorNode::EditorNode() {
 		import_cubemap_array.instance();
 		import_cubemap_array->set_mode(ResourceImporterLayeredTexture::MODE_CUBEMAP_ARRAY);
 		ResourceFormatImporter::get_singleton()->add_importer(import_cubemap_array);
-*/
+
+		/*Ref<ResourceImporterLayeredTexture> import_3d;
+		import_3d.instance();
+		import_3d->set_mode(ResourceImporterLayeredTexture::MODE_3D);
+		ResourceFormatImporter::get_singleton()->add_importer(import_3d);*/
+
 		Ref<ResourceImporterImage> import_image;
 		import_image.instance();
 		ResourceFormatImporter::get_singleton()->add_importer(import_image);
@@ -6158,7 +6170,7 @@ EditorNode::EditorNode() {
 	p->add_shortcut(ED_SHORTCUT("editor/redo", TTR("Redo"), KEY_MASK_CMD + KEY_MASK_SHIFT + KEY_Z), EDIT_REDO, true);
 
 	p->add_separator();
-	p->add_shortcut(ED_SHORTCUT("editor/revert_scene", TTR("Revert Scene")), EDIT_REVERT);
+	p->add_shortcut(ED_SHORTCUT("editor/reload_saved_scene", TTR("Reload Saved Scene")), EDIT_RELOAD_SAVED_SCENE);
 	p->add_shortcut(ED_SHORTCUT("editor/close_scene", TTR("Close Scene"), KEY_MASK_CMD + KEY_MASK_SHIFT + KEY_W), FILE_CLOSE);
 
 	recent_scenes = memnew(PopupMenu);
@@ -6340,7 +6352,7 @@ EditorNode::EditorNode() {
 
 	run_native = memnew(EditorRunNative);
 	play_hb->add_child(run_native);
-	run_native->connect("native_run", callable_mp(this, &EditorNode::_menu_option), varray(RUN_PLAY_NATIVE));
+	run_native->connect("native_run", callable_mp(this, &EditorNode::_run_native));
 
 	play_scene_button = memnew(ToolButton);
 	play_hb->add_child(play_scene_button);
@@ -6664,7 +6676,7 @@ EditorNode::EditorNode() {
 	add_editor_plugin(memnew(SpriteFramesEditorPlugin(this)));
 	add_editor_plugin(memnew(TextureRegionEditorPlugin(this)));
 	add_editor_plugin(memnew(GIProbeEditorPlugin(this)));
-	//add_editor_plugin(memnew(BakedLightmapEditorPlugin(this)));
+	add_editor_plugin(memnew(BakedLightmapEditorPlugin(this)));
 	add_editor_plugin(memnew(Path2DEditorPlugin(this)));
 	add_editor_plugin(memnew(Path3DEditorPlugin(this)));
 	add_editor_plugin(memnew(Line2DEditorPlugin(this)));
@@ -6675,6 +6687,7 @@ EditorNode::EditorNode() {
 	add_editor_plugin(memnew(CollisionShape2DEditorPlugin(this)));
 	add_editor_plugin(memnew(CurveEditorPlugin(this)));
 	add_editor_plugin(memnew(TextureEditorPlugin(this)));
+	add_editor_plugin(memnew(TextureLayeredEditorPlugin(this)));
 	add_editor_plugin(memnew(AudioStreamEditorPlugin(this)));
 	add_editor_plugin(memnew(AudioBusesEditorPlugin(audio_bus_editor)));
 	add_editor_plugin(memnew(Skeleton3DEditorPlugin(this)));

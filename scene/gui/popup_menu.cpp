@@ -30,7 +30,7 @@
 
 #include "popup_menu.h"
 
-#include "core/input/input_filter.h"
+#include "core/input/input.h"
 #include "core/os/keyboard.h"
 #include "core/os/os.h"
 #include "core/print_string.h"
@@ -594,7 +594,7 @@ void PopupMenu::_notification(int p_what) {
 		} break;
 		case NOTIFICATION_POST_POPUP: {
 
-			initial_button_mask = InputFilter::get_singleton()->get_mouse_button_mask();
+			initial_button_mask = Input::get_singleton()->get_mouse_button_mask();
 			during_grabbed_click = (bool)initial_button_mask;
 		} break;
 		case NOTIFICATION_WM_SIZE_CHANGED: {
@@ -1079,6 +1079,11 @@ bool PopupMenu::is_item_shortcut_disabled(int p_idx) const {
 	return items[p_idx].shortcut_is_disabled;
 }
 
+int PopupMenu::get_current_index() const {
+
+	return mouse_over;
+}
+
 int PopupMenu::get_item_count() const {
 
 	return items.size();
@@ -1457,6 +1462,7 @@ void PopupMenu::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_item_tooltip", "idx"), &PopupMenu::get_item_tooltip);
 	ClassDB::bind_method(D_METHOD("get_item_shortcut", "idx"), &PopupMenu::get_item_shortcut);
 
+	ClassDB::bind_method(D_METHOD("get_current_index"), &PopupMenu::get_current_index);
 	ClassDB::bind_method(D_METHOD("get_item_count"), &PopupMenu::get_item_count);
 
 	ClassDB::bind_method(D_METHOD("remove_item", "idx"), &PopupMenu::remove_item);

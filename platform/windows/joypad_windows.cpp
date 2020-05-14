@@ -54,7 +54,7 @@ JoypadWindows::JoypadWindows() {
 
 JoypadWindows::JoypadWindows(HWND *hwnd) {
 
-	input = InputFilter::get_singleton();
+	input = Input::get_singleton();
 	hWnd = hwnd;
 	joypad_count = 0;
 	dinput = nullptr;
@@ -112,7 +112,8 @@ bool JoypadWindows::is_xinput_device(const GUID *p_guid) {
 		return false;
 	}
 	dev_list = (PRAWINPUTDEVICELIST)malloc(sizeof(RAWINPUTDEVICELIST) * dev_list_count);
-	if (!dev_list) return false;
+	if (!dev_list)
+		return false;
 
 	if (GetRawInputDeviceList(dev_list, &dev_list_count, sizeof(RAWINPUTDEVICELIST)) == (UINT)-1) {
 		free(dev_list);
@@ -267,7 +268,8 @@ void JoypadWindows::close_joypad(int id) {
 		return;
 	}
 
-	if (!d_joypads[id].attached) return;
+	if (!d_joypads[id].attached)
+		return;
 
 	d_joypads[id].di_joy->Unacquire();
 	d_joypads[id].di_joy->Release();
@@ -345,12 +347,12 @@ void JoypadWindows::process_joypads() {
 				button_mask = button_mask * 2;
 			}
 
-			input->joy_axis(joy.id, JOY_AXIS_0, axis_correct(joy.state.Gamepad.sThumbLX, true));
-			input->joy_axis(joy.id, JOY_AXIS_1, axis_correct(joy.state.Gamepad.sThumbLY, true, false, true));
-			input->joy_axis(joy.id, JOY_AXIS_2, axis_correct(joy.state.Gamepad.sThumbRX, true));
-			input->joy_axis(joy.id, JOY_AXIS_3, axis_correct(joy.state.Gamepad.sThumbRY, true, false, true));
-			input->joy_axis(joy.id, JOY_AXIS_4, axis_correct(joy.state.Gamepad.bLeftTrigger, true, true));
-			input->joy_axis(joy.id, JOY_AXIS_5, axis_correct(joy.state.Gamepad.bRightTrigger, true, true));
+			input->joy_axis(joy.id, JOY_AXIS_LEFT_X, axis_correct(joy.state.Gamepad.sThumbLX, true));
+			input->joy_axis(joy.id, JOY_AXIS_LEFT_Y, axis_correct(joy.state.Gamepad.sThumbLY, true, false, true));
+			input->joy_axis(joy.id, JOY_AXIS_RIGHT_X, axis_correct(joy.state.Gamepad.sThumbRX, true));
+			input->joy_axis(joy.id, JOY_AXIS_RIGHT_Y, axis_correct(joy.state.Gamepad.sThumbRY, true, false, true));
+			input->joy_axis(joy.id, JOY_AXIS_TRIGGER_LEFT, axis_correct(joy.state.Gamepad.bLeftTrigger, true, true));
+			input->joy_axis(joy.id, JOY_AXIS_TRIGGER_RIGHT, axis_correct(joy.state.Gamepad.bRightTrigger, true, true));
 			joy.last_packet = joy.state.dwPacketNumber;
 		}
 		uint64_t timestamp = input->get_joy_vibration_timestamp(joy.id);
@@ -436,46 +438,46 @@ void JoypadWindows::post_hat(int p_device, DWORD p_dpad) {
 	//  BOOL POVCentered = (LOWORD(dwPOV) == 0xFFFF);"
 	// https://docs.microsoft.com/en-us/previous-versions/windows/desktop/ee416628(v%3Dvs.85)#remarks
 	if (LOWORD(p_dpad) == 0xFFFF) {
-		dpad_val = InputFilter::HAT_MASK_CENTER;
+		dpad_val = Input::HAT_MASK_CENTER;
 	}
 	if (p_dpad == 0) {
 
-		dpad_val = InputFilter::HAT_MASK_UP;
+		dpad_val = Input::HAT_MASK_UP;
 
 	} else if (p_dpad == 4500) {
 
-		dpad_val = (InputFilter::HAT_MASK_UP | InputFilter::HAT_MASK_RIGHT);
+		dpad_val = (Input::HAT_MASK_UP | Input::HAT_MASK_RIGHT);
 
 	} else if (p_dpad == 9000) {
 
-		dpad_val = InputFilter::HAT_MASK_RIGHT;
+		dpad_val = Input::HAT_MASK_RIGHT;
 
 	} else if (p_dpad == 13500) {
 
-		dpad_val = (InputFilter::HAT_MASK_RIGHT | InputFilter::HAT_MASK_DOWN);
+		dpad_val = (Input::HAT_MASK_RIGHT | Input::HAT_MASK_DOWN);
 
 	} else if (p_dpad == 18000) {
 
-		dpad_val = InputFilter::HAT_MASK_DOWN;
+		dpad_val = Input::HAT_MASK_DOWN;
 
 	} else if (p_dpad == 22500) {
 
-		dpad_val = (InputFilter::HAT_MASK_DOWN | InputFilter::HAT_MASK_LEFT);
+		dpad_val = (Input::HAT_MASK_DOWN | Input::HAT_MASK_LEFT);
 
 	} else if (p_dpad == 27000) {
 
-		dpad_val = InputFilter::HAT_MASK_LEFT;
+		dpad_val = Input::HAT_MASK_LEFT;
 
 	} else if (p_dpad == 31500) {
 
-		dpad_val = (InputFilter::HAT_MASK_LEFT | InputFilter::HAT_MASK_UP);
+		dpad_val = (Input::HAT_MASK_LEFT | Input::HAT_MASK_UP);
 	}
 	input->joy_hat(p_device, dpad_val);
 };
 
-InputFilter::JoyAxis JoypadWindows::axis_correct(int p_val, bool p_xinput, bool p_trigger, bool p_negate) const {
+Input::JoyAxis JoypadWindows::axis_correct(int p_val, bool p_xinput, bool p_trigger, bool p_negate) const {
 
-	InputFilter::JoyAxis jx;
+	Input::JoyAxis jx;
 	if (Math::abs(p_val) < MIN_JOY_AXIS) {
 		jx.min = p_trigger ? 0 : -1;
 		jx.value = 0.0f;

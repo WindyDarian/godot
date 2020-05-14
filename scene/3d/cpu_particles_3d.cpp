@@ -69,6 +69,7 @@ void CPUParticles3D::set_amount(int p_amount) {
 
 		for (int i = 0; i < p_amount; i++) {
 			w[i].active = false;
+			w[i].custom[3] = 0.0; // Make sure w component isn't garbage data
 		}
 	}
 
@@ -1003,7 +1004,8 @@ void CPUParticles3D::_particles_process(float p_delta) {
 
 		//scale by scale
 		float base_scale = tex_scale * Math::lerp(parameters[PARAM_SCALE], 1.0f, p.scale_rand * randomness[PARAM_SCALE]);
-		if (base_scale < 0.000001) base_scale = 0.000001;
+		if (base_scale < 0.000001)
+			base_scale = 0.000001;
 
 		p.transform.basis.scale(Vector3(1, 1, 1) * base_scale);
 
@@ -1252,7 +1254,8 @@ void CPUParticles3D::convert_from_particles(Node *p_particles) {
 	set_param(m_param, material->get_param(ParticlesMaterial::m_param));                  \
 	{                                                                                     \
 		Ref<CurveTexture> ctex = material->get_param_texture(ParticlesMaterial::m_param); \
-		if (ctex.is_valid()) set_param_curve(m_param, ctex->get_curve());                 \
+		if (ctex.is_valid())                                                              \
+			set_param_curve(m_param, ctex->get_curve());                                  \
 	}                                                                                     \
 	set_param_randomness(m_param, material->get_param_randomness(ParticlesMaterial::m_param));
 

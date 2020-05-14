@@ -32,11 +32,14 @@
 
 #include "core/os/keyboard.h"
 #include "editor/debugger/editor_debugger_node.h"
+#include "editor/debugger/editor_debugger_server.h"
 #include "editor/editor_node.h"
 #include "editor/fileserver/editor_file_server.h"
 #include "scene/gui/menu_button.h"
 
 DebuggerEditorPlugin::DebuggerEditorPlugin(EditorNode *p_editor, MenuButton *p_debug_menu) {
+	EditorDebuggerServer::initialize();
+
 	ED_SHORTCUT("debugger/step_into", TTR("Step Into"), KEY_F11);
 	ED_SHORTCUT("debugger/step_over", TTR("Step Over"), KEY_F10);
 	ED_SHORTCUT("debugger/break", TTR("Break"));
@@ -96,6 +99,7 @@ DebuggerEditorPlugin::DebuggerEditorPlugin(EditorNode *p_editor, MenuButton *p_d
 }
 
 DebuggerEditorPlugin::~DebuggerEditorPlugin() {
+	EditorDebuggerServer::deinitialize();
 	memdelete(file_server);
 }
 
@@ -179,12 +183,18 @@ void DebuggerEditorPlugin::_update_debug_options() {
 	bool check_reload_scripts = EditorSettings::get_singleton()->get_project_metadata("debug_options", "run_reload_scripts", false);
 	int instances = EditorSettings::get_singleton()->get_project_metadata("debug_options", "run_debug_instances", 1);
 
-	if (check_deploy_remote) _menu_option(RUN_DEPLOY_REMOTE_DEBUG);
-	if (check_file_server) _menu_option(RUN_FILE_SERVER);
-	if (check_debug_collisions) _menu_option(RUN_DEBUG_COLLISONS);
-	if (check_debug_navigation) _menu_option(RUN_DEBUG_NAVIGATION);
-	if (check_live_debug) _menu_option(RUN_LIVE_DEBUG);
-	if (check_reload_scripts) _menu_option(RUN_RELOAD_SCRIPTS);
+	if (check_deploy_remote)
+		_menu_option(RUN_DEPLOY_REMOTE_DEBUG);
+	if (check_file_server)
+		_menu_option(RUN_FILE_SERVER);
+	if (check_debug_collisions)
+		_menu_option(RUN_DEBUG_COLLISONS);
+	if (check_debug_navigation)
+		_menu_option(RUN_DEBUG_NAVIGATION);
+	if (check_live_debug)
+		_menu_option(RUN_LIVE_DEBUG);
+	if (check_reload_scripts)
+		_menu_option(RUN_RELOAD_SCRIPTS);
 
 	int len = instances_menu->get_item_count();
 	for (int idx = 0; idx < len; idx++) {

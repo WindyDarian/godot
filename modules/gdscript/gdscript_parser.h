@@ -613,6 +613,7 @@ private:
 	Node *_parse_expression(Node *p_parent, bool p_static, bool p_allow_assign = false, bool p_parsing_constant = false);
 	Node *_reduce_expression(Node *p_node, bool p_to_const = false);
 	Node *_parse_and_reduce_expression(Node *p_parent, bool p_static, bool p_reduce_const = false, bool p_allow_assign = false);
+	bool _reduce_export_var_type(Variant &p_value, int p_line = 0);
 
 	PatternNode *_parse_pattern(bool p_static);
 	void _parse_pattern_block(BlockNode *p_block, Vector<PatternBranchNode *> &p_branches, bool p_static);
@@ -623,6 +624,7 @@ private:
 	void _parse_extends(ClassNode *p_class);
 	void _parse_class(ClassNode *p_class);
 	bool _end_statement();
+	void _set_end_statement_error(String p_name);
 
 	void _determine_inheritance(ClassNode *p_class, bool p_recursive = true);
 	bool _parse_type(DataType &r_type, bool p_can_be_void = false);
@@ -633,7 +635,7 @@ private:
 	DataType _get_operation_type(const Variant::Operator p_op, const DataType &p_a, const DataType &p_b, bool &r_valid) const;
 	Variant::Operator _get_variant_operation(const OperatorNode::Operator &p_op) const;
 	bool _get_function_signature(DataType &p_base_type, const StringName &p_function, DataType &r_return_type, List<DataType> &r_arg_types, int &r_default_arg_count, bool &r_static, bool &r_vararg) const;
-	bool _get_member_type(const DataType &p_base_type, const StringName &p_member, DataType &r_member_type) const;
+	bool _get_member_type(const DataType &p_base_type, const StringName &p_member, DataType &r_member_type, bool *r_is_const = nullptr) const;
 	bool _is_type_compatible(const DataType &p_container, const DataType &p_expression, bool p_allow_implicit_conversion = false) const;
 	Node *_get_default_value_for_type(const DataType &p_type, int p_line = -1);
 
@@ -646,12 +648,14 @@ private:
 	void _check_block_types(BlockNode *p_block);
 	_FORCE_INLINE_ void _mark_line_as_safe(int p_line) const {
 #ifdef DEBUG_ENABLED
-		if (safe_lines) safe_lines->insert(p_line);
+		if (safe_lines)
+			safe_lines->insert(p_line);
 #endif // DEBUG_ENABLED
 	}
 	_FORCE_INLINE_ void _mark_line_as_unsafe(int p_line) const {
 #ifdef DEBUG_ENABLED
-		if (safe_lines) safe_lines->erase(p_line);
+		if (safe_lines)
+			safe_lines->erase(p_line);
 #endif // DEBUG_ENABLED
 	}
 
@@ -682,7 +686,7 @@ public:
 	BlockNode *get_completion_block();
 	FunctionNode *get_completion_function();
 	int get_completion_argument_index();
-	int get_completion_identifier_is_function();
+	bool get_completion_identifier_is_function();
 
 	const List<String> &get_dependencies() const { return dependencies; }
 

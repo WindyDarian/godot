@@ -55,10 +55,14 @@ static String _typestr(SL::DataType p_type) {
 static String _prestr(SL::DataPrecision p_pres) {
 
 	switch (p_pres) {
-		case SL::PRECISION_LOWP: return "lowp ";
-		case SL::PRECISION_MEDIUMP: return "mediump ";
-		case SL::PRECISION_HIGHP: return "highp ";
-		case SL::PRECISION_DEFAULT: return "";
+		case SL::PRECISION_LOWP:
+			return "lowp ";
+		case SL::PRECISION_MEDIUMP:
+			return "mediump ";
+		case SL::PRECISION_HIGHP:
+			return "highp ";
+		case SL::PRECISION_DEFAULT:
+			return "";
 	}
 	return "";
 }
@@ -66,9 +70,12 @@ static String _prestr(SL::DataPrecision p_pres) {
 static String _qualstr(SL::ArgumentQualifier p_qual) {
 
 	switch (p_qual) {
-		case SL::ARGUMENT_QUALIFIER_IN: return "in ";
-		case SL::ARGUMENT_QUALIFIER_OUT: return "out ";
-		case SL::ARGUMENT_QUALIFIER_INOUT: return "inout ";
+		case SL::ARGUMENT_QUALIFIER_IN:
+			return "in ";
+		case SL::ARGUMENT_QUALIFIER_OUT:
+			return "out ";
+		case SL::ARGUMENT_QUALIFIER_INOUT:
+			return "inout ";
 	}
 	return "";
 }
@@ -96,7 +103,8 @@ static String f2sp0(float p_float) {
 static String get_constant_text(SL::DataType p_type, const Vector<SL::ConstantNode::Value> &p_values) {
 
 	switch (p_type) {
-		case SL::TYPE_BOOL: return p_values[0].boolean ? "true" : "false";
+		case SL::TYPE_BOOL:
+			return p_values[0].boolean ? "true" : "false";
 		case SL::TYPE_BVEC2:
 		case SL::TYPE_BVEC3:
 		case SL::TYPE_BVEC4: {
@@ -118,7 +126,8 @@ static String get_constant_text(SL::DataType p_type, const Vector<SL::ConstantNo
 		}
 
 		// GLSL ES 2 doesn't support uints, so we just use signed ints instead...
-		case SL::TYPE_UINT: return itos(p_values[0].uint);
+		case SL::TYPE_UINT:
+			return itos(p_values[0].uint);
 		case SL::TYPE_UVEC2:
 		case SL::TYPE_UVEC3:
 		case SL::TYPE_UVEC4: {
@@ -140,7 +149,8 @@ static String get_constant_text(SL::DataType p_type, const Vector<SL::ConstantNo
 
 		} break;
 
-		case SL::TYPE_INT: return itos(p_values[0].sint);
+		case SL::TYPE_INT:
+			return itos(p_values[0].sint);
 		case SL::TYPE_IVEC2:
 		case SL::TYPE_IVEC3:
 		case SL::TYPE_IVEC4: {
@@ -161,7 +171,8 @@ static String get_constant_text(SL::DataType p_type, const Vector<SL::ConstantNo
 			return text.as_string();
 
 		} break;
-		case SL::TYPE_FLOAT: return f2sp0(p_values[0].real);
+		case SL::TYPE_FLOAT:
+			return f2sp0(p_values[0].real);
 		case SL::TYPE_VEC2:
 		case SL::TYPE_VEC3:
 		case SL::TYPE_VEC4: {
@@ -202,7 +213,8 @@ static String get_constant_text(SL::DataType p_type, const Vector<SL::ConstantNo
 			return text.as_string();
 
 		} break;
-		default: ERR_FAIL_V(String());
+		default:
+			ERR_FAIL_V(String());
 	}
 }
 
@@ -404,18 +416,19 @@ String ShaderCompilerGLES2::_dump_node_code(SL::Node *p_node, int p_level, Gener
 
 			// constants
 
-			for (Map<StringName, SL::ShaderNode::Constant>::Element *E = snode->constants.front(); E; E = E->next()) {
+			for (int i = 0; i < snode->vconstants.size(); i++) {
+				const SL::ShaderNode::Constant &cnode = snode->vconstants[i];
 				String gcode;
 				gcode += "const ";
-				gcode += _prestr(E->get().precision);
-				if (E->get().type == SL::TYPE_STRUCT) {
-					gcode += _mkid(E->get().type_str);
+				gcode += _prestr(cnode.precision);
+				if (cnode.type == SL::TYPE_STRUCT) {
+					gcode += _mkid(cnode.type_str);
 				} else {
-					gcode += _typestr(E->get().type);
+					gcode += _typestr(cnode.type);
 				}
-				gcode += " " + _mkid(E->key());
+				gcode += " " + _mkid(String(cnode.name));
 				gcode += "=";
-				gcode += _dump_node_code(E->get().initializer, p_level, r_gen_code, p_actions, p_default_actions, p_assigning);
+				gcode += _dump_node_code(cnode.initializer, p_level, r_gen_code, p_actions, p_default_actions, p_assigning);
 				gcode += ";\n";
 				vertex_global += gcode;
 				fragment_global += gcode;

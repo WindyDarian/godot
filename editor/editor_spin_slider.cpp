@@ -30,12 +30,15 @@
 
 #include "editor_spin_slider.h"
 
-#include "core/input/input_filter.h"
+#include "core/input/input.h"
 #include "core/math/expression.h"
 #include "editor_node.h"
 #include "editor_scale.h"
 
 String EditorSpinSlider::get_tooltip(const Point2 &p_pos) const {
+	if (grabber->is_visible()) {
+		return rtos(get_value()) + "\n\n" + TTR("Hold Ctrl to round to integers. Hold Shift for more precise changes.");
+	}
 	return rtos(get_value());
 }
 
@@ -68,7 +71,7 @@ void EditorSpinSlider::_gui_input(const Ref<InputEvent> &p_event) {
 					grabbing_spinner_dist_cache = 0;
 					pre_grab_value = get_value();
 					grabbing_spinner = false;
-					grabbing_spinner_mouse_pos = InputFilter::get_singleton()->get_mouse_position();
+					grabbing_spinner_mouse_pos = Input::get_singleton()->get_mouse_position();
 				}
 			} else {
 
@@ -76,8 +79,8 @@ void EditorSpinSlider::_gui_input(const Ref<InputEvent> &p_event) {
 
 					if (grabbing_spinner) {
 
-						InputFilter::get_singleton()->set_mouse_mode(InputFilter::MOUSE_MODE_VISIBLE);
-						InputFilter::get_singleton()->warp_mouse_position(grabbing_spinner_mouse_pos);
+						Input::get_singleton()->set_mouse_mode(Input::MOUSE_MODE_VISIBLE);
+						Input::get_singleton()->warp_mouse_position(grabbing_spinner_mouse_pos);
 						update();
 					} else {
 						_focus_entered();
@@ -106,12 +109,26 @@ void EditorSpinSlider::_gui_input(const Ref<InputEvent> &p_event) {
 			grabbing_spinner_dist_cache += diff_x;
 
 			if (!grabbing_spinner && ABS(grabbing_spinner_dist_cache) > 4 * EDSCALE) {
-				InputFilter::get_singleton()->set_mouse_mode(InputFilter::MOUSE_MODE_CAPTURED);
+				Input::get_singleton()->set_mouse_mode(Input::MOUSE_MODE_CAPTURED);
 				grabbing_spinner = true;
 			}
 
 			if (grabbing_spinner) {
+				// Don't make the user scroll all the way back to 'in range' if they went off the end.
+				if (pre_grab_value < get_min() && !is_lesser_allowed()) {
+					pre_grab_value = get_min();
+				}
+				if (pre_grab_value > get_max() && !is_greater_allowed()) {
+					pre_grab_value = get_max();
+				}
+
 				if (mm->get_control()) {
+					// If control was just pressed, don't make the value do a huge jump in magnitude.
+					if (grabbing_spinner_dist_cache != 0) {
+						pre_grab_value += grabbing_spinner_dist_cache * get_step();
+						grabbing_spinner_dist_cache = 0;
+					}
+
 					set_value(Math::round(pre_grab_value + get_step() * grabbing_spinner_dist_cache * 10));
 				} else {
 					set_value(pre_grab_value + get_step() * grabbing_spinner_dist_cache);
@@ -181,7 +198,7 @@ void EditorSpinSlider::_notification(int p_what) {
 			p_what == NOTIFICATION_WM_FOCUS_IN ||
 			p_what == NOTIFICATION_EXIT_TREE) {
 		if (grabbing_spinner) {
-			InputFilter::get_singleton()->set_mouse_mode(InputFilter::MOUSE_MODE_VISIBLE);
+			Input::get_singleton()->set_mouse_mode(Input::MOUSE_MODE_VISIBLE);
 			grabbing_spinner = false;
 			grabbing_spinner_attempt = false;
 		}
@@ -298,7 +315,7 @@ void EditorSpinSlider::_notification(int p_what) {
 				grabber->set_position(get_global_position() + grabber_rect.position + grabber_rect.size * 0.5 - grabber->get_size() * 0.5);
 
 				if (mousewheel_over_grabber) {
-					InputFilter::get_singleton()->warp_mouse_position(grabber->get_position() + grabber_rect.size);
+					Input::get_singleton()->warp_mouse_position(grabber->get_position() + grabber_rect.size);
 				}
 
 				grabber_range = width;
@@ -317,7 +334,7 @@ void EditorSpinSlider::_notification(int p_what) {
 		update();
 	}
 	if (p_what == NOTIFICATION_FOCUS_ENTER) {
-		if ((InputFilter::get_singleton()->is_action_pressed("ui_focus_next") || InputFilter::get_singleton()->is_action_pressed("ui_focus_prev")) && !value_input_just_closed) {
+		if ((Input::get_singleton()->is_action_pressed("ui_focus_next") || Input::get_singleton()->is_action_pressed("ui_focus_prev")) && !value_input_just_closed) {
 			_focus_entered();
 		}
 		value_input_just_closed = false;

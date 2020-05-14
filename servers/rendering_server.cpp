@@ -1569,35 +1569,64 @@ Array RenderingServer::_mesh_surface_get_skeleton_aabb_bind(RID p_mesh, int p_su
 ShaderLanguage::DataType RenderingServer::global_variable_type_get_shader_datatype(GlobalVariableType p_type) {
 
 	switch (p_type) {
-		case RS::GLOBAL_VAR_TYPE_BOOL: return ShaderLanguage::TYPE_BOOL;
-		case RS::GLOBAL_VAR_TYPE_BVEC2: return ShaderLanguage::TYPE_BVEC2;
-		case RS::GLOBAL_VAR_TYPE_BVEC3: return ShaderLanguage::TYPE_BVEC3;
-		case RS::GLOBAL_VAR_TYPE_BVEC4: return ShaderLanguage::TYPE_BVEC4;
-		case RS::GLOBAL_VAR_TYPE_INT: return ShaderLanguage::TYPE_INT;
-		case RS::GLOBAL_VAR_TYPE_IVEC2: return ShaderLanguage::TYPE_IVEC2;
-		case RS::GLOBAL_VAR_TYPE_IVEC3: return ShaderLanguage::TYPE_IVEC3;
-		case RS::GLOBAL_VAR_TYPE_IVEC4: return ShaderLanguage::TYPE_IVEC4;
-		case RS::GLOBAL_VAR_TYPE_RECT2I: return ShaderLanguage::TYPE_IVEC4;
-		case RS::GLOBAL_VAR_TYPE_UINT: return ShaderLanguage::TYPE_UINT;
-		case RS::GLOBAL_VAR_TYPE_UVEC2: return ShaderLanguage::TYPE_UVEC2;
-		case RS::GLOBAL_VAR_TYPE_UVEC3: return ShaderLanguage::TYPE_UVEC3;
-		case RS::GLOBAL_VAR_TYPE_UVEC4: return ShaderLanguage::TYPE_UVEC4;
-		case RS::GLOBAL_VAR_TYPE_FLOAT: return ShaderLanguage::TYPE_FLOAT;
-		case RS::GLOBAL_VAR_TYPE_VEC2: return ShaderLanguage::TYPE_VEC2;
-		case RS::GLOBAL_VAR_TYPE_VEC3: return ShaderLanguage::TYPE_VEC3;
-		case RS::GLOBAL_VAR_TYPE_VEC4: return ShaderLanguage::TYPE_VEC4;
-		case RS::GLOBAL_VAR_TYPE_COLOR: return ShaderLanguage::TYPE_VEC4;
-		case RS::GLOBAL_VAR_TYPE_RECT2: return ShaderLanguage::TYPE_VEC4;
-		case RS::GLOBAL_VAR_TYPE_MAT2: return ShaderLanguage::TYPE_MAT2;
-		case RS::GLOBAL_VAR_TYPE_MAT3: return ShaderLanguage::TYPE_MAT3;
-		case RS::GLOBAL_VAR_TYPE_MAT4: return ShaderLanguage::TYPE_MAT4;
-		case RS::GLOBAL_VAR_TYPE_TRANSFORM_2D: return ShaderLanguage::TYPE_MAT3;
-		case RS::GLOBAL_VAR_TYPE_TRANSFORM: return ShaderLanguage::TYPE_MAT4;
-		case RS::GLOBAL_VAR_TYPE_SAMPLER2D: return ShaderLanguage::TYPE_SAMPLER2D;
-		case RS::GLOBAL_VAR_TYPE_SAMPLER2DARRAY: return ShaderLanguage::TYPE_SAMPLER2DARRAY;
-		case RS::GLOBAL_VAR_TYPE_SAMPLER3D: return ShaderLanguage::TYPE_SAMPLER3D;
-		case RS::GLOBAL_VAR_TYPE_SAMPLERCUBE: return ShaderLanguage::TYPE_SAMPLERCUBE;
-		default: return ShaderLanguage::TYPE_MAX; //invalid or not found
+		case RS::GLOBAL_VAR_TYPE_BOOL:
+			return ShaderLanguage::TYPE_BOOL;
+		case RS::GLOBAL_VAR_TYPE_BVEC2:
+			return ShaderLanguage::TYPE_BVEC2;
+		case RS::GLOBAL_VAR_TYPE_BVEC3:
+			return ShaderLanguage::TYPE_BVEC3;
+		case RS::GLOBAL_VAR_TYPE_BVEC4:
+			return ShaderLanguage::TYPE_BVEC4;
+		case RS::GLOBAL_VAR_TYPE_INT:
+			return ShaderLanguage::TYPE_INT;
+		case RS::GLOBAL_VAR_TYPE_IVEC2:
+			return ShaderLanguage::TYPE_IVEC2;
+		case RS::GLOBAL_VAR_TYPE_IVEC3:
+			return ShaderLanguage::TYPE_IVEC3;
+		case RS::GLOBAL_VAR_TYPE_IVEC4:
+			return ShaderLanguage::TYPE_IVEC4;
+		case RS::GLOBAL_VAR_TYPE_RECT2I:
+			return ShaderLanguage::TYPE_IVEC4;
+		case RS::GLOBAL_VAR_TYPE_UINT:
+			return ShaderLanguage::TYPE_UINT;
+		case RS::GLOBAL_VAR_TYPE_UVEC2:
+			return ShaderLanguage::TYPE_UVEC2;
+		case RS::GLOBAL_VAR_TYPE_UVEC3:
+			return ShaderLanguage::TYPE_UVEC3;
+		case RS::GLOBAL_VAR_TYPE_UVEC4:
+			return ShaderLanguage::TYPE_UVEC4;
+		case RS::GLOBAL_VAR_TYPE_FLOAT:
+			return ShaderLanguage::TYPE_FLOAT;
+		case RS::GLOBAL_VAR_TYPE_VEC2:
+			return ShaderLanguage::TYPE_VEC2;
+		case RS::GLOBAL_VAR_TYPE_VEC3:
+			return ShaderLanguage::TYPE_VEC3;
+		case RS::GLOBAL_VAR_TYPE_VEC4:
+			return ShaderLanguage::TYPE_VEC4;
+		case RS::GLOBAL_VAR_TYPE_COLOR:
+			return ShaderLanguage::TYPE_VEC4;
+		case RS::GLOBAL_VAR_TYPE_RECT2:
+			return ShaderLanguage::TYPE_VEC4;
+		case RS::GLOBAL_VAR_TYPE_MAT2:
+			return ShaderLanguage::TYPE_MAT2;
+		case RS::GLOBAL_VAR_TYPE_MAT3:
+			return ShaderLanguage::TYPE_MAT3;
+		case RS::GLOBAL_VAR_TYPE_MAT4:
+			return ShaderLanguage::TYPE_MAT4;
+		case RS::GLOBAL_VAR_TYPE_TRANSFORM_2D:
+			return ShaderLanguage::TYPE_MAT3;
+		case RS::GLOBAL_VAR_TYPE_TRANSFORM:
+			return ShaderLanguage::TYPE_MAT4;
+		case RS::GLOBAL_VAR_TYPE_SAMPLER2D:
+			return ShaderLanguage::TYPE_SAMPLER2D;
+		case RS::GLOBAL_VAR_TYPE_SAMPLER2DARRAY:
+			return ShaderLanguage::TYPE_SAMPLER2DARRAY;
+		case RS::GLOBAL_VAR_TYPE_SAMPLER3D:
+			return ShaderLanguage::TYPE_SAMPLER3D;
+		case RS::GLOBAL_VAR_TYPE_SAMPLERCUBE:
+			return ShaderLanguage::TYPE_SAMPLERCUBE;
+		default:
+			return ShaderLanguage::TYPE_MAX; //invalid or not found
 	}
 }
 
@@ -1755,8 +1784,8 @@ void RenderingServer::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("gi_probe_set_compress", "probe", "enable"), &RenderingServer::gi_probe_set_compress);
 	ClassDB::bind_method(D_METHOD("gi_probe_is_compressed", "probe"), &RenderingServer::gi_probe_is_compressed);
 #endif
-
-	ClassDB::bind_method(D_METHOD("lightmap_capture_create"), &RenderingServer::lightmap_capture_create);
+/*
+	ClassDB::bind_method(D_METHOD("lightmap_create()"), &RenderingServer::lightmap_capture_create);
 	ClassDB::bind_method(D_METHOD("lightmap_capture_set_bounds", "capture", "bounds"), &RenderingServer::lightmap_capture_set_bounds);
 	ClassDB::bind_method(D_METHOD("lightmap_capture_get_bounds", "capture"), &RenderingServer::lightmap_capture_get_bounds);
 	ClassDB::bind_method(D_METHOD("lightmap_capture_set_octree", "capture", "octree"), &RenderingServer::lightmap_capture_set_octree);
@@ -1767,6 +1796,7 @@ void RenderingServer::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("lightmap_capture_get_octree", "capture"), &RenderingServer::lightmap_capture_get_octree);
 	ClassDB::bind_method(D_METHOD("lightmap_capture_set_energy", "capture", "energy"), &RenderingServer::lightmap_capture_set_energy);
 	ClassDB::bind_method(D_METHOD("lightmap_capture_get_energy", "capture"), &RenderingServer::lightmap_capture_get_energy);
+*/
 #endif
 	ClassDB::bind_method(D_METHOD("particles_create"), &RenderingServer::particles_create);
 	ClassDB::bind_method(D_METHOD("particles_set_emitting", "particles", "emitting"), &RenderingServer::particles_set_emitting);
@@ -1866,7 +1896,7 @@ void RenderingServer::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("instance_set_blend_shape_weight", "instance", "shape", "weight"), &RenderingServer::instance_set_blend_shape_weight);
 	ClassDB::bind_method(D_METHOD("instance_set_surface_material", "instance", "surface", "material"), &RenderingServer::instance_set_surface_material);
 	ClassDB::bind_method(D_METHOD("instance_set_visible", "instance", "visible"), &RenderingServer::instance_set_visible);
-	ClassDB::bind_method(D_METHOD("instance_set_use_lightmap", "instance", "lightmap_instance", "lightmap"), &RenderingServer::instance_set_use_lightmap);
+	//	ClassDB::bind_method(D_METHOD("instance_set_use_lightmap", "instance", "lightmap_instance", "lightmap"), &RenderingServer::instance_set_use_lightmap);
 	ClassDB::bind_method(D_METHOD("instance_set_custom_aabb", "instance", "aabb"), &RenderingServer::instance_set_custom_aabb);
 	ClassDB::bind_method(D_METHOD("instance_attach_skeleton", "instance", "skeleton"), &RenderingServer::instance_attach_skeleton);
 	ClassDB::bind_method(D_METHOD("instance_set_exterior", "instance", "enabled"), &RenderingServer::instance_set_exterior);
@@ -2237,7 +2267,7 @@ void RenderingServer::_bind_methods() {
 	BIND_ENUM_CONSTANT(INSTANCE_REFLECTION_PROBE);
 	BIND_ENUM_CONSTANT(INSTANCE_DECAL);
 	BIND_ENUM_CONSTANT(INSTANCE_GI_PROBE);
-	BIND_ENUM_CONSTANT(INSTANCE_LIGHTMAP_CAPTURE);
+	BIND_ENUM_CONSTANT(INSTANCE_LIGHTMAP);
 	BIND_ENUM_CONSTANT(INSTANCE_MAX);
 	BIND_ENUM_CONSTANT(INSTANCE_GEOMETRY_MASK);
 
@@ -2400,6 +2430,9 @@ RenderingServer::RenderingServer() {
 	GLOBAL_DEF_RST("rendering/vram_compression/import_etc2", true);
 	GLOBAL_DEF_RST("rendering/vram_compression/import_pvrtc", false);
 
+	GLOBAL_DEF("rendering/limits/time/time_rollover_secs", 3600);
+	ProjectSettings::get_singleton()->set_custom_property_info("rendering/limits/time/time_rollover_secs", PropertyInfo(Variant::FLOAT, "rendering/limits/time/time_rollover_secs", PROPERTY_HINT_RANGE, "0,10000,1,or_greater"));
+
 	GLOBAL_DEF("rendering/quality/directional_shadow/size", 4096);
 	GLOBAL_DEF("rendering/quality/directional_shadow/size.mobile", 2048);
 	ProjectSettings::get_singleton()->set_custom_property_info("rendering/quality/directional_shadow/size", PropertyInfo(Variant::INT, "rendering/quality/directional_shadow/size", PROPERTY_HINT_RANGE, "256,16384"));
@@ -2448,7 +2481,8 @@ RenderingServer::RenderingServer() {
 	GLOBAL_DEF("rendering/quality/depth_prepass/disable_for_vendors", "PowerVR,Mali,Adreno,Apple");
 
 	GLOBAL_DEF("rendering/quality/texture_filters/use_nearest_mipmap_filter", false);
-	GLOBAL_DEF("rendering/quality/texture_filters/max_anisotropy", 4);
+	GLOBAL_DEF("rendering/quality/texture_filters/anisotropic_filtering_level", 2);
+	ProjectSettings::get_singleton()->set_custom_property_info("rendering/quality/texture_filters/anisotropic_filtering_level", PropertyInfo(Variant::INT, "rendering/quality/texture_filters/anisotropic_filtering_level", PROPERTY_HINT_ENUM, "Disabled (Fastest),2x (Faster),4x (Fast),8x (Average),16x (Slow)"));
 
 	GLOBAL_DEF("rendering/quality/depth_of_field/depth_of_field_bokeh_shape", 1);
 	ProjectSettings::get_singleton()->set_custom_property_info("rendering/quality/depth_of_field/depth_of_field_bokeh_shape", PropertyInfo(Variant::INT, "rendering/quality/depth_of_field/depth_of_field_bokeh_shape", PROPERTY_HINT_ENUM, "Box (Fast),Hexagon (Average),Circle (Slow)"));
@@ -2480,6 +2514,9 @@ RenderingServer::RenderingServer() {
 	ProjectSettings::get_singleton()->set_custom_property_info("rendering/quality/subsurface_scattering/subsurface_scattering_depth_scale", PropertyInfo(Variant::FLOAT, "rendering/quality/subsurface_scattering/subsurface_scattering_depth_scale", PROPERTY_HINT_RANGE, "0.001,1,0.001"));
 
 	GLOBAL_DEF("rendering/high_end/global_shader_variables_buffer_size", 65536);
+
+	GLOBAL_DEF("rendering/lightmapper/probe_capture_update_speed", 15);
+	ProjectSettings::get_singleton()->set_custom_property_info("rendering/lightmapper/probe_capture_update_speed", PropertyInfo(Variant::FLOAT, "rendering/lightmapper/probe_capture_update_speed", PROPERTY_HINT_RANGE, "0.001,256,0.001"));
 }
 
 RenderingServer::~RenderingServer() {

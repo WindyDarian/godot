@@ -1,3 +1,33 @@
+/*************************************************************************/
+/*  rendering_device_binds.h                                             */
+/*************************************************************************/
+/*                       This file is part of:                           */
+/*                           GODOT ENGINE                                */
+/*                      https://godotengine.org                          */
+/*************************************************************************/
+/* Copyright (c) 2007-2020 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2020 Godot Engine contributors (cf. AUTHORS.md).   */
+/*                                                                       */
+/* Permission is hereby granted, free of charge, to any person obtaining */
+/* a copy of this software and associated documentation files (the       */
+/* "Software"), to deal in the Software without restriction, including   */
+/* without limitation the rights to use, copy, modify, merge, publish,   */
+/* distribute, sublicense, and/or sell copies of the Software, and to    */
+/* permit persons to whom the Software is furnished to do so, subject to */
+/* the following conditions:                                             */
+/*                                                                       */
+/* The above copyright notice and this permission notice shall be        */
+/* included in all copies or substantial portions of the Software.       */
+/*                                                                       */
+/* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,       */
+/* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF    */
+/* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.*/
+/* IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY  */
+/* CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,  */
+/* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE     */
+/* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
+/*************************************************************************/
+
 #ifndef RENDERING_DEVICE_BINDS_H
 #define RENDERING_DEVICE_BINDS_H
 
@@ -292,8 +322,31 @@ public:
 		return base_error;
 	}
 
+	void print_errors(const String &p_file) {
+		if (base_error != "") {
+			ERR_PRINT("Error parsing shader '" + p_file + "':\n\n" + base_error);
+		} else {
+			for (Map<StringName, Ref<RDShaderBytecode>>::Element *E = versions.front(); E; E = E->next()) {
+				for (int i = 0; i < RD::SHADER_STAGE_MAX; i++) {
+					String error = E->get()->get_stage_compile_error(RD::ShaderStage(i));
+					if (error != String()) {
+						static const char *stage_str[RD::SHADER_STAGE_MAX] = {
+							"vertex",
+							"fragment",
+							"tesselation_control",
+							"tesselation_evaluation",
+							"compute"
+						};
+
+						ERR_PRINT("Error parsing shader '" + p_file + "', version '" + String(E->key()) + "', stage '" + stage_str[i] + "':\n\n" + error);
+					}
+				}
+			}
+		}
+	}
+
 	typedef String (*OpenIncludeFunction)(const String &, void *userdata);
-	Error parse_versions_from_text(const String &p_text, OpenIncludeFunction p_include_func = nullptr, void *p_include_func_userdata = nullptr);
+	Error parse_versions_from_text(const String &p_text, const String p_defines = String(), OpenIncludeFunction p_include_func = nullptr, void *p_include_func_userdata = nullptr);
 
 protected:
 	Dictionary _get_versions() const {

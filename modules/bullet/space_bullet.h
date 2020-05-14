@@ -108,6 +108,9 @@ class SpaceBullet : public RIDBullet {
 	Vector3 gravityDirection;
 	real_t gravityMagnitude;
 
+	real_t linear_damp;
+	real_t angular_damp;
+
 	Vector<AreaBullet *> areas;
 
 	Vector<Vector3> contactDebug;
@@ -167,7 +170,8 @@ public:
 		contactDebugCount = 0;
 	}
 	_FORCE_INLINE_ void add_debug_contact(const Vector3 &p_contact) {
-		if (contactDebugCount < contactDebug.size()) contactDebug.write[contactDebugCount++] = p_contact;
+		if (contactDebugCount < contactDebug.size())
+			contactDebug.write[contactDebugCount++] = p_contact;
 	}
 	_FORCE_INLINE_ Vector<Vector3> get_debug_contacts() { return contactDebug; }
 	_FORCE_INLINE_ int get_debug_contact_count() { return contactDebugCount; }
@@ -176,6 +180,9 @@ public:
 	real_t get_gravity_magnitude() const { return gravityMagnitude; }
 
 	void update_gravity();
+
+	real_t get_linear_damp() const { return linear_damp; }
+	real_t get_angular_damp() const { return angular_damp; }
 
 	bool test_body_motion(RigidBodyBullet *p_body, const Transform &p_from, const Vector3 &p_motion, bool p_infinite_inertia, PhysicsServer3D::MotionResult *r_result, bool p_exclude_raycast_shapes);
 	int test_ray_separation(RigidBodyBullet *p_body, const Transform &p_transform, bool p_infinite_inertia, Vector3 &r_recover_motion, PhysicsServer3D::SeparationResult *r_results, int p_result_max, float p_margin);

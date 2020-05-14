@@ -30,7 +30,7 @@
 
 #include "node_3d_editor_plugin.h"
 
-#include "core/input/input_filter.h"
+#include "core/input/input.h"
 #include "core/math/camera_matrix.h"
 #include "core/os/keyboard.h"
 #include "core/print_string.h"
@@ -51,7 +51,6 @@
 #include "scene/gui/subviewport_container.h"
 #include "scene/resources/packed_scene.h"
 #include "scene/resources/surface_tool.h"
-#include "servers/display_server.h"
 
 #define DISTANCE_DEFAULT 4
 
@@ -196,12 +195,20 @@ void ViewportRotationControl::_gui_input(Ref<InputEvent> p_event) {
 				_update_focus();
 			}
 			orbiting = false;
+			if (Input::get_singleton()->get_mouse_mode() == Input::MOUSE_MODE_CAPTURED) {
+				Input::get_singleton()->set_mouse_mode(Input::MOUSE_MODE_VISIBLE);
+				Input::get_singleton()->warp_mouse_position(orbiting_mouse_start);
+			}
 		}
 	}
 
 	const Ref<InputEventMouseMotion> mm = p_event;
 	if (mm.is_valid()) {
 		if (orbiting) {
+			if (Input::get_singleton()->get_mouse_mode() == Input::MOUSE_MODE_VISIBLE) {
+				Input::get_singleton()->set_mouse_mode(Input::MOUSE_MODE_CAPTURED);
+				orbiting_mouse_start = mm->get_global_position();
+			}
 			viewport->_nav_orbit(mm, viewport->_get_warped_mouse_motion(mm));
 			focused_axis = -1;
 		} else {
@@ -268,7 +275,7 @@ void Node3DEditorViewport::_update_camera(float p_interp_delta) {
 			real_t factor = (1.0 / inertia) * p_interp_delta;
 
 			// We interpolate a different point here, because in freelook mode the focus point (cursor.pos) orbits around eye_pos
-			camera_cursor.eye_pos = old_camera_cursor.eye_pos.linear_interpolate(cursor.eye_pos, CLAMP(factor, 0, 1));
+			camera_cursor.eye_pos = old_camera_cursor.eye_pos.lerp(cursor.eye_pos, CLAMP(factor, 0, 1));
 
 			float orbit_inertia = EDITOR_GET("editors/3d/navigation_feel/orbit_inertia");
 			orbit_inertia = MAX(0.0001, orbit_inertia);
@@ -298,10 +305,10 @@ void Node3DEditorViewport::_update_camera(float p_interp_delta) {
 			float zoom_inertia = EDITOR_GET("editors/3d/navigation_feel/zoom_inertia");
 
 			//determine if being manipulated
-			bool manipulated = InputFilter::get_singleton()->get_mouse_button_mask() & (2 | 4);
-			manipulated |= InputFilter::get_singleton()->is_key_pressed(KEY_SHIFT);
-			manipulated |= InputFilter::get_singleton()->is_key_pressed(KEY_ALT);
-			manipulated |= InputFilter::get_singleton()->is_key_pressed(KEY_CONTROL);
+			bool manipulated = Input::get_singleton()->get_mouse_button_mask() & (2 | 4);
+			manipulated |= Input::get_singleton()->is_key_pressed(KEY_SHIFT);
+			manipulated |= Input::get_singleton()->is_key_pressed(KEY_ALT);
+			manipulated |= Input::get_singleton()->is_key_pressed(KEY_CONTROL);
 
 			float orbit_inertia = MAX(0.00001, manipulated ? manip_orbit_inertia : free_orbit_inertia);
 			float translation_inertia = MAX(0.0001, manipulated ? manip_translation_inertia : free_translation_inertia);
@@ -318,7 +325,7 @@ void Node3DEditorViewport::_update_camera(float p_interp_delta) {
 				camera_cursor.y_rot = cursor.y_rot;
 			}
 
-			camera_cursor.pos = old_camera_cursor.pos.linear_interpolate(cursor.pos, MIN(1.f, p_interp_delta * (1 / translation_inertia)));
+			camera_cursor.pos = old_camera_cursor.pos.lerp(cursor.pos, MIN(1.f, p_interp_delta * (1 / translation_inertia)));
 			camera_cursor.distance = Math::lerp(old_camera_cursor.distance, cursor.distance, MIN(1.f, p_interp_delta * (1 / zoom_inertia)));
 		}
 	}
@@ -496,7 +503,7 @@ ObjectID Node3DEditorViewport::_select_ray(const Point2 &p_pos, bool p_append, b
 	Vector3 pos = _get_ray_pos(p_pos);
 	Vector2 shrinked_pos = p_pos / subviewport_container->get_stretch_shrink();
 
-	Vector<ObjectID> instances = RenderingServer::get_singleton()->instances_cull_ray(pos, ray, get_tree()->get_root()->get_world()->get_scenario());
+	Vector<ObjectID> instances = RenderingServer::get_singleton()->instances_cull_ray(pos, ray, get_tree()->get_root()->get_world_3d()->get_scenario());
 	Set<Ref<EditorNode3DGizmo>> found_gizmos;
 
 	Node *edited_scene = get_tree()->get_edited_scene_root();
@@ -563,7 +570,7 @@ void Node3DEditorViewport::_find_items_at_pos(const Point2 &p_pos, bool &r_inclu
 	Vector3 ray = _get_ray(p_pos);
 	Vector3 pos = _get_ray_pos(p_pos);
 
-	Vector<ObjectID> instances = RenderingServer::get_singleton()->instances_cull_ray(pos, ray, get_tree()->get_root()->get_world()->get_scenario());
+	Vector<ObjectID> instances = RenderingServer::get_singleton()->instances_cull_ray(pos, ray, get_tree()->get_root()->get_world_3d()->get_scenario());
 	Set<Ref<EditorNode3DGizmo>> found_gizmos;
 
 	r_includes_current = false;
@@ -674,19 +681,15 @@ void Node3DEditorViewport::_select_region() {
 		}
 	}
 
-	if (!orthogonal) {
-		Plane near(cam_pos, -_get_camera_normal());
-		near.d -= get_znear();
+	Plane near(cam_pos, -_get_camera_normal());
+	near.d -= get_znear();
+	frustum.push_back(near);
 
-		frustum.push_back(near);
+	Plane far = -near;
+	far.d += get_zfar();
+	frustum.push_back(far);
 
-		Plane far = -near;
-		far.d += get_zfar();
-
-		frustum.push_back(far);
-	}
-
-	Vector<ObjectID> instances = RenderingServer::get_singleton()->instances_cull_convex(frustum, get_tree()->get_root()->get_world()->get_scenario());
+	Vector<ObjectID> instances = RenderingServer::get_singleton()->instances_cull_convex(frustum, get_tree()->get_root()->get_world_3d()->get_scenario());
 	Vector<Node *> selected;
 
 	Node *edited_scene = get_tree()->get_edited_scene_root();
@@ -715,9 +718,11 @@ void Node3DEditorViewport::_select_region() {
 			item = sel;
 		}
 
-		if (selected.find(item) != -1) continue;
+		if (selected.find(item) != -1)
+			continue;
 
-		if (_is_node_locked(item)) continue;
+		if (_is_node_locked(item))
+			continue;
 
 		Ref<EditorNode3DGizmo> seg = sp->get_gizmo();
 
@@ -780,11 +785,16 @@ static int _get_key_modifier_setting(const String &p_property) {
 
 	switch (EditorSettings::get_singleton()->get(p_property).operator int()) {
 
-		case 0: return 0;
-		case 1: return KEY_SHIFT;
-		case 2: return KEY_ALT;
-		case 3: return KEY_META;
-		case 4: return KEY_CONTROL;
+		case 0:
+			return 0;
+		case 1:
+			return KEY_SHIFT;
+		case 2:
+			return KEY_ALT;
+		case 3:
+			return KEY_META;
+		case 4:
+			return KEY_CONTROL;
 	}
 	return 0;
 }
@@ -1378,7 +1388,8 @@ void Node3DEditorViewport::_sinput(const Ref<InputEvent> &p_event) {
 
 					if (cursor.region_select) {
 
-						if (!clicked_wants_append) _clear_selected();
+						if (!clicked_wants_append)
+							_clear_selected();
 
 						_select_region();
 						cursor.region_select = false;
@@ -2073,7 +2084,8 @@ void Node3DEditorViewport::_sinput(const Ref<InputEvent> &p_event) {
 		}
 
 		if (k->get_keycode() == KEY_SPACE) {
-			if (!k->is_pressed()) emit_signal("toggle_maximize_view", this);
+			if (!k->is_pressed())
+				emit_signal("toggle_maximize_view", this);
 		}
 	}
 
@@ -2166,7 +2178,7 @@ void Node3DEditorViewport::_nav_look(Ref<InputEventWithModifiers> p_event, const
 		_menu_option(VIEW_PERSPECTIVE);
 	}
 
-	real_t degrees_per_pixel = EditorSettings::get_singleton()->get("editors/3d/navigation_feel/orbit_sensitivity");
+	real_t degrees_per_pixel = EditorSettings::get_singleton()->get("editors/3d/freelook/freelook_sensitivity");
 	real_t radians_per_pixel = Math::deg2rad(degrees_per_pixel);
 	bool invert_y_axis = EditorSettings::get_singleton()->get("editors/3d/navigation/invert_y_axis");
 
@@ -2214,14 +2226,14 @@ void Node3DEditorViewport::set_freelook_active(bool active_now) {
 		}
 
 		// Hide mouse like in an FPS (warping doesn't work)
-		DisplayServer::get_singleton()->mouse_set_mode(DisplayServer::MOUSE_MODE_CAPTURED);
+		Input::get_singleton()->set_mouse_mode(Input::MOUSE_MODE_CAPTURED);
 
 	} else if (freelook_active && !active_now) {
 		// Sync camera cursor to cursor to "cut" interpolation jumps due to changing referential
 		cursor = camera_cursor;
 
 		// Restore mouse
-		DisplayServer::get_singleton()->mouse_set_mode(DisplayServer::MOUSE_MODE_VISIBLE);
+		Input::get_singleton()->set_mouse_mode(Input::MOUSE_MODE_VISIBLE);
 	}
 
 	freelook_active = active_now;
@@ -2260,7 +2272,7 @@ void Node3DEditorViewport::scale_freelook_speed(real_t scale) {
 Point2i Node3DEditorViewport::_get_warped_mouse_motion(const Ref<InputEventMouseMotion> &p_ev_mouse_motion) const {
 	Point2i relative;
 	if (bool(EDITOR_DEF("editors/3d/navigation/warped_mouse_panning", false))) {
-		relative = InputFilter::get_singleton()->warp_mouse_motion(p_ev_mouse_motion, surface->get_global_rect());
+		relative = Input::get_singleton()->warp_mouse_motion(p_ev_mouse_motion, surface->get_global_rect());
 	} else {
 		relative = p_ev_mouse_motion->get_relative();
 	}
@@ -2276,7 +2288,7 @@ static bool is_shortcut_pressed(const String &p_path) {
 	if (k == nullptr) {
 		return false;
 	}
-	const InputFilter &input = *InputFilter::get_singleton();
+	const Input &input = *Input::get_singleton();
 	int keycode = k->get_keycode();
 	return input.is_key_pressed(keycode);
 }
@@ -2882,7 +2894,6 @@ void Node3DEditorViewport::_menu_option(int p_option) {
 				undo_redo->add_undo_method(sp, "set_global_transform", sp->get_global_gizmo_transform());
 			}
 			undo_redo->commit_action();
-			focus_selection();
 
 		} break;
 		case VIEW_ALIGN_ROTATION_WITH_VIEW: {
@@ -3141,35 +3152,35 @@ void Node3DEditorViewport::_init_gizmo_instance(int p_idx) {
 	for (int i = 0; i < 3; i++) {
 		move_gizmo_instance[i] = RS::get_singleton()->instance_create();
 		RS::get_singleton()->instance_set_base(move_gizmo_instance[i], spatial_editor->get_move_gizmo(i)->get_rid());
-		RS::get_singleton()->instance_set_scenario(move_gizmo_instance[i], get_tree()->get_root()->get_world()->get_scenario());
+		RS::get_singleton()->instance_set_scenario(move_gizmo_instance[i], get_tree()->get_root()->get_world_3d()->get_scenario());
 		RS::get_singleton()->instance_set_visible(move_gizmo_instance[i], false);
 		RS::get_singleton()->instance_geometry_set_cast_shadows_setting(move_gizmo_instance[i], RS::SHADOW_CASTING_SETTING_OFF);
 		RS::get_singleton()->instance_set_layer_mask(move_gizmo_instance[i], layer);
 
 		move_plane_gizmo_instance[i] = RS::get_singleton()->instance_create();
 		RS::get_singleton()->instance_set_base(move_plane_gizmo_instance[i], spatial_editor->get_move_plane_gizmo(i)->get_rid());
-		RS::get_singleton()->instance_set_scenario(move_plane_gizmo_instance[i], get_tree()->get_root()->get_world()->get_scenario());
+		RS::get_singleton()->instance_set_scenario(move_plane_gizmo_instance[i], get_tree()->get_root()->get_world_3d()->get_scenario());
 		RS::get_singleton()->instance_set_visible(move_plane_gizmo_instance[i], false);
 		RS::get_singleton()->instance_geometry_set_cast_shadows_setting(move_plane_gizmo_instance[i], RS::SHADOW_CASTING_SETTING_OFF);
 		RS::get_singleton()->instance_set_layer_mask(move_plane_gizmo_instance[i], layer);
 
 		rotate_gizmo_instance[i] = RS::get_singleton()->instance_create();
 		RS::get_singleton()->instance_set_base(rotate_gizmo_instance[i], spatial_editor->get_rotate_gizmo(i)->get_rid());
-		RS::get_singleton()->instance_set_scenario(rotate_gizmo_instance[i], get_tree()->get_root()->get_world()->get_scenario());
+		RS::get_singleton()->instance_set_scenario(rotate_gizmo_instance[i], get_tree()->get_root()->get_world_3d()->get_scenario());
 		RS::get_singleton()->instance_set_visible(rotate_gizmo_instance[i], false);
 		RS::get_singleton()->instance_geometry_set_cast_shadows_setting(rotate_gizmo_instance[i], RS::SHADOW_CASTING_SETTING_OFF);
 		RS::get_singleton()->instance_set_layer_mask(rotate_gizmo_instance[i], layer);
 
 		scale_gizmo_instance[i] = RS::get_singleton()->instance_create();
 		RS::get_singleton()->instance_set_base(scale_gizmo_instance[i], spatial_editor->get_scale_gizmo(i)->get_rid());
-		RS::get_singleton()->instance_set_scenario(scale_gizmo_instance[i], get_tree()->get_root()->get_world()->get_scenario());
+		RS::get_singleton()->instance_set_scenario(scale_gizmo_instance[i], get_tree()->get_root()->get_world_3d()->get_scenario());
 		RS::get_singleton()->instance_set_visible(scale_gizmo_instance[i], false);
 		RS::get_singleton()->instance_geometry_set_cast_shadows_setting(scale_gizmo_instance[i], RS::SHADOW_CASTING_SETTING_OFF);
 		RS::get_singleton()->instance_set_layer_mask(scale_gizmo_instance[i], layer);
 
 		scale_plane_gizmo_instance[i] = RS::get_singleton()->instance_create();
 		RS::get_singleton()->instance_set_base(scale_plane_gizmo_instance[i], spatial_editor->get_scale_plane_gizmo(i)->get_rid());
-		RS::get_singleton()->instance_set_scenario(scale_plane_gizmo_instance[i], get_tree()->get_root()->get_world()->get_scenario());
+		RS::get_singleton()->instance_set_scenario(scale_plane_gizmo_instance[i], get_tree()->get_root()->get_world_3d()->get_scenario());
 		RS::get_singleton()->instance_set_visible(scale_plane_gizmo_instance[i], false);
 		RS::get_singleton()->instance_geometry_set_cast_shadows_setting(scale_plane_gizmo_instance[i], RS::SHADOW_CASTING_SETTING_OFF);
 		RS::get_singleton()->instance_set_layer_mask(scale_plane_gizmo_instance[i], layer);
@@ -3190,6 +3201,8 @@ void Node3DEditorViewport::_toggle_camera_preview(bool p_activate) {
 
 	ERR_FAIL_COND(p_activate && !preview);
 	ERR_FAIL_COND(!p_activate && !previewing);
+
+	rotation_control->set_visible(!p_activate);
 
 	if (!p_activate) {
 
@@ -3535,7 +3548,7 @@ Vector3 Node3DEditorViewport::_get_instance_position(const Point2 &p_pos) const 
 	Vector3 world_ray = _get_ray(p_pos);
 	Vector3 world_pos = _get_ray_pos(p_pos);
 
-	Vector<ObjectID> instances = RenderingServer::get_singleton()->instances_cull_ray(world_pos, world_ray, get_tree()->get_root()->get_world()->get_scenario());
+	Vector<ObjectID> instances = RenderingServer::get_singleton()->instances_cull_ray(world_pos, world_ray, get_tree()->get_root()->get_world_3d()->get_scenario());
 	Set<Ref<EditorNode3DGizmo>> found_gizmos;
 
 	float closest_dist = MAX_DISTANCE;
@@ -3828,7 +3841,7 @@ void Node3DEditorViewport::drop_data_fw(const Point2 &p_point, const Variant &p_
 	if (!can_drop_data_fw(p_point, p_data, p_from))
 		return;
 
-	bool is_shift = InputFilter::get_singleton()->is_key_pressed(KEY_SHIFT);
+	bool is_shift = Input::get_singleton()->is_key_pressed(KEY_SHIFT);
 
 	selected_files.clear();
 	Dictionary d = p_data;
@@ -4548,7 +4561,7 @@ Object *Node3DEditor::_get_editor_data(Object *p_what) {
 	Node3DEditorSelectedItem *si = memnew(Node3DEditorSelectedItem);
 
 	si->sp = sp;
-	si->sbox_instance = RenderingServer::get_singleton()->instance_create2(selection_box->get_rid(), sp->get_world()->get_scenario());
+	si->sbox_instance = RenderingServer::get_singleton()->instance_create2(selection_box->get_rid(), sp->get_world_3d()->get_scenario());
 	RS::get_singleton()->instance_geometry_set_cast_shadows_setting(si->sbox_instance, RS::SHADOW_CASTING_SETTING_OFF);
 
 	return si;
@@ -4570,10 +4583,10 @@ void Node3DEditor::_generate_selection_box() {
 		st->add_color(Color(1.0, 1.0, 0.8, 0.8));
 		st->add_vertex(a);
 		st->add_color(Color(1.0, 1.0, 0.8, 0.4));
-		st->add_vertex(a.linear_interpolate(b, 0.2));
+		st->add_vertex(a.lerp(b, 0.2));
 
 		st->add_color(Color(1.0, 1.0, 0.8, 0.4));
-		st->add_vertex(a.linear_interpolate(b, 0.8));
+		st->add_vertex(a.lerp(b, 0.8));
 		st->add_color(Color(1.0, 1.0, 0.8, 0.8));
 		st->add_vertex(b);
 	}
@@ -4629,7 +4642,8 @@ Dictionary Node3DEditor::get_state() const {
 
 	Dictionary gizmos_status;
 	for (int i = 0; i < gizmo_plugins_by_name.size(); i++) {
-		if (!gizmo_plugins_by_name[i]->can_be_hidden()) continue;
+		if (!gizmo_plugins_by_name[i]->can_be_hidden())
+			continue;
 		int state = gizmos_menu->get_item_state(gizmos_menu->get_item_index(i));
 		String name = gizmo_plugins_by_name[i]->get_name();
 		gizmos_status[name] = state;
@@ -4723,7 +4737,8 @@ void Node3DEditor::set_state(const Dictionary &p_state) {
 		gizmos_status.get_key_list(&keys);
 
 		for (int j = 0; j < gizmo_plugins_by_name.size(); ++j) {
-			if (!gizmo_plugins_by_name[j]->can_be_hidden()) continue;
+			if (!gizmo_plugins_by_name[j]->can_be_hidden())
+				continue;
 			int state = EditorNode3DGizmoPlugin::VISIBLE;
 			for (int i = 0; i < keys.size(); i++) {
 				if (gizmo_plugins_by_name.write[j]->get_name() == keys[i]) {
@@ -5202,7 +5217,7 @@ void Node3DEditor::_init_indicators() {
 		RenderingServer::get_singleton()->mesh_add_surface_from_arrays(origin, RenderingServer::PRIMITIVE_LINES, d);
 		RenderingServer::get_singleton()->mesh_surface_set_material(origin, 0, indicator_mat->get_rid());
 
-		origin_instance = RenderingServer::get_singleton()->instance_create2(origin, get_tree()->get_root()->get_world()->get_scenario());
+		origin_instance = RenderingServer::get_singleton()->instance_create2(origin, get_tree()->get_root()->get_world_3d()->get_scenario());
 		RS::get_singleton()->instance_set_layer_mask(origin_instance, 1 << Node3DEditorViewport::GIZMO_GRID_LAYER);
 
 		RenderingServer::get_singleton()->instance_geometry_set_cast_shadows_setting(origin_instance, RS::SHADOW_CASTING_SETTING_OFF);
@@ -5488,7 +5503,8 @@ void Node3DEditor::_update_gizmos_menu() {
 	gizmos_menu->clear();
 
 	for (int i = 0; i < gizmo_plugins_by_name.size(); ++i) {
-		if (!gizmo_plugins_by_name[i]->can_be_hidden()) continue;
+		if (!gizmo_plugins_by_name[i]->can_be_hidden())
+			continue;
 		String plugin_name = gizmo_plugins_by_name[i]->get_name();
 		const int plugin_state = gizmo_plugins_by_name[i]->get_state();
 		gizmos_menu->add_multistate_item(TTR(plugin_name), 3, plugin_state, i);
@@ -5509,7 +5525,8 @@ void Node3DEditor::_update_gizmos_menu() {
 
 void Node3DEditor::_update_gizmos_menu_theme() {
 	for (int i = 0; i < gizmo_plugins_by_name.size(); ++i) {
-		if (!gizmo_plugins_by_name[i]->can_be_hidden()) continue;
+		if (!gizmo_plugins_by_name[i]->can_be_hidden())
+			continue;
 		const int plugin_state = gizmo_plugins_by_name[i]->get_state();
 		const int idx = gizmos_menu->get_item_index(i);
 		switch (plugin_state) {
@@ -5577,7 +5594,7 @@ void Node3DEditor::_init_grid() {
 		d[RenderingServer::ARRAY_COLOR] = grid_colors[i];
 		RenderingServer::get_singleton()->mesh_add_surface_from_arrays(grid[i], RenderingServer::PRIMITIVE_LINES, d);
 		RenderingServer::get_singleton()->mesh_surface_set_material(grid[i], 0, indicator_mat->get_rid());
-		grid_instance[i] = RenderingServer::get_singleton()->instance_create2(grid[i], get_tree()->get_root()->get_world()->get_scenario());
+		grid_instance[i] = RenderingServer::get_singleton()->instance_create2(grid[i], get_tree()->get_root()->get_world_3d()->get_scenario());
 
 		RenderingServer::get_singleton()->instance_set_visible(grid_instance[i], grid_visible[i]);
 		RenderingServer::get_singleton()->instance_geometry_set_cast_shadows_setting(grid_instance[i], RS::SHADOW_CASTING_SETTING_OFF);
@@ -5722,7 +5739,7 @@ void Node3DEditor::snap_selected_nodes_to_floor() {
 		}
 	}
 
-	PhysicsDirectSpaceState3D *ss = get_tree()->get_root()->get_world()->get_direct_space_state();
+	PhysicsDirectSpaceState3D *ss = get_tree()->get_root()->get_world_3d()->get_direct_space_state();
 	PhysicsDirectSpaceState3D::RayResult result;
 
 	Array keys = snap_data.keys();
@@ -5785,7 +5802,7 @@ void Node3DEditor::_unhandled_key_input(Ref<InputEvent> p_event) {
 	if (!is_visible_in_tree())
 		return;
 
-	snap_key_enabled = InputFilter::get_singleton()->is_key_pressed(KEY_CONTROL);
+	snap_key_enabled = Input::get_singleton()->is_key_pressed(KEY_CONTROL);
 }
 void Node3DEditor::_notification(int p_what) {
 
@@ -5920,9 +5937,11 @@ void Node3DEditor::_request_gizmo(Object *p_obj) {
 }
 
 void Node3DEditor::_toggle_maximize_view(Object *p_viewport) {
-	if (!p_viewport) return;
+	if (!p_viewport)
+		return;
 	Node3DEditorViewport *current_viewport = Object::cast_to<Node3DEditorViewport>(p_viewport);
-	if (!current_viewport) return;
+	if (!current_viewport)
+		return;
 
 	int index = -1;
 	bool maximized = false;
@@ -5934,7 +5953,8 @@ void Node3DEditor::_toggle_maximize_view(Object *p_viewport) {
 			break;
 		}
 	}
-	if (index == -1) return;
+	if (index == -1)
+		return;
 
 	if (!maximized) {
 
@@ -5988,7 +6008,8 @@ void Node3DEditor::_register_all_gizmos() {
 	add_gizmo_plugin(Ref<ReflectionProbeGizmoPlugin>(memnew(ReflectionProbeGizmoPlugin)));
 	add_gizmo_plugin(Ref<DecalGizmoPlugin>(memnew(DecalGizmoPlugin)));
 	add_gizmo_plugin(Ref<GIProbeGizmoPlugin>(memnew(GIProbeGizmoPlugin)));
-	//	add_gizmo_plugin(Ref<BakedIndirectLightGizmoPlugin>(memnew(BakedIndirectLightGizmoPlugin)));
+	add_gizmo_plugin(Ref<BakedLightmapGizmoPlugin>(memnew(BakedLightmapGizmoPlugin)));
+	add_gizmo_plugin(Ref<LightmapProbeGizmoPlugin>(memnew(LightmapProbeGizmoPlugin)));
 	add_gizmo_plugin(Ref<CollisionShape3DGizmoPlugin>(memnew(CollisionShape3DGizmoPlugin)));
 	add_gizmo_plugin(Ref<CollisionPolygon3DGizmoPlugin>(memnew(CollisionPolygon3DGizmoPlugin)));
 	add_gizmo_plugin(Ref<NavigationRegion3DGizmoPlugin>(memnew(NavigationRegion3DGizmoPlugin)));
@@ -6446,7 +6467,7 @@ Vector3 Node3DEditor::snap_point(Vector3 p_target, Vector3 p_start) const {
 
 float Node3DEditor::get_translate_snap() const {
 	float snap_value;
-	if (InputFilter::get_singleton()->is_key_pressed(KEY_SHIFT)) {
+	if (Input::get_singleton()->is_key_pressed(KEY_SHIFT)) {
 		snap_value = snap_translate->get_text().to_double() / 10.0;
 	} else {
 		snap_value = snap_translate->get_text().to_double();
@@ -6457,7 +6478,7 @@ float Node3DEditor::get_translate_snap() const {
 
 float Node3DEditor::get_rotate_snap() const {
 	float snap_value;
-	if (InputFilter::get_singleton()->is_key_pressed(KEY_SHIFT)) {
+	if (Input::get_singleton()->is_key_pressed(KEY_SHIFT)) {
 		snap_value = snap_rotate->get_text().to_double() / 3.0;
 	} else {
 		snap_value = snap_rotate->get_text().to_double();
@@ -6468,7 +6489,7 @@ float Node3DEditor::get_rotate_snap() const {
 
 float Node3DEditor::get_scale_snap() const {
 	float snap_value;
-	if (InputFilter::get_singleton()->is_key_pressed(KEY_SHIFT)) {
+	if (Input::get_singleton()->is_key_pressed(KEY_SHIFT)) {
 		snap_value = snap_scale->get_text().to_double() / 2.0;
 	} else {
 		snap_value = snap_scale->get_text().to_double();
@@ -6651,7 +6672,8 @@ Ref<StandardMaterial3D> EditorNode3DGizmoPlugin::get_material(const String &p_na
 	ERR_FAIL_COND_V(!materials.has(p_name), Ref<StandardMaterial3D>());
 	ERR_FAIL_COND_V(materials[p_name].size() == 0, Ref<StandardMaterial3D>());
 
-	if (p_gizmo.is_null() || materials[p_name].size() == 1) return materials[p_name][0];
+	if (p_gizmo.is_null() || materials[p_name].size() == 1)
+		return materials[p_name][0];
 
 	int index = (p_gizmo->is_selected() ? 1 : 0) + (p_gizmo->is_editable() ? 2 : 0);
 
@@ -6688,7 +6710,8 @@ Ref<EditorNode3DGizmo> EditorNode3DGizmoPlugin::get_gizmo(Node3D *p_spatial) {
 
 	Ref<EditorNode3DGizmo> ref = create_gizmo(p_spatial);
 
-	if (ref.is_null()) return ref;
+	if (ref.is_null())
+		return ref;
 
 	ref->set_plugin(this);
 	ref->set_spatial_node(p_spatial);
@@ -6747,7 +6770,8 @@ Ref<EditorNode3DGizmo> EditorNode3DGizmoPlugin::create_gizmo(Node3D *p_spatial) 
 	}
 
 	Ref<EditorNode3DGizmo> ref;
-	if (has_gizmo(p_spatial)) ref.instance();
+	if (has_gizmo(p_spatial))
+		ref.instance();
 	return ref;
 }
 

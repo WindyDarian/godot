@@ -55,6 +55,10 @@
 #include <QuartzCore/CAMetalLayer.h>
 #endif
 
+#ifndef NSAppKitVersionNumber10_14
+#define NSAppKitVersionNumber10_14 1671
+#endif
+
 #define DS_OSX ((DisplayServerOSX *)(DisplayServerOSX::get_singleton()))
 
 static void _get_key_modifier_state(unsigned int p_osx_state, Ref<InputEventWithModifiers> r_state) {
@@ -70,7 +74,7 @@ static Vector2i _get_mouse_pos(DisplayServerOSX::WindowData &p_wd, NSPoint p_loc
 	p_wd.mouse_pos.x = p.x * p_backingScaleFactor;
 	p_wd.mouse_pos.y = (contentRect.size.height - p.y) * p_backingScaleFactor;
 	DS_OSX->last_mouse_pos = p_wd.mouse_pos;
-	InputFilter::get_singleton()->set_mouse_position(p_wd.mouse_pos);
+	Input::get_singleton()->set_mouse_position(p_wd.mouse_pos);
 	return p_wd.mouse_pos;
 }
 
@@ -120,7 +124,7 @@ static NSCursor *_cursorFromSelector(SEL selector, SEL fallback = nil) {
 			k->set_physical_keycode(KEY_PERIOD);
 			k->set_echo([event isARepeat]);
 
-			InputFilter::get_singleton()->accumulate_input_event(k);
+			Input::get_singleton()->accumulate_input_event(k);
 		}
 	}
 
@@ -429,7 +433,7 @@ static NSCursor *_cursorFromSelector(SEL selector, SEL fallback = nil) {
 
 	const CGFloat backingScaleFactor = (OS::get_singleton()->is_hidpi_allowed()) ? [wd.window_view backingScaleFactor] : 1.0;
 	_get_mouse_pos(wd, [wd.window_object mouseLocationOutsideOfEventStream], backingScaleFactor);
-	InputFilter::get_singleton()->set_mouse_position(wd.mouse_pos);
+	Input::get_singleton()->set_mouse_position(wd.mouse_pos);
 
 	DS_OSX->window_focused = true;
 	DS_OSX->_send_window_event(wd, DisplayServerOSX::WINDOW_EVENT_FOCUS_IN);
@@ -755,7 +759,7 @@ static void _mouseDownEvent(DisplayServer::WindowID window_id, NSEvent *event, i
 		mb->set_doubleclick([event clickCount] == 2);
 	}
 
-	InputFilter::get_singleton()->accumulate_input_event(mb);
+	Input::get_singleton()->accumulate_input_event(mb);
 }
 
 - (void)mouseDown:(NSEvent *)event {
@@ -804,15 +808,15 @@ static void _mouseDownEvent(DisplayServer::WindowID window_id, NSEvent *event, i
 		mm->set_tilt(Vector2(p.x, p.y));
 	}
 	mm->set_global_position(pos);
-	mm->set_speed(InputFilter::get_singleton()->get_last_mouse_speed());
+	mm->set_speed(Input::get_singleton()->get_last_mouse_speed());
 	Vector2i relativeMotion = Vector2i();
 	relativeMotion.x = [event deltaX] * backingScaleFactor;
 	relativeMotion.y = [event deltaY] * backingScaleFactor;
 	mm->set_relative(relativeMotion);
 	_get_key_modifier_state([event modifierFlags], mm);
 
-	InputFilter::get_singleton()->set_mouse_position(wd.mouse_pos);
-	InputFilter::get_singleton()->accumulate_input_event(mm);
+	Input::get_singleton()->set_mouse_position(wd.mouse_pos);
+	Input::get_singleton()->accumulate_input_event(mm);
 }
 
 - (void)rightMouseDown:(NSEvent *)event {
@@ -887,7 +891,7 @@ static void _mouseDownEvent(DisplayServer::WindowID window_id, NSEvent *event, i
 	ev->set_position(_get_mouse_pos(wd, [event locationInWindow], backingScaleFactor));
 	ev->set_factor([event magnification] + 1.0);
 
-	InputFilter::get_singleton()->accumulate_input_event(ev);
+	Input::get_singleton()->accumulate_input_event(ev);
 }
 
 - (void)viewDidChangeBackingProperties {
@@ -1353,7 +1357,7 @@ inline void sendScrollEvent(DisplayServer::WindowID window_id, int button, doubl
 	DS_OSX->last_button_state |= mask;
 	sc->set_button_mask(DS_OSX->last_button_state);
 
-	InputFilter::get_singleton()->accumulate_input_event(sc);
+	Input::get_singleton()->accumulate_input_event(sc);
 
 	sc.instance();
 	sc->set_window_id(window_id);
@@ -1365,7 +1369,7 @@ inline void sendScrollEvent(DisplayServer::WindowID window_id, int button, doubl
 	DS_OSX->last_button_state &= ~mask;
 	sc->set_button_mask(DS_OSX->last_button_state);
 
-	InputFilter::get_singleton()->accumulate_input_event(sc);
+	Input::get_singleton()->accumulate_input_event(sc);
 }
 
 inline void sendPanEvent(DisplayServer::WindowID window_id, double dx, double dy, int modifierFlags) {
@@ -1380,7 +1384,7 @@ inline void sendPanEvent(DisplayServer::WindowID window_id, double dx, double dy
 	pg->set_position(wd.mouse_pos);
 	pg->set_delta(Vector2(-dx, -dy));
 
-	InputFilter::get_singleton()->accumulate_input_event(pg);
+	Input::get_singleton()->accumulate_input_event(pg);
 }
 
 - (void)scrollWheel:(NSEvent *)event {
@@ -1652,7 +1656,8 @@ String DisplayServerOSX::global_menu_get_item_submenu(const String &p_menu_root,
 			const NSMenu *sub_menu = [menu_item submenu];
 			if (sub_menu) {
 				for (Map<String, NSMenu *>::Element *E = submenu.front(); E; E = E->next()) {
-					if (E->get() == sub_menu) return E->key();
+					if (E->get() == sub_menu)
+						return E->key();
 				}
 			}
 		}
@@ -2475,7 +2480,8 @@ void DisplayServerOSX::_set_window_per_pixel_transparency_enabled(bool p_enabled
 	ERR_FAIL_COND(!windows.has(p_window));
 	WindowData &wd = windows[p_window];
 
-	if (!OS_OSX::get_singleton()->is_layered_allowed()) return;
+	if (!OS_OSX::get_singleton()->is_layered_allowed())
+		return;
 	if (wd.layered_window != p_enabled) {
 		if (p_enabled) {
 			[wd.window_object setBackgroundColor:[NSColor clearColor]];
@@ -2770,23 +2776,57 @@ void DisplayServerOSX::cursor_set_shape(CursorShape p_shape) {
 		[cursors[p_shape] set];
 	} else {
 		switch (p_shape) {
-			case CURSOR_ARROW: [[NSCursor arrowCursor] set]; break;
-			case CURSOR_IBEAM: [[NSCursor IBeamCursor] set]; break;
-			case CURSOR_POINTING_HAND: [[NSCursor pointingHandCursor] set]; break;
-			case CURSOR_CROSS: [[NSCursor crosshairCursor] set]; break;
-			case CURSOR_WAIT: [[NSCursor arrowCursor] set]; break;
-			case CURSOR_BUSY: [[NSCursor arrowCursor] set]; break;
-			case CURSOR_DRAG: [[NSCursor closedHandCursor] set]; break;
-			case CURSOR_CAN_DROP: [[NSCursor openHandCursor] set]; break;
-			case CURSOR_FORBIDDEN: [[NSCursor operationNotAllowedCursor] set]; break;
-			case CURSOR_VSIZE: [_cursorFromSelector(@selector(_windowResizeNorthSouthCursor), @selector(resizeUpDownCursor)) set]; break;
-			case CURSOR_HSIZE: [_cursorFromSelector(@selector(_windowResizeEastWestCursor), @selector(resizeLeftRightCursor)) set]; break;
-			case CURSOR_BDIAGSIZE: [_cursorFromSelector(@selector(_windowResizeNorthEastSouthWestCursor)) set]; break;
-			case CURSOR_FDIAGSIZE: [_cursorFromSelector(@selector(_windowResizeNorthWestSouthEastCursor)) set]; break;
-			case CURSOR_MOVE: [[NSCursor arrowCursor] set]; break;
-			case CURSOR_VSPLIT: [[NSCursor resizeUpDownCursor] set]; break;
-			case CURSOR_HSPLIT: [[NSCursor resizeLeftRightCursor] set]; break;
-			case CURSOR_HELP: [_cursorFromSelector(@selector(_helpCursor)) set]; break;
+			case CURSOR_ARROW:
+				[[NSCursor arrowCursor] set];
+				break;
+			case CURSOR_IBEAM:
+				[[NSCursor IBeamCursor] set];
+				break;
+			case CURSOR_POINTING_HAND:
+				[[NSCursor pointingHandCursor] set];
+				break;
+			case CURSOR_CROSS:
+				[[NSCursor crosshairCursor] set];
+				break;
+			case CURSOR_WAIT:
+				[[NSCursor arrowCursor] set];
+				break;
+			case CURSOR_BUSY:
+				[[NSCursor arrowCursor] set];
+				break;
+			case CURSOR_DRAG:
+				[[NSCursor closedHandCursor] set];
+				break;
+			case CURSOR_CAN_DROP:
+				[[NSCursor openHandCursor] set];
+				break;
+			case CURSOR_FORBIDDEN:
+				[[NSCursor operationNotAllowedCursor] set];
+				break;
+			case CURSOR_VSIZE:
+				[_cursorFromSelector(@selector(_windowResizeNorthSouthCursor), @selector(resizeUpDownCursor)) set];
+				break;
+			case CURSOR_HSIZE:
+				[_cursorFromSelector(@selector(_windowResizeEastWestCursor), @selector(resizeLeftRightCursor)) set];
+				break;
+			case CURSOR_BDIAGSIZE:
+				[_cursorFromSelector(@selector(_windowResizeNorthEastSouthWestCursor)) set];
+				break;
+			case CURSOR_FDIAGSIZE:
+				[_cursorFromSelector(@selector(_windowResizeNorthWestSouthEastCursor)) set];
+				break;
+			case CURSOR_MOVE:
+				[[NSCursor arrowCursor] set];
+				break;
+			case CURSOR_VSPLIT:
+				[[NSCursor resizeUpDownCursor] set];
+				break;
+			case CURSOR_HSPLIT:
+				[[NSCursor resizeLeftRightCursor] set];
+				break;
+			case CURSOR_HELP:
+				[_cursorFromSelector(@selector(_helpCursor)) set];
+				break;
 			default: {
 			}
 		}
@@ -3002,13 +3042,13 @@ DisplayServerOSX::LatinKeyboardVariant DisplayServerOSX::get_latin_keyboard_vari
 
 void DisplayServerOSX::_push_input(const Ref<InputEvent> &p_event) {
 	Ref<InputEvent> ev = p_event;
-	InputFilter::get_singleton()->accumulate_input_event(ev);
+	Input::get_singleton()->accumulate_input_event(ev);
 }
 
 void DisplayServerOSX::_release_pressed_events() {
 	_THREAD_SAFE_METHOD_
-	if (InputFilter::get_singleton()) {
-		InputFilter::get_singleton()->release_pressed_events();
+	if (Input::get_singleton()) {
+		Input::get_singleton()->release_pressed_events();
 	}
 }
 
@@ -3084,7 +3124,7 @@ void DisplayServerOSX::process_events() {
 
 	if (!drop_events) {
 		_process_key_events();
-		InputFilter::get_singleton()->flush_accumulated_events();
+		Input::get_singleton()->flush_accumulated_events();
 	}
 
 	[autoreleasePool drain];
@@ -3393,7 +3433,7 @@ bool DisplayServerOSX::is_console_visible() const {
 }
 
 DisplayServerOSX::DisplayServerOSX(const String &p_rendering_driver, WindowMode p_mode, uint32_t p_flags, const Vector2i &p_resolution, Error &r_error) {
-	InputFilter::get_singleton()->set_event_dispatch_function(_dispatch_input_events);
+	Input::get_singleton()->set_event_dispatch_function(_dispatch_input_events);
 
 	r_error = OK;
 	drop_events = false;
@@ -3524,7 +3564,10 @@ DisplayServerOSX::DisplayServerOSX(const String &p_rendering_driver, WindowMode 
 	}
 #endif
 
-	WindowID main_window = _create_window(p_mode, Rect2i(Point2i(), p_resolution));
+	Point2i window_position(
+			(screen_get_size(0).width - p_resolution.width) / 2,
+			(screen_get_size(0).height - p_resolution.height) / 2);
+	WindowID main_window = _create_window(p_mode, Rect2i(window_position, p_resolution));
 	for (int i = 0; i < WINDOW_FLAG_MAX; i++) {
 		if (p_flags & (1 << i)) {
 			window_set_flag(WindowFlags(i), true, main_window);

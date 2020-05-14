@@ -548,8 +548,8 @@ signed char String::naturalnocasecmp_to(const String &p_str) const {
 					return -1;
 
 				/* Compare the numbers */
-				this_int = to_int(this_str);
-				that_int = to_int(that_str);
+				this_int = to_int(this_str, -1, true);
+				that_int = to_int(that_str, -1, true);
 
 				if (this_int < that_int)
 					return -1;
@@ -1882,7 +1882,8 @@ bool String::is_numeric() const {
 	};
 
 	int s = 0;
-	if (operator[](0) == '-') ++s;
+	if (operator[](0) == '-')
+		++s;
 	bool dot = false;
 	for (int i = s; i < length(); i++) {
 
@@ -2137,7 +2138,7 @@ double String::to_double(const CharType *p_str, const CharType **r_end) {
 	return built_in_strtod<CharType>(p_str, (CharType **)r_end);
 }
 
-int64_t String::to_int(const CharType *p_str, int p_len) {
+int64_t String::to_int(const CharType *p_str, int p_len, bool p_clamp) {
 
 	if (p_len == 0 || !p_str[0])
 		return 0;
@@ -2181,7 +2182,15 @@ int64_t String::to_int(const CharType *p_str, int p_len) {
 						while (*str && str != limit) {
 							number += *(str++);
 						}
-						ERR_FAIL_V_MSG(sign == 1 ? INT64_MAX : INT64_MIN, "Cannot represent " + number + " as integer, provided value is " + (sign == 1 ? "too big." : "too small."));
+						if (p_clamp) {
+							if (sign == 1) {
+								return INT64_MAX;
+							} else {
+								return INT64_MIN;
+							}
+						} else {
+							ERR_FAIL_V_MSG(sign == 1 ? INT64_MAX : INT64_MIN, "Cannot represent " + number + " as integer, provided value is " + (sign == 1 ? "too big." : "too small."));
+						}
 					}
 					integer *= 10;
 					integer += c - '0';
@@ -4182,9 +4191,14 @@ String String::sprintf(const Array &values, bool *error) const {
 					int base = 16;
 					bool capitalize = false;
 					switch (c) {
-						case 'd': base = 10; break;
-						case 'o': base = 8; break;
-						case 'x': break;
+						case 'd':
+							base = 10;
+							break;
+						case 'o':
+							base = 8;
+							break;
+						case 'x':
+							break;
 						case 'X':
 							base = 16;
 							capitalize = true;

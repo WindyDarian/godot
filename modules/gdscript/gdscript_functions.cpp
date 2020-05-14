@@ -362,13 +362,13 @@ void GDScriptFunctions::call(Function p_func, const Variant **p_args, int p_arg_
 			const double t = (double)*p_args[2];
 			switch (p_args[0]->get_type() == p_args[1]->get_type() ? p_args[0]->get_type() : Variant::FLOAT) {
 				case Variant::VECTOR2: {
-					r_ret = ((Vector2)*p_args[0]).linear_interpolate((Vector2)*p_args[1], t);
+					r_ret = ((Vector2)*p_args[0]).lerp((Vector2)*p_args[1], t);
 				} break;
 				case Variant::VECTOR3: {
-					r_ret = (p_args[0]->operator Vector3()).linear_interpolate(p_args[1]->operator Vector3(), t);
+					r_ret = (p_args[0]->operator Vector3()).lerp(p_args[1]->operator Vector3(), t);
 				} break;
 				case Variant::COLOR: {
-					r_ret = ((Color)*p_args[0]).linear_interpolate((Color)*p_args[1], t);
+					r_ret = ((Color)*p_args[0]).lerp((Color)*p_args[1], t);
 				} break;
 				default: {
 					VALIDATE_ARG_NUM(0);
@@ -1197,8 +1197,12 @@ void GDScriptFunctions::call(Function p_func, const Variant **p_args, int p_arg_
 					return;
 				}
 			}
+			r_ret = gdscr->_new(nullptr, -1 /*skip initializer*/, r_error);
 
-			r_ret = gdscr->_new(nullptr, 0, r_error);
+			if (r_error.error != Callable::CallError::CALL_OK) {
+				r_ret = Variant();
+				return;
+			}
 
 			GDScriptInstance *ins = static_cast<GDScriptInstance *>(static_cast<Object *>(r_ret)->get_script_instance());
 			Ref<GDScript> gd_ref = ins->get_script();

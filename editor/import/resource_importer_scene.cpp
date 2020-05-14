@@ -221,16 +221,26 @@ int ResourceImporterScene::get_preset_count() const {
 String ResourceImporterScene::get_preset_name(int p_idx) const {
 
 	switch (p_idx) {
-		case PRESET_SINGLE_SCENE: return TTR("Import as Single Scene");
-		case PRESET_SEPARATE_ANIMATIONS: return TTR("Import with Separate Animations");
-		case PRESET_SEPARATE_MATERIALS: return TTR("Import with Separate Materials");
-		case PRESET_SEPARATE_MESHES: return TTR("Import with Separate Objects");
-		case PRESET_SEPARATE_MESHES_AND_MATERIALS: return TTR("Import with Separate Objects+Materials");
-		case PRESET_SEPARATE_MESHES_AND_ANIMATIONS: return TTR("Import with Separate Objects+Animations");
-		case PRESET_SEPARATE_MATERIALS_AND_ANIMATIONS: return TTR("Import with Separate Materials+Animations");
-		case PRESET_SEPARATE_MESHES_MATERIALS_AND_ANIMATIONS: return TTR("Import with Separate Objects+Materials+Animations");
-		case PRESET_MULTIPLE_SCENES: return TTR("Import as Multiple Scenes");
-		case PRESET_MULTIPLE_SCENES_AND_MATERIALS: return TTR("Import as Multiple Scenes+Materials");
+		case PRESET_SINGLE_SCENE:
+			return TTR("Import as Single Scene");
+		case PRESET_SEPARATE_ANIMATIONS:
+			return TTR("Import with Separate Animations");
+		case PRESET_SEPARATE_MATERIALS:
+			return TTR("Import with Separate Materials");
+		case PRESET_SEPARATE_MESHES:
+			return TTR("Import with Separate Objects");
+		case PRESET_SEPARATE_MESHES_AND_MATERIALS:
+			return TTR("Import with Separate Objects+Materials");
+		case PRESET_SEPARATE_MESHES_AND_ANIMATIONS:
+			return TTR("Import with Separate Objects+Animations");
+		case PRESET_SEPARATE_MATERIALS_AND_ANIMATIONS:
+			return TTR("Import with Separate Materials+Animations");
+		case PRESET_SEPARATE_MESHES_MATERIALS_AND_ANIMATIONS:
+			return TTR("Import with Separate Objects+Materials+Animations");
+		case PRESET_MULTIPLE_SCENES:
+			return TTR("Import as Multiple Scenes");
+		case PRESET_MULTIPLE_SCENES_AND_MATERIALS:
+			return TTR("Import as Multiple Scenes+Materials");
 	}
 
 	return "";
@@ -344,7 +354,7 @@ Node *ResourceImporterScene::_fix_node(Node *p_node, Node *p_root, Map<Ref<Mesh>
 
 		if (p_light_bake_mode != LIGHT_BAKE_DISABLED) {
 
-			mi->set_flag(GeometryInstance3D::FLAG_USE_BAKED_LIGHT, true);
+			mi->set_gi_mode(GeometryInstance3D::GI_MODE_BAKED);
 		}
 	}
 
@@ -945,7 +955,7 @@ void ResourceImporterScene::_find_meshes(Node *p_node, Map<Ref<ArrayMesh>, Trans
 			Transform transform;
 			while (s) {
 				transform = transform * s->get_transform();
-				s = s->get_parent_spatial();
+				s = Object::cast_to<Node3D>(s->get_parent());
 			}
 
 			meshes[mesh] = transform;
@@ -1348,8 +1358,9 @@ Error ResourceImporterScene::import(const String &p_source_file, const String &p
 		scene->set_script(Variant(root_script));
 	}
 
+	float root_scale = 1.0;
 	if (Object::cast_to<Node3D>(scene)) {
-		float root_scale = p_options["nodes/root_scale"];
+		root_scale = p_options["nodes/root_scale"];
 		Object::cast_to<Node3D>(scene)->scale(Vector3(root_scale, root_scale, root_scale));
 	}
 
@@ -1429,29 +1440,110 @@ Error ResourceImporterScene::import(const String &p_source_file, const String &p
 		Map<Ref<ArrayMesh>, Transform> meshes;
 		_find_meshes(scene, meshes);
 
-		if (light_bake_mode == 2) {
+		String file_id = src_path.get_file();
+		String cache_file_path = base_path.plus_file(file_id + ".unwrap_cache");
 
-			float texel_size = p_options["meshes/lightmap_texel_size"];
-			texel_size = MAX(0.001, texel_size);
+		Vector<unsigned char> cache_data;
 
-			EditorProgress progress2("gen_lightmaps", TTR("Generating Lightmaps"), meshes.size());
-			int step = 0;
-			for (Map<Ref<ArrayMesh>, Transform>::Element *E = meshes.front(); E; E = E->next()) {
+		if (FileAccess::exists(cache_file_path)) {
+			Error err2;
+			FileAccess *file = FileAccess::open(cache_file_path, FileAccess::READ, &err2);
 
-				Ref<ArrayMesh> mesh = E->key();
-				String name = mesh->get_name();
-				if (name == "") { //should not happen but..
-					name = "Mesh " + itos(step);
-				}
-
-				progress2.step(TTR("Generating for Mesh: ") + name + " (" + itos(step) + "/" + itos(meshes.size()) + ")", step);
-
-				Error err2 = mesh->lightmap_unwrap(E->get(), texel_size);
-				if (err2 != OK) {
-					EditorNode::add_io_error("Mesh '" + name + "' failed lightmap generation. Please fix geometry.");
-				}
-				step++;
+			if (err2) {
+				if (file)
+					memdelete(file);
+			} else {
+				int cache_size = file->get_len();
+				cache_data.resize(cache_size);
+				file->get_buffer(cache_data.ptrw(), cache_size);
 			}
+		}
+
+		float texel_size = p_options["meshes/lightmap_texel_size"];
+		texel_size = MAX(0.001, texel_size);
+
+		Map<String, unsigned int> used_unwraps;
+
+		EditorProgress progress2("gen_lightmaps", TTR("Generating Lightmaps"), meshes.size());
+		int step = 0;
+		for (Map<Ref<ArrayMesh>, Transform>::Element *E = meshes.front(); E; E = E->next()) {
+
+			Ref<ArrayMesh> mesh = E->key();
+			String name = mesh->get_name();
+			if (name == "") { //should not happen but..
+				name = "Mesh " + itos(step);
+			}
+
+			progress2.step(TTR("Generating for Mesh: ") + name + " (" + itos(step) + "/" + itos(meshes.size()) + ")", step);
+
+			int *ret_cache_data = (int *)cache_data.ptrw();
+			unsigned int ret_cache_size = cache_data.size();
+			bool ret_used_cache = true; // Tell the unwrapper to use the cache
+			Error err2 = mesh->lightmap_unwrap_cached(ret_cache_data, ret_cache_size, ret_used_cache, E->get(), texel_size);
+
+			if (err2 != OK) {
+				EditorNode::add_io_error("Mesh '" + name + "' failed lightmap generation. Please fix geometry.");
+			} else {
+
+				String hash = String::md5((unsigned char *)ret_cache_data);
+				used_unwraps.insert(hash, ret_cache_size);
+
+				if (!ret_used_cache) {
+					// Cache was not used, add the generated entry to the current cache
+					if (cache_data.empty()) {
+						cache_data.resize(4 + ret_cache_size);
+						int *data = (int *)cache_data.ptrw();
+						data[0] = 1;
+						memcpy(&data[1], ret_cache_data, ret_cache_size);
+					} else {
+						int current_size = cache_data.size();
+						cache_data.resize(cache_data.size() + ret_cache_size);
+						unsigned char *ptrw = cache_data.ptrw();
+						memcpy(&ptrw[current_size], ret_cache_data, ret_cache_size);
+						int *data = (int *)ptrw;
+						data[0] += 1;
+					}
+				}
+			}
+			step++;
+		}
+
+		Error err2;
+		FileAccess *file = FileAccess::open(cache_file_path, FileAccess::WRITE, &err2);
+
+		if (err2) {
+			if (file)
+				memdelete(file);
+		} else {
+
+			// Store number of entries
+			file->store_32(used_unwraps.size());
+
+			// Store cache entries
+			const int *cache = (int *)cache_data.ptr();
+			unsigned int r_idx = 1;
+			for (int i = 0; i < cache[0]; ++i) {
+				unsigned char *entry_start = (unsigned char *)&cache[r_idx];
+				String entry_hash = String::md5(entry_start);
+				if (used_unwraps.has(entry_hash)) {
+					unsigned int entry_size = used_unwraps[entry_hash];
+					file->store_buffer(entry_start, entry_size);
+				}
+
+				r_idx += 4; // hash
+				r_idx += 2; // size hint
+
+				int vertex_count = cache[r_idx];
+				r_idx += 1; // vertex count
+				r_idx += vertex_count; // vertex
+				r_idx += vertex_count * 2; // uvs
+
+				int index_count = cache[r_idx];
+				r_idx += 1; // index count
+				r_idx += index_count; // indices
+			}
+
+			file->close();
 		}
 	}
 
@@ -1490,7 +1582,9 @@ Error ResourceImporterScene::import(const String &p_source_file, const String &p
 		post_import_script->init(base_path, p_source_file);
 		scene = post_import_script->post_import(scene);
 		if (!scene) {
-			EditorNode::add_io_error(TTR("Error running post-import script:") + " " + post_import_script_path);
+			EditorNode::add_io_error(
+					TTR("Error running post-import script:") + " " + post_import_script_path + "\n" +
+					TTR("Did you return a Node-derived object in the `post_import()` method?"));
 			return err;
 		}
 	}

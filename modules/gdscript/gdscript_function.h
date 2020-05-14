@@ -56,7 +56,8 @@ struct GDScriptDataType {
 	Ref<Script> script_type;
 
 	bool is_type(const Variant &p_variant, bool p_allow_implicit_conversion = false) const {
-		if (!has_type) return true; // Can't type check
+		if (!has_type)
+			return true; // Can't type check
 
 		switch (kind) {
 			case UNINITIALIZED:
@@ -293,13 +294,16 @@ private:
 public:
 	struct CallState {
 
-		ObjectID instance_id;
+		GDScript *script;
 		GDScriptInstance *instance;
+#ifdef DEBUG_ENABLED
+		StringName function_name;
+		String script_path;
+#endif
 		Vector<uint8_t> stack;
 		int stack_size;
 		Variant self;
 		uint32_t alloca_size;
-		Ref<GDScript> script;
 		int ip;
 		int line;
 		int defarg;
@@ -355,12 +359,18 @@ class GDScriptFunctionState : public Reference {
 	Variant _signal_callback(const Variant **p_args, int p_argcount, Callable::CallError &r_error);
 	Ref<GDScriptFunctionState> first_state;
 
+	SelfList<GDScriptFunctionState> scripts_list;
+	SelfList<GDScriptFunctionState> instances_list;
+
 protected:
 	static void _bind_methods();
 
 public:
 	bool is_valid(bool p_extended_check = false) const;
 	Variant resume(const Variant &p_arg = Variant());
+
+	void _clear_stack();
+
 	GDScriptFunctionState();
 	~GDScriptFunctionState();
 };

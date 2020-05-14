@@ -362,40 +362,29 @@ Error ProjectSettings::_setup(const String &p_path, const String &p_main_pack, b
 		// We need to test both possibilities as extensions for Linux binaries are optional
 		// (so both 'mygame.bin' and 'mygame' should be able to find 'mygame.pck').
 
-		bool found = false;
-
 		String exec_dir = exec_path.get_base_dir();
 		String exec_filename = exec_path.get_file();
 		String exec_basename = exec_filename.get_basename();
 
-		// Try to load data pack at the location of the executable
-		// As mentioned above, we have two potential names to attempt
-
-		if (_load_resource_pack(exec_dir.plus_file(exec_basename + ".pck")) ||
-				_load_resource_pack(exec_dir.plus_file(exec_filename + ".pck"))) {
-			found = true;
-		} else {
-			// If we couldn't find them next to the executable, we attempt
-			// the current working directory. Same story, two tests.
-			if (_load_resource_pack(exec_basename + ".pck") ||
-					_load_resource_pack(exec_filename + ".pck")) {
-				found = true;
-			}
-		}
+		// Attempt with PCK bundled into executable
+		bool found = _load_resource_pack(exec_path);
 
 #ifdef OSX_ENABLED
-		// Attempt to load PCK from macOS .app bundle resources
 		if (!found) {
-			if (_load_resource_pack(OS::get_singleton()->get_bundle_resource_dir().plus_file(exec_basename + ".pck"))) {
-				found = true;
-			}
+			// Attempt to load PCK from macOS .app bundle resources
+			found = _load_resource_pack(OS::get_singleton()->get_bundle_resource_dir().plus_file(exec_basename + ".pck"));
 		}
 #endif
 
-		// Attempt with PCK bundled into executable
 		if (!found) {
-			if (_load_resource_pack(exec_path)) {
-				found = true;
+			// Try to load data pack at the location of the executable
+			// As mentioned above, we have two potential names to attempt
+			found = _load_resource_pack(exec_dir.plus_file(exec_basename + ".pck")) || _load_resource_pack(exec_dir.plus_file(exec_filename + ".pck"));
+
+			if (!found) {
+				// If we couldn't find them next to the executable, we attempt
+				// the current working directory. Same story, two tests.
+				found = _load_resource_pack(exec_basename + ".pck") || _load_resource_pack(exec_filename + ".pck");
 			}
 		}
 
@@ -1048,7 +1037,7 @@ ProjectSettings::ProjectSettings() {
 	key->set_keycode(KEY_SPACE);
 	events.push_back(key);
 	joyb.instance();
-	joyb->set_button_index(JOY_BUTTON_0);
+	joyb->set_button_index(JOY_BUTTON_A);
 	events.push_back(joyb);
 	action["events"] = events;
 	GLOBAL_DEF("input/ui_accept", action);
@@ -1061,7 +1050,7 @@ ProjectSettings::ProjectSettings() {
 	key->set_keycode(KEY_SPACE);
 	events.push_back(key);
 	joyb.instance();
-	joyb->set_button_index(JOY_BUTTON_3);
+	joyb->set_button_index(JOY_BUTTON_Y);
 	events.push_back(joyb);
 	action["events"] = events;
 	GLOBAL_DEF("input/ui_select", action);
@@ -1074,7 +1063,7 @@ ProjectSettings::ProjectSettings() {
 	key->set_keycode(KEY_ESCAPE);
 	events.push_back(key);
 	joyb.instance();
-	joyb->set_button_index(JOY_BUTTON_1);
+	joyb->set_button_index(JOY_BUTTON_B);
 	events.push_back(joyb);
 	action["events"] = events;
 	GLOBAL_DEF("input/ui_cancel", action);
@@ -1108,7 +1097,7 @@ ProjectSettings::ProjectSettings() {
 	key->set_keycode(KEY_LEFT);
 	events.push_back(key);
 	joyb.instance();
-	joyb->set_button_index(JOY_DPAD_LEFT);
+	joyb->set_button_index(JOY_BUTTON_DPAD_LEFT);
 	events.push_back(joyb);
 	action["events"] = events;
 	GLOBAL_DEF("input/ui_left", action);
@@ -1121,7 +1110,7 @@ ProjectSettings::ProjectSettings() {
 	key->set_keycode(KEY_RIGHT);
 	events.push_back(key);
 	joyb.instance();
-	joyb->set_button_index(JOY_DPAD_RIGHT);
+	joyb->set_button_index(JOY_BUTTON_DPAD_RIGHT);
 	events.push_back(joyb);
 	action["events"] = events;
 	GLOBAL_DEF("input/ui_right", action);
@@ -1134,7 +1123,7 @@ ProjectSettings::ProjectSettings() {
 	key->set_keycode(KEY_UP);
 	events.push_back(key);
 	joyb.instance();
-	joyb->set_button_index(JOY_DPAD_UP);
+	joyb->set_button_index(JOY_BUTTON_DPAD_UP);
 	events.push_back(joyb);
 	action["events"] = events;
 	GLOBAL_DEF("input/ui_up", action);
@@ -1147,7 +1136,7 @@ ProjectSettings::ProjectSettings() {
 	key->set_keycode(KEY_DOWN);
 	events.push_back(key);
 	joyb.instance();
-	joyb->set_button_index(JOY_DPAD_DOWN);
+	joyb->set_button_index(JOY_BUTTON_DPAD_DOWN);
 	events.push_back(joyb);
 	action["events"] = events;
 	GLOBAL_DEF("input/ui_down", action);

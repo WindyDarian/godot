@@ -30,7 +30,7 @@
 
 #include "touch_screen_button.h"
 
-#include "core/input/input_filter.h"
+#include "core/input/input.h"
 #include "core/input/input_map.h"
 #include "core/os/os.h"
 #include "scene/main/window.h"
@@ -260,9 +260,10 @@ bool TouchScreenButton::_is_point_inside(const Point2 &p_point) {
 	bool check_rect = true;
 
 	if (shape.is_valid()) {
-
 		check_rect = false;
-		Transform2D xform = shape_centered ? Transform2D().translated(shape->get_rect().size * 0.5f) : Transform2D();
+
+		Vector2 size = texture.is_null() ? shape->get_rect().size : texture->get_size();
+		Transform2D xform = shape_centered ? Transform2D().translated(size * 0.5f) : Transform2D();
 		touched = shape->collide(xform, unit_rect, Transform2D(0, coord + Vector2(0.5, 0.5)));
 	}
 
@@ -290,7 +291,7 @@ void TouchScreenButton::_press(int p_finger_pressed) {
 
 	if (action != StringName()) {
 
-		InputFilter::get_singleton()->action_press(action);
+		Input::get_singleton()->action_press(action);
 		Ref<InputEventAction> iea;
 		iea.instance();
 		iea->set_action(action);
@@ -308,7 +309,7 @@ void TouchScreenButton::_release(bool p_exiting_tree) {
 
 	if (action != StringName()) {
 
-		InputFilter::get_singleton()->action_release(action);
+		Input::get_singleton()->action_release(action);
 		if (!p_exiting_tree) {
 
 			Ref<InputEventAction> iea;

@@ -30,7 +30,7 @@
 
 #include "export_template_manager.h"
 
-#include "core/input/input_filter.h"
+#include "core/input/input.h"
 #include "core/io/json.h"
 #include "core/io/zip_io.h"
 #include "core/os/dir_access.h"
@@ -446,7 +446,7 @@ void ExportTemplateManager::_http_download_templates_completed(int p_status, int
 
 void ExportTemplateManager::_begin_template_download(const String &p_url) {
 
-	if (InputFilter::get_singleton()->is_key_pressed(KEY_SHIFT)) {
+	if (Input::get_singleton()->is_key_pressed(KEY_SHIFT)) {
 		OS::get_singleton()->shell_open(p_url);
 		return;
 	}
@@ -504,18 +504,26 @@ void ExportTemplateManager::_notification(int p_what) {
 				status = TTR("Disconnected");
 				errored = true;
 				break;
-			case HTTPClient::STATUS_RESOLVING: status = TTR("Resolving"); break;
+			case HTTPClient::STATUS_RESOLVING:
+				status = TTR("Resolving");
+				break;
 			case HTTPClient::STATUS_CANT_RESOLVE:
 				status = TTR("Can't Resolve");
 				errored = true;
 				break;
-			case HTTPClient::STATUS_CONNECTING: status = TTR("Connecting..."); break;
+			case HTTPClient::STATUS_CONNECTING:
+				status = TTR("Connecting...");
+				break;
 			case HTTPClient::STATUS_CANT_CONNECT:
 				status = TTR("Can't Connect");
 				errored = true;
 				break;
-			case HTTPClient::STATUS_CONNECTED: status = TTR("Connected"); break;
-			case HTTPClient::STATUS_REQUESTING: status = TTR("Requesting..."); break;
+			case HTTPClient::STATUS_CONNECTED:
+				status = TTR("Connected");
+				break;
+			case HTTPClient::STATUS_REQUESTING:
+				status = TTR("Requesting...");
+				break;
 			case HTTPClient::STATUS_BODY:
 				status = TTR("Downloading");
 				if (download_templates->get_body_size() > 0) {

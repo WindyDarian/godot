@@ -31,7 +31,7 @@
 #include "animation_track_editor.h"
 
 #include "animation_track_editor_plugins.h"
-#include "core/input/input_filter.h"
+#include "core/input/input.h"
 #include "core/os/keyboard.h"
 #include "editor/animation_bezier_editor.h"
 #include "editor/plugins/animation_player_editor_plugin.h"
@@ -4103,7 +4103,7 @@ bool AnimationTrackEditor::is_selection_active() const {
 }
 
 bool AnimationTrackEditor::is_snap_enabled() const {
-	return snap->is_pressed() ^ InputFilter::get_singleton()->is_key_pressed(KEY_CONTROL);
+	return snap->is_pressed() ^ Input::get_singleton()->is_key_pressed(KEY_CONTROL);
 }
 
 void AnimationTrackEditor::_update_tracks() {
@@ -5297,10 +5297,18 @@ void AnimationTrackEditor::_edit_menu_pressed(int p_option) {
 				}
 
 				switch (animation->track_get_type(i)) {
-					case Animation::TYPE_TRANSFORM: text += " (Transform)"; break;
-					case Animation::TYPE_METHOD: text += " (Methods)"; break;
-					case Animation::TYPE_BEZIER: text += " (Bezier)"; break;
-					case Animation::TYPE_AUDIO: text += " (Audio)"; break;
+					case Animation::TYPE_TRANSFORM:
+						text += " (Transform)";
+						break;
+					case Animation::TYPE_METHOD:
+						text += " (Methods)";
+						break;
+					case Animation::TYPE_BEZIER:
+						text += " (Bezier)";
+						break;
+					case Animation::TYPE_AUDIO:
+						text += " (Audio)";
+						break;
 					default: {
 					};
 				}

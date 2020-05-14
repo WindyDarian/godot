@@ -78,38 +78,38 @@
 #define TYPE(PREFIX, OP, TYPE) &&PREFIX##_##OP##_##TYPE
 
 /* clang-format off */
-#define TYPES(PREFIX, OP) {                   \
-		TYPE(PREFIX, OP, NIL),                \
-		TYPE(PREFIX, OP, BOOL),               \
-		TYPE(PREFIX, OP, INT),                \
-		TYPE(PREFIX, OP, FLOAT),               \
-		TYPE(PREFIX, OP, STRING),             \
-		TYPE(PREFIX, OP, VECTOR2),            \
-		TYPE(PREFIX, OP, VECTOR2I),            \
-		TYPE(PREFIX, OP, RECT2),              \
-	TYPE(PREFIX, OP, RECT2I),              \
-		TYPE(PREFIX, OP, VECTOR3),            \
-	TYPE(PREFIX, OP, VECTOR3I),            \
-		TYPE(PREFIX, OP, TRANSFORM2D),        \
-		TYPE(PREFIX, OP, PLANE),              \
-		TYPE(PREFIX, OP, QUAT),               \
-		TYPE(PREFIX, OP, AABB),              \
-		TYPE(PREFIX, OP, BASIS),              \
-		TYPE(PREFIX, OP, TRANSFORM),          \
-		TYPE(PREFIX, OP, COLOR),              \
+#define TYPES(PREFIX, OP) {                     \
+		TYPE(PREFIX, OP, NIL),                  \
+		TYPE(PREFIX, OP, BOOL),                 \
+		TYPE(PREFIX, OP, INT),                  \
+		TYPE(PREFIX, OP, FLOAT),                \
+		TYPE(PREFIX, OP, STRING),               \
+		TYPE(PREFIX, OP, VECTOR2),              \
+		TYPE(PREFIX, OP, VECTOR2I),             \
+		TYPE(PREFIX, OP, RECT2),                \
+		TYPE(PREFIX, OP, RECT2I),               \
+		TYPE(PREFIX, OP, VECTOR3),              \
+		TYPE(PREFIX, OP, VECTOR3I),             \
+		TYPE(PREFIX, OP, TRANSFORM2D),          \
+		TYPE(PREFIX, OP, PLANE),                \
+		TYPE(PREFIX, OP, QUAT),                 \
+		TYPE(PREFIX, OP, AABB),                 \
+		TYPE(PREFIX, OP, BASIS),                \
+		TYPE(PREFIX, OP, TRANSFORM),            \
+		TYPE(PREFIX, OP, COLOR),                \
 		TYPE(PREFIX, OP, STRING_NAME),          \
-		TYPE(PREFIX, OP, NODE_PATH),          \
-		TYPE(PREFIX, OP, _RID),               \
-		TYPE(PREFIX, OP, OBJECT),             \
+		TYPE(PREFIX, OP, NODE_PATH),            \
+		TYPE(PREFIX, OP, _RID),                 \
+		TYPE(PREFIX, OP, OBJECT),               \
 		TYPE(PREFIX, OP, CALLABLE),             \
-		TYPE(PREFIX, OP, SIGNAL),             \
-		TYPE(PREFIX, OP, DICTIONARY),         \
-		TYPE(PREFIX, OP, ARRAY),              \
+		TYPE(PREFIX, OP, SIGNAL),               \
+		TYPE(PREFIX, OP, DICTIONARY),           \
+		TYPE(PREFIX, OP, ARRAY),                \
 		TYPE(PREFIX, OP, PACKED_BYTE_ARRAY),    \
-		TYPE(PREFIX, OP, PACKED_INT32_ARRAY),     \
-		TYPE(PREFIX, OP, PACKED_INT64_ARRAY),     \
-		TYPE(PREFIX, OP, PACKED_FLOAT32_ARRAY),    \
-		TYPE(PREFIX, OP, PACKED_FLOAT64_ARRAY),    \
+		TYPE(PREFIX, OP, PACKED_INT32_ARRAY),   \
+		TYPE(PREFIX, OP, PACKED_INT64_ARRAY),   \
+		TYPE(PREFIX, OP, PACKED_FLOAT32_ARRAY), \
+		TYPE(PREFIX, OP, PACKED_FLOAT64_ARRAY), \
 		TYPE(PREFIX, OP, PACKED_STRING_ARRAY),  \
 		TYPE(PREFIX, OP, PACKED_VECTOR2_ARRAY), \
 		TYPE(PREFIX, OP, PACKED_VECTOR3_ARRAY), \
@@ -181,21 +181,26 @@ bool Variant::booleanize() const {
 		return;          \
 	}
 
-#define DEFAULT_OP_NUM(m_prefix, m_op_name, m_name, m_op, m_type)               \
-	CASE_TYPE(m_prefix, m_op_name, m_name) {                                    \
-		if (p_b.type == INT) _RETURN(p_a._data.m_type m_op p_b._data._int);     \
-		if (p_b.type == FLOAT) _RETURN(p_a._data.m_type m_op p_b._data._float); \
-                                                                                \
-		_RETURN_FAIL                                                            \
+#define DEFAULT_OP_NUM(m_prefix, m_op_name, m_name, m_op, m_type) \
+	CASE_TYPE(m_prefix, m_op_name, m_name) {                      \
+		if (p_b.type == INT)                                      \
+			_RETURN(p_a._data.m_type m_op p_b._data._int);        \
+		if (p_b.type == FLOAT)                                    \
+			_RETURN(p_a._data.m_type m_op p_b._data._float);      \
+                                                                  \
+		_RETURN_FAIL                                              \
 	};
 
-#define DEFAULT_OP_NUM_NULL(m_prefix, m_op_name, m_name, m_op, m_type)          \
-	CASE_TYPE(m_prefix, m_op_name, m_name) {                                    \
-		if (p_b.type == INT) _RETURN(p_a._data.m_type m_op p_b._data._int);     \
-		if (p_b.type == FLOAT) _RETURN(p_a._data.m_type m_op p_b._data._float); \
-		if (p_b.type == NIL) _RETURN(!(p_b.type m_op NIL));                     \
-                                                                                \
-		_RETURN_FAIL                                                            \
+#define DEFAULT_OP_NUM_NULL(m_prefix, m_op_name, m_name, m_op, m_type) \
+	CASE_TYPE(m_prefix, m_op_name, m_name) {                           \
+		if (p_b.type == INT)                                           \
+			_RETURN(p_a._data.m_type m_op p_b._data._int);             \
+		if (p_b.type == FLOAT)                                         \
+			_RETURN(p_a._data.m_type m_op p_b._data._float);           \
+		if (p_b.type == NIL)                                           \
+			_RETURN(!(p_b.type m_op NIL));                             \
+                                                                       \
+		_RETURN_FAIL                                                   \
 	};
 
 #ifdef DEBUG_ENABLED
@@ -219,12 +224,14 @@ bool Variant::booleanize() const {
 		_RETURN_FAIL                                            \
 	};
 #else
-#define DEFAULT_OP_NUM_DIV(m_prefix, m_op_name, m_name, m_type)              \
-	CASE_TYPE(m_prefix, m_op_name, m_name) {                                 \
-		if (p_b.type == INT) _RETURN(p_a._data.m_type / p_b._data._int);     \
-		if (p_b.type == FLOAT) _RETURN(p_a._data.m_type / p_b._data._float); \
-                                                                             \
-		_RETURN_FAIL                                                         \
+#define DEFAULT_OP_NUM_DIV(m_prefix, m_op_name, m_name, m_type) \
+	CASE_TYPE(m_prefix, m_op_name, m_name) {                    \
+		if (p_b.type == INT)                                    \
+			_RETURN(p_a._data.m_type / p_b._data._int);         \
+		if (p_b.type == FLOAT)                                  \
+			_RETURN(p_a._data.m_type / p_b._data._float);       \
+                                                                \
+		_RETURN_FAIL                                            \
 	};
 #endif
 
@@ -238,62 +245,84 @@ bool Variant::booleanize() const {
 		_RETURN(p_a._data.m_type);                              \
 	};
 
-#define DEFAULT_OP_NUM_VEC(m_prefix, m_op_name, m_name, m_op, m_type)                                                \
-	CASE_TYPE(m_prefix, m_op_name, m_name) {                                                                         \
-		if (p_b.type == INT) _RETURN(p_a._data.m_type m_op p_b._data._int);                                          \
-		if (p_b.type == FLOAT) _RETURN(p_a._data.m_type m_op p_b._data._float);                                      \
-		if (p_b.type == VECTOR2) _RETURN(p_a._data.m_type m_op *reinterpret_cast<const Vector2 *>(p_b._data._mem));  \
-		if (p_b.type == VECTOR3) _RETURN(p_a._data.m_type m_op *reinterpret_cast<const Vector3 *>(p_b._data._mem));  \
-		if (p_b.type == VECTOR2I) _RETURN(p_a._data.m_type m_op *reinterpret_cast<const Vector2 *>(p_b._data._mem)); \
-		if (p_b.type == VECTOR3I) _RETURN(p_a._data.m_type m_op *reinterpret_cast<const Vector3 *>(p_b._data._mem)); \
-                                                                                                                     \
-		_RETURN_FAIL                                                                                                 \
+#define DEFAULT_OP_NUM_VEC(m_prefix, m_op_name, m_name, m_op, m_type)                          \
+	CASE_TYPE(m_prefix, m_op_name, m_name) {                                                   \
+		if (p_b.type == INT)                                                                   \
+			_RETURN(p_a._data.m_type m_op p_b._data._int);                                     \
+		if (p_b.type == FLOAT)                                                                 \
+			_RETURN(p_a._data.m_type m_op p_b._data._float);                                   \
+		if (p_b.type == VECTOR2)                                                               \
+			_RETURN(p_a._data.m_type m_op *reinterpret_cast<const Vector2 *>(p_b._data._mem)); \
+		if (p_b.type == VECTOR3)                                                               \
+			_RETURN(p_a._data.m_type m_op *reinterpret_cast<const Vector3 *>(p_b._data._mem)); \
+		if (p_b.type == VECTOR2I)                                                              \
+			_RETURN(p_a._data.m_type m_op *reinterpret_cast<const Vector2 *>(p_b._data._mem)); \
+		if (p_b.type == VECTOR3I)                                                              \
+			_RETURN(p_a._data.m_type m_op *reinterpret_cast<const Vector3 *>(p_b._data._mem)); \
+                                                                                               \
+		_RETURN_FAIL                                                                           \
 	};
 
-#define DEFAULT_OP_STR_REV(m_prefix, m_op_name, m_name, m_op, m_type)                                                                                       \
-	CASE_TYPE(m_prefix, m_op_name, m_name) {                                                                                                                \
-		if (p_b.type == STRING) _RETURN(*reinterpret_cast<const m_type *>(p_b._data._mem) m_op *reinterpret_cast<const String *>(p_a._data._mem));          \
-		if (p_b.type == STRING_NAME) _RETURN(*reinterpret_cast<const m_type *>(p_b._data._mem) m_op *reinterpret_cast<const StringName *>(p_a._data._mem)); \
-		if (p_b.type == NODE_PATH) _RETURN(*reinterpret_cast<const m_type *>(p_b._data._mem) m_op *reinterpret_cast<const NodePath *>(p_a._data._mem));     \
-                                                                                                                                                            \
-		_RETURN_FAIL                                                                                                                                        \
+#define DEFAULT_OP_STR_REV(m_prefix, m_op_name, m_name, m_op, m_type)                                                              \
+	CASE_TYPE(m_prefix, m_op_name, m_name) {                                                                                       \
+		if (p_b.type == STRING)                                                                                                    \
+			_RETURN(*reinterpret_cast<const m_type *>(p_b._data._mem) m_op *reinterpret_cast<const String *>(p_a._data._mem));     \
+		if (p_b.type == STRING_NAME)                                                                                               \
+			_RETURN(*reinterpret_cast<const m_type *>(p_b._data._mem) m_op *reinterpret_cast<const StringName *>(p_a._data._mem)); \
+		if (p_b.type == NODE_PATH)                                                                                                 \
+			_RETURN(*reinterpret_cast<const m_type *>(p_b._data._mem) m_op *reinterpret_cast<const NodePath *>(p_a._data._mem));   \
+                                                                                                                                   \
+		_RETURN_FAIL                                                                                                               \
 	};
 
-#define DEFAULT_OP_STR(m_prefix, m_op_name, m_name, m_op, m_type)                                                                                           \
-	CASE_TYPE(m_prefix, m_op_name, m_name) {                                                                                                                \
-		if (p_b.type == STRING) _RETURN(*reinterpret_cast<const m_type *>(p_a._data._mem) m_op *reinterpret_cast<const String *>(p_b._data._mem));          \
-		if (p_b.type == STRING_NAME) _RETURN(*reinterpret_cast<const m_type *>(p_a._data._mem) m_op *reinterpret_cast<const StringName *>(p_b._data._mem)); \
-		if (p_b.type == NODE_PATH) _RETURN(*reinterpret_cast<const m_type *>(p_a._data._mem) m_op *reinterpret_cast<const NodePath *>(p_b._data._mem));     \
-                                                                                                                                                            \
-		_RETURN_FAIL                                                                                                                                        \
+#define DEFAULT_OP_STR(m_prefix, m_op_name, m_name, m_op, m_type)                                                                  \
+	CASE_TYPE(m_prefix, m_op_name, m_name) {                                                                                       \
+		if (p_b.type == STRING)                                                                                                    \
+			_RETURN(*reinterpret_cast<const m_type *>(p_a._data._mem) m_op *reinterpret_cast<const String *>(p_b._data._mem));     \
+		if (p_b.type == STRING_NAME)                                                                                               \
+			_RETURN(*reinterpret_cast<const m_type *>(p_a._data._mem) m_op *reinterpret_cast<const StringName *>(p_b._data._mem)); \
+		if (p_b.type == NODE_PATH)                                                                                                 \
+			_RETURN(*reinterpret_cast<const m_type *>(p_a._data._mem) m_op *reinterpret_cast<const NodePath *>(p_b._data._mem));   \
+                                                                                                                                   \
+		_RETURN_FAIL                                                                                                               \
 	};
 
-#define DEFAULT_OP_STR_NULL(m_prefix, m_op_name, m_name, m_op, m_type)                                                                                      \
-	CASE_TYPE(m_prefix, m_op_name, m_name) {                                                                                                                \
-		if (p_b.type == STRING) _RETURN(*reinterpret_cast<const m_type *>(p_a._data._mem) m_op *reinterpret_cast<const String *>(p_b._data._mem));          \
-		if (p_b.type == STRING_NAME) _RETURN(*reinterpret_cast<const m_type *>(p_a._data._mem) m_op *reinterpret_cast<const StringName *>(p_b._data._mem)); \
-		if (p_b.type == NODE_PATH) _RETURN(*reinterpret_cast<const m_type *>(p_a._data._mem) m_op *reinterpret_cast<const NodePath *>(p_b._data._mem));     \
-		if (p_b.type == NIL) _RETURN(!(p_b.type m_op NIL));                                                                                                 \
-                                                                                                                                                            \
-		_RETURN_FAIL                                                                                                                                        \
+#define DEFAULT_OP_STR_NULL(m_prefix, m_op_name, m_name, m_op, m_type)                                                             \
+	CASE_TYPE(m_prefix, m_op_name, m_name) {                                                                                       \
+		if (p_b.type == STRING)                                                                                                    \
+			_RETURN(*reinterpret_cast<const m_type *>(p_a._data._mem) m_op *reinterpret_cast<const String *>(p_b._data._mem));     \
+		if (p_b.type == STRING_NAME)                                                                                               \
+			_RETURN(*reinterpret_cast<const m_type *>(p_a._data._mem) m_op *reinterpret_cast<const StringName *>(p_b._data._mem)); \
+		if (p_b.type == NODE_PATH)                                                                                                 \
+			_RETURN(*reinterpret_cast<const m_type *>(p_a._data._mem) m_op *reinterpret_cast<const NodePath *>(p_b._data._mem));   \
+		if (p_b.type == NIL)                                                                                                       \
+			_RETURN(!(p_b.type m_op NIL));                                                                                         \
+                                                                                                                                   \
+		_RETURN_FAIL                                                                                                               \
 	};
 
-#define DEFAULT_OP_STR_NULL_NP(m_prefix, m_op_name, m_name, m_op, m_type)                                                                               \
-	CASE_TYPE(m_prefix, m_op_name, m_name) {                                                                                                            \
-		if (p_b.type == STRING) _RETURN(*reinterpret_cast<const m_type *>(p_a._data._mem) m_op *reinterpret_cast<const String *>(p_b._data._mem));      \
-		if (p_b.type == NODE_PATH) _RETURN(*reinterpret_cast<const m_type *>(p_a._data._mem) m_op *reinterpret_cast<const NodePath *>(p_b._data._mem)); \
-		if (p_b.type == NIL) _RETURN(!(p_b.type m_op NIL));                                                                                             \
-                                                                                                                                                        \
-		_RETURN_FAIL                                                                                                                                    \
+#define DEFAULT_OP_STR_NULL_NP(m_prefix, m_op_name, m_name, m_op, m_type)                                                        \
+	CASE_TYPE(m_prefix, m_op_name, m_name) {                                                                                     \
+		if (p_b.type == STRING)                                                                                                  \
+			_RETURN(*reinterpret_cast<const m_type *>(p_a._data._mem) m_op *reinterpret_cast<const String *>(p_b._data._mem));   \
+		if (p_b.type == NODE_PATH)                                                                                               \
+			_RETURN(*reinterpret_cast<const m_type *>(p_a._data._mem) m_op *reinterpret_cast<const NodePath *>(p_b._data._mem)); \
+		if (p_b.type == NIL)                                                                                                     \
+			_RETURN(!(p_b.type m_op NIL));                                                                                       \
+                                                                                                                                 \
+		_RETURN_FAIL                                                                                                             \
 	};
 
-#define DEFAULT_OP_STR_NULL_SN(m_prefix, m_op_name, m_name, m_op, m_type)                                                                                   \
-	CASE_TYPE(m_prefix, m_op_name, m_name) {                                                                                                                \
-		if (p_b.type == STRING) _RETURN(*reinterpret_cast<const m_type *>(p_a._data._mem) m_op *reinterpret_cast<const String *>(p_b._data._mem));          \
-		if (p_b.type == STRING_NAME) _RETURN(*reinterpret_cast<const m_type *>(p_a._data._mem) m_op *reinterpret_cast<const StringName *>(p_b._data._mem)); \
-		if (p_b.type == NIL) _RETURN(!(p_b.type m_op NIL));                                                                                                 \
-                                                                                                                                                            \
-		_RETURN_FAIL                                                                                                                                        \
+#define DEFAULT_OP_STR_NULL_SN(m_prefix, m_op_name, m_name, m_op, m_type)                                                          \
+	CASE_TYPE(m_prefix, m_op_name, m_name) {                                                                                       \
+		if (p_b.type == STRING)                                                                                                    \
+			_RETURN(*reinterpret_cast<const m_type *>(p_a._data._mem) m_op *reinterpret_cast<const String *>(p_b._data._mem));     \
+		if (p_b.type == STRING_NAME)                                                                                               \
+			_RETURN(*reinterpret_cast<const m_type *>(p_a._data._mem) m_op *reinterpret_cast<const StringName *>(p_b._data._mem)); \
+		if (p_b.type == NIL)                                                                                                       \
+			_RETURN(!(p_b.type m_op NIL));                                                                                         \
+                                                                                                                                   \
+		_RETURN_FAIL                                                                                                               \
 	};
 
 #define DEFAULT_OP_LOCALMEM_REV(m_prefix, m_op_name, m_name, m_op, m_type)                                                     \
@@ -332,13 +361,16 @@ bool Variant::booleanize() const {
 		_RETURN(*reinterpret_cast<const m_type *>(p_a._data._mem));  \
 	}
 
-#define DEFAULT_OP_LOCALMEM_NUM(m_prefix, m_op_name, m_name, m_op, m_type)                                                                         \
-	CASE_TYPE(m_prefix, m_op_name, m_name) {                                                                                                       \
-		if (p_b.type == m_name) _RETURN(*reinterpret_cast<const m_type *>(p_a._data._mem) m_op *reinterpret_cast<const m_type *>(p_b._data._mem)); \
-		if (p_b.type == INT) _RETURN(*reinterpret_cast<const m_type *>(p_a._data._mem) m_op p_b._data._int);                                       \
-		if (p_b.type == FLOAT) _RETURN(*reinterpret_cast<const m_type *>(p_a._data._mem) m_op p_b._data._float);                                   \
-                                                                                                                                                   \
-		_RETURN_FAIL                                                                                                                               \
+#define DEFAULT_OP_LOCALMEM_NUM(m_prefix, m_op_name, m_name, m_op, m_type)                                                     \
+	CASE_TYPE(m_prefix, m_op_name, m_name) {                                                                                   \
+		if (p_b.type == m_name)                                                                                                \
+			_RETURN(*reinterpret_cast<const m_type *>(p_a._data._mem) m_op *reinterpret_cast<const m_type *>(p_b._data._mem)); \
+		if (p_b.type == INT)                                                                                                   \
+			_RETURN(*reinterpret_cast<const m_type *>(p_a._data._mem) m_op p_b._data._int);                                    \
+		if (p_b.type == FLOAT)                                                                                                 \
+			_RETURN(*reinterpret_cast<const m_type *>(p_a._data._mem) m_op p_b._data._float);                                  \
+                                                                                                                               \
+		_RETURN_FAIL                                                                                                           \
 	}
 
 #define DEFAULT_OP_PTR(m_op, m_name, m_sub)                \
@@ -436,7 +468,8 @@ void Variant::evaluate(const Operator &p_op, const Variant &p_a,
 	SWITCH(math, p_op, p_a.type) {
 		SWITCH_OP(math, OP_EQUAL, p_a.type) {
 			CASE_TYPE(math, OP_EQUAL, NIL) {
-				if (p_b.type == NIL) _RETURN(true);
+				if (p_b.type == NIL)
+					_RETURN(true);
 				if (p_b.type == OBJECT)
 					_RETURN(p_b._get_obj().obj == nullptr);
 
@@ -532,7 +565,8 @@ void Variant::evaluate(const Operator &p_op, const Variant &p_a,
 
 		SWITCH_OP(math, OP_NOT_EQUAL, p_a.type) {
 			CASE_TYPE(math, OP_NOT_EQUAL, NIL) {
-				if (p_b.type == NIL) _RETURN(false);
+				if (p_b.type == NIL)
+					_RETURN(false);
 				if (p_b.type == OBJECT)
 					_RETURN(p_b._get_obj().obj != nullptr);
 
@@ -981,7 +1015,8 @@ void Variant::evaluate(const Operator &p_op, const Variant &p_a,
 					case VECTOR2: {
 						_RETURN(p_a._data._transform2d->xform(*(const Vector2 *)p_b._data._mem));
 					}
-					default: _RETURN_FAIL;
+					default:
+						_RETURN_FAIL;
 				}
 			}
 
@@ -996,7 +1031,8 @@ void Variant::evaluate(const Operator &p_op, const Variant &p_a,
 					case FLOAT: {
 						_RETURN(*reinterpret_cast<const Quat *>(p_a._data._mem) * p_b._data._float);
 					}
-					default: _RETURN_FAIL;
+					default:
+						_RETURN_FAIL;
 				}
 			}
 
@@ -1008,7 +1044,8 @@ void Variant::evaluate(const Operator &p_op, const Variant &p_a,
 					case BASIS: {
 						_RETURN(*p_a._data._basis * *p_b._data._basis);
 					}
-					default: _RETURN_FAIL;
+					default:
+						_RETURN_FAIL;
 				}
 			}
 
@@ -1020,7 +1057,8 @@ void Variant::evaluate(const Operator &p_op, const Variant &p_a,
 					case TRANSFORM: {
 						_RETURN(*p_a._data._transform * *p_b._data._transform);
 					}
-					default: _RETURN_FAIL;
+					default:
+						_RETURN_FAIL;
 				}
 			}
 
@@ -1983,7 +2021,8 @@ Variant Variant::get_named(const StringName &p_index, bool *r_valid) const {
 
 #define DEFAULT_OP_DVECTOR_SET(m_name, m_type, skip_cond)                                    \
 	case m_name: {                                                                           \
-		if (skip_cond) return;                                                               \
+		if (skip_cond)                                                                       \
+			return;                                                                          \
                                                                                              \
 		if (p_index.get_type() == Variant::INT || p_index.get_type() == Variant::FLOAT) {    \
 			int index = p_index;                                                             \
@@ -3458,17 +3497,25 @@ bool Variant::iter_init(Variant &r_iter, bool &valid) const {
 			return _data._float > 0.0;
 		} break;
 		case VECTOR2: {
-			int64_t from = reinterpret_cast<const Vector2 *>(_data._mem)->x;
-			int64_t to = reinterpret_cast<const Vector2 *>(_data._mem)->y;
+			double from = reinterpret_cast<const Vector2 *>(_data._mem)->x;
+			double to = reinterpret_cast<const Vector2 *>(_data._mem)->y;
+
+			r_iter = from;
+
+			return from < to;
+		} break;
+		case VECTOR2I: {
+			int64_t from = reinterpret_cast<const Vector2i *>(_data._mem)->x;
+			int64_t to = reinterpret_cast<const Vector2i *>(_data._mem)->y;
 
 			r_iter = from;
 
 			return from < to;
 		} break;
 		case VECTOR3: {
-			int64_t from = reinterpret_cast<const Vector3 *>(_data._mem)->x;
-			int64_t to = reinterpret_cast<const Vector3 *>(_data._mem)->y;
-			int64_t step = reinterpret_cast<const Vector3 *>(_data._mem)->z;
+			double from = reinterpret_cast<const Vector3 *>(_data._mem)->x;
+			double to = reinterpret_cast<const Vector3 *>(_data._mem)->y;
+			double step = reinterpret_cast<const Vector3 *>(_data._mem)->z;
 
 			r_iter = from;
 
@@ -3476,10 +3523,22 @@ bool Variant::iter_init(Variant &r_iter, bool &valid) const {
 				return false;
 			} else if (from < to) {
 				return step > 0;
-			} else {
-				return step < 0;
 			}
-			//return true;
+			return step < 0;
+		} break;
+		case VECTOR3I: {
+			int64_t from = reinterpret_cast<const Vector3i *>(_data._mem)->x;
+			int64_t to = reinterpret_cast<const Vector3i *>(_data._mem)->y;
+			int64_t step = reinterpret_cast<const Vector3i *>(_data._mem)->z;
+
+			r_iter = from;
+
+			if (from == to) {
+				return false;
+			} else if (from < to) {
+				return step > 0;
+			}
+			return step < 0;
 		} break;
 		case OBJECT: {
 
@@ -3640,7 +3699,19 @@ bool Variant::iter_next(Variant &r_iter, bool &valid) const {
 			return true;
 		} break;
 		case VECTOR2: {
-			int64_t to = reinterpret_cast<const Vector2 *>(_data._mem)->y;
+			double to = reinterpret_cast<const Vector2 *>(_data._mem)->y;
+
+			double idx = r_iter;
+			idx++;
+
+			if (idx >= to)
+				return false;
+
+			r_iter = idx;
+			return true;
+		} break;
+		case VECTOR2I: {
+			int64_t to = reinterpret_cast<const Vector2i *>(_data._mem)->y;
 
 			int64_t idx = r_iter;
 			idx++;
@@ -3652,8 +3723,24 @@ bool Variant::iter_next(Variant &r_iter, bool &valid) const {
 			return true;
 		} break;
 		case VECTOR3: {
-			int64_t to = reinterpret_cast<const Vector3 *>(_data._mem)->y;
-			int64_t step = reinterpret_cast<const Vector3 *>(_data._mem)->z;
+			double to = reinterpret_cast<const Vector3 *>(_data._mem)->y;
+			double step = reinterpret_cast<const Vector3 *>(_data._mem)->z;
+
+			double idx = r_iter;
+			idx += step;
+
+			if (step < 0 && idx <= to)
+				return false;
+
+			if (step > 0 && idx >= to)
+				return false;
+
+			r_iter = idx;
+			return true;
+		} break;
+		case VECTOR3I: {
+			int64_t to = reinterpret_cast<const Vector3i *>(_data._mem)->y;
+			int64_t step = reinterpret_cast<const Vector3i *>(_data._mem)->z;
 
 			int64_t idx = r_iter;
 			idx += step;
@@ -3844,7 +3931,15 @@ Variant Variant::iter_get(const Variant &r_iter, bool &r_valid) const {
 
 			return r_iter;
 		} break;
+		case VECTOR2I: {
+
+			return r_iter;
+		} break;
 		case VECTOR3: {
+
+			return r_iter;
+		} break;
+		case VECTOR3I: {
 
 			return r_iter;
 		} break;
@@ -4220,7 +4315,7 @@ void Variant::interpolate(const Variant &a, const Variant &b, float c, Variant &
 		}
 			return;
 		case VECTOR2: {
-			r_dst = reinterpret_cast<const Vector2 *>(a._data._mem)->linear_interpolate(*reinterpret_cast<const Vector2 *>(b._data._mem), c);
+			r_dst = reinterpret_cast<const Vector2 *>(a._data._mem)->lerp(*reinterpret_cast<const Vector2 *>(b._data._mem), c);
 		}
 			return;
 		case VECTOR2I: {
@@ -4233,7 +4328,7 @@ void Variant::interpolate(const Variant &a, const Variant &b, float c, Variant &
 			return;
 
 		case RECT2: {
-			r_dst = Rect2(reinterpret_cast<const Rect2 *>(a._data._mem)->position.linear_interpolate(reinterpret_cast<const Rect2 *>(b._data._mem)->position, c), reinterpret_cast<const Rect2 *>(a._data._mem)->size.linear_interpolate(reinterpret_cast<const Rect2 *>(b._data._mem)->size, c));
+			r_dst = Rect2(reinterpret_cast<const Rect2 *>(a._data._mem)->position.lerp(reinterpret_cast<const Rect2 *>(b._data._mem)->position, c), reinterpret_cast<const Rect2 *>(a._data._mem)->size.lerp(reinterpret_cast<const Rect2 *>(b._data._mem)->size, c));
 		}
 			return;
 		case RECT2I: {
@@ -4254,7 +4349,7 @@ void Variant::interpolate(const Variant &a, const Variant &b, float c, Variant &
 			return;
 
 		case VECTOR3: {
-			r_dst = reinterpret_cast<const Vector3 *>(a._data._mem)->linear_interpolate(*reinterpret_cast<const Vector3 *>(b._data._mem), c);
+			r_dst = reinterpret_cast<const Vector3 *>(a._data._mem)->lerp(*reinterpret_cast<const Vector3 *>(b._data._mem), c);
 		}
 			return;
 		case VECTOR3I: {
@@ -4281,7 +4376,7 @@ void Variant::interpolate(const Variant &a, const Variant &b, float c, Variant &
 		}
 			return;
 		case AABB: {
-			r_dst = ::AABB(a._data._aabb->position.linear_interpolate(b._data._aabb->position, c), a._data._aabb->size.linear_interpolate(b._data._aabb->size, c));
+			r_dst = ::AABB(a._data._aabb->position.lerp(b._data._aabb->position, c), a._data._aabb->size.lerp(b._data._aabb->size, c));
 		}
 			return;
 		case BASIS: {
@@ -4293,7 +4388,7 @@ void Variant::interpolate(const Variant &a, const Variant &b, float c, Variant &
 		}
 			return;
 		case COLOR: {
-			r_dst = reinterpret_cast<const Color *>(a._data._mem)->linear_interpolate(*reinterpret_cast<const Color *>(b._data._mem), c);
+			r_dst = reinterpret_cast<const Color *>(a._data._mem)->lerp(*reinterpret_cast<const Color *>(b._data._mem), c);
 		}
 			return;
 		case STRING_NAME: {
@@ -4448,7 +4543,7 @@ void Variant::interpolate(const Variant &a, const Variant &b, float c, Variant &
 					const Vector2 *br = arr_b->ptr();
 
 					for (int i = 0; i < sz; i++) {
-						vw[i] = ar[i].linear_interpolate(br[i], c);
+						vw[i] = ar[i].lerp(br[i], c);
 					}
 				}
 				r_dst = v;
@@ -4473,7 +4568,7 @@ void Variant::interpolate(const Variant &a, const Variant &b, float c, Variant &
 					const Vector3 *br = arr_b->ptr();
 
 					for (int i = 0; i < sz; i++) {
-						vw[i] = ar[i].linear_interpolate(br[i], c);
+						vw[i] = ar[i].lerp(br[i], c);
 					}
 				}
 				r_dst = v;
@@ -4497,7 +4592,7 @@ void Variant::interpolate(const Variant &a, const Variant &b, float c, Variant &
 					const Color *br = arr_b->ptr();
 
 					for (int i = 0; i < sz; i++) {
-						vw[i] = ar[i].linear_interpolate(br[i], c);
+						vw[i] = ar[i].lerp(br[i], c);
 					}
 				}
 				r_dst = v;

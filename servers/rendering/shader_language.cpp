@@ -132,6 +132,7 @@ const char *ShaderLanguage::token_names[TK_MAX] = {
 	"TYPE_ISAMPLER3D",
 	"TYPE_USAMPLER3D",
 	"TYPE_SAMPLERCUBE",
+	"TYPE_SAMPLERCUBEARRAY",
 	"INTERPOLATION_FLAT",
 	"INTERPOLATION_SMOOTH",
 	"CONST",
@@ -283,6 +284,7 @@ const ShaderLanguage::KeyWord ShaderLanguage::keyword_list[] = {
 	{ TK_TYPE_ISAMPLER3D, "isampler3D" },
 	{ TK_TYPE_USAMPLER3D, "usampler3D" },
 	{ TK_TYPE_SAMPLERCUBE, "samplerCube" },
+	{ TK_TYPE_SAMPLERCUBEARRAY, "samplerCubeArray" },
 	{ TK_INTERPOLATION_FLAT, "flat" },
 	{ TK_INTERPOLATION_SMOOTH, "smooth" },
 	{ TK_CONST, "const" },
@@ -783,7 +785,8 @@ bool ShaderLanguage::is_token_datatype(TokenType p_type) {
 			p_type == TK_TYPE_SAMPLER3D ||
 			p_type == TK_TYPE_ISAMPLER3D ||
 			p_type == TK_TYPE_USAMPLER3D ||
-			p_type == TK_TYPE_SAMPLERCUBE);
+			p_type == TK_TYPE_SAMPLERCUBE ||
+			p_type == TK_TYPE_SAMPLERCUBEARRAY);
 }
 
 ShaderLanguage::DataType ShaderLanguage::get_token_datatype(TokenType p_type) {
@@ -826,9 +829,12 @@ ShaderLanguage::DataPrecision ShaderLanguage::get_token_precision(TokenType p_ty
 
 String ShaderLanguage::get_precision_name(DataPrecision p_type) {
 	switch (p_type) {
-		case PRECISION_LOWP: return "lowp";
-		case PRECISION_MEDIUMP: return "mediump";
-		case PRECISION_HIGHP: return "highp";
+		case PRECISION_LOWP:
+			return "lowp";
+		case PRECISION_MEDIUMP:
+			return "mediump";
+		case PRECISION_HIGHP:
+			return "highp";
 		default:
 			break;
 	}
@@ -839,38 +845,72 @@ String ShaderLanguage::get_datatype_name(DataType p_type) {
 
 	switch (p_type) {
 
-		case TYPE_VOID: return "void";
-		case TYPE_BOOL: return "bool";
-		case TYPE_BVEC2: return "bvec2";
-		case TYPE_BVEC3: return "bvec3";
-		case TYPE_BVEC4: return "bvec4";
-		case TYPE_INT: return "int";
-		case TYPE_IVEC2: return "ivec2";
-		case TYPE_IVEC3: return "ivec3";
-		case TYPE_IVEC4: return "ivec4";
-		case TYPE_UINT: return "uint";
-		case TYPE_UVEC2: return "uvec2";
-		case TYPE_UVEC3: return "uvec3";
-		case TYPE_UVEC4: return "uvec4";
-		case TYPE_FLOAT: return "float";
-		case TYPE_VEC2: return "vec2";
-		case TYPE_VEC3: return "vec3";
-		case TYPE_VEC4: return "vec4";
-		case TYPE_MAT2: return "mat2";
-		case TYPE_MAT3: return "mat3";
-		case TYPE_MAT4: return "mat4";
-		case TYPE_SAMPLER2D: return "sampler2D";
-		case TYPE_ISAMPLER2D: return "isampler2D";
-		case TYPE_USAMPLER2D: return "usampler2D";
-		case TYPE_SAMPLER2DARRAY: return "sampler2DArray";
-		case TYPE_ISAMPLER2DARRAY: return "isampler2DArray";
-		case TYPE_USAMPLER2DARRAY: return "usampler2DArray";
-		case TYPE_SAMPLER3D: return "sampler3D";
-		case TYPE_ISAMPLER3D: return "isampler3D";
-		case TYPE_USAMPLER3D: return "usampler3D";
-		case TYPE_SAMPLERCUBE: return "samplerCube";
-		case TYPE_STRUCT: return "struct";
-		case TYPE_MAX: return "invalid";
+		case TYPE_VOID:
+			return "void";
+		case TYPE_BOOL:
+			return "bool";
+		case TYPE_BVEC2:
+			return "bvec2";
+		case TYPE_BVEC3:
+			return "bvec3";
+		case TYPE_BVEC4:
+			return "bvec4";
+		case TYPE_INT:
+			return "int";
+		case TYPE_IVEC2:
+			return "ivec2";
+		case TYPE_IVEC3:
+			return "ivec3";
+		case TYPE_IVEC4:
+			return "ivec4";
+		case TYPE_UINT:
+			return "uint";
+		case TYPE_UVEC2:
+			return "uvec2";
+		case TYPE_UVEC3:
+			return "uvec3";
+		case TYPE_UVEC4:
+			return "uvec4";
+		case TYPE_FLOAT:
+			return "float";
+		case TYPE_VEC2:
+			return "vec2";
+		case TYPE_VEC3:
+			return "vec3";
+		case TYPE_VEC4:
+			return "vec4";
+		case TYPE_MAT2:
+			return "mat2";
+		case TYPE_MAT3:
+			return "mat3";
+		case TYPE_MAT4:
+			return "mat4";
+		case TYPE_SAMPLER2D:
+			return "sampler2D";
+		case TYPE_ISAMPLER2D:
+			return "isampler2D";
+		case TYPE_USAMPLER2D:
+			return "usampler2D";
+		case TYPE_SAMPLER2DARRAY:
+			return "sampler2DArray";
+		case TYPE_ISAMPLER2DARRAY:
+			return "isampler2DArray";
+		case TYPE_USAMPLER2DARRAY:
+			return "usampler2DArray";
+		case TYPE_SAMPLER3D:
+			return "sampler3D";
+		case TYPE_ISAMPLER3D:
+			return "isampler3D";
+		case TYPE_USAMPLER3D:
+			return "usampler3D";
+		case TYPE_SAMPLERCUBE:
+			return "samplerCube";
+		case TYPE_SAMPLERCUBEARRAY:
+			return "samplerCubeArray";
+		case TYPE_STRUCT:
+			return "struct";
+		case TYPE_MAX:
+			return "invalid";
 	}
 
 	return "";
@@ -2011,6 +2051,7 @@ const ShaderLanguage::BuiltinFuncDef ShaderLanguage::builtin_func_defs[] = {
 	{ "textureSize", TYPE_IVEC3, { TYPE_ISAMPLER3D, TYPE_INT, TYPE_VOID }, TAG_GLOBAL, true },
 	{ "textureSize", TYPE_IVEC3, { TYPE_USAMPLER3D, TYPE_INT, TYPE_VOID }, TAG_GLOBAL, true },
 	{ "textureSize", TYPE_IVEC2, { TYPE_SAMPLERCUBE, TYPE_INT, TYPE_VOID }, TAG_GLOBAL, true },
+	{ "textureSize", TYPE_IVEC2, { TYPE_SAMPLERCUBEARRAY, TYPE_INT, TYPE_VOID }, TAG_GLOBAL, true },
 
 	{ "texture", TYPE_VEC4, { TYPE_SAMPLER2D, TYPE_VEC2, TYPE_VOID }, TAG_GLOBAL, false },
 	{ "texture", TYPE_VEC4, { TYPE_SAMPLER2D, TYPE_VEC2, TYPE_FLOAT, TYPE_VOID }, TAG_GLOBAL, false },
@@ -2032,6 +2073,8 @@ const ShaderLanguage::BuiltinFuncDef ShaderLanguage::builtin_func_defs[] = {
 	{ "texture", TYPE_IVEC4, { TYPE_ISAMPLER3D, TYPE_VEC3, TYPE_FLOAT, TYPE_VOID }, TAG_GLOBAL, true },
 	{ "texture", TYPE_VEC4, { TYPE_SAMPLERCUBE, TYPE_VEC3, TYPE_VOID }, TAG_GLOBAL, false },
 	{ "texture", TYPE_VEC4, { TYPE_SAMPLERCUBE, TYPE_VEC3, TYPE_FLOAT, TYPE_VOID }, TAG_GLOBAL, false },
+	{ "texture", TYPE_VEC4, { TYPE_SAMPLERCUBEARRAY, TYPE_VEC4, TYPE_VOID }, TAG_GLOBAL, false },
+	{ "texture", TYPE_VEC4, { TYPE_SAMPLERCUBEARRAY, TYPE_VEC4, TYPE_FLOAT, TYPE_VOID }, TAG_GLOBAL, false },
 
 	{ "textureProj", TYPE_VEC4, { TYPE_SAMPLER2D, TYPE_VEC3, TYPE_VOID }, TAG_GLOBAL, true },
 	{ "textureProj", TYPE_VEC4, { TYPE_SAMPLER2D, TYPE_VEC4, TYPE_VOID }, TAG_GLOBAL, true },
@@ -2062,6 +2105,7 @@ const ShaderLanguage::BuiltinFuncDef ShaderLanguage::builtin_func_defs[] = {
 	{ "textureLod", TYPE_IVEC4, { TYPE_ISAMPLER3D, TYPE_VEC3, TYPE_FLOAT, TYPE_VOID }, TAG_GLOBAL, true },
 	{ "textureLod", TYPE_UVEC4, { TYPE_USAMPLER3D, TYPE_VEC3, TYPE_FLOAT, TYPE_VOID }, TAG_GLOBAL, true },
 	{ "textureLod", TYPE_VEC4, { TYPE_SAMPLERCUBE, TYPE_VEC3, TYPE_FLOAT, TYPE_VOID }, TAG_GLOBAL, false },
+	{ "textureLod", TYPE_VEC4, { TYPE_SAMPLERCUBEARRAY, TYPE_VEC4, TYPE_FLOAT, TYPE_VOID }, TAG_GLOBAL, false },
 
 	{ "texelFetch", TYPE_VEC4, { TYPE_SAMPLER2D, TYPE_IVEC2, TYPE_INT, TYPE_VOID }, TAG_GLOBAL, true },
 	{ "texelFetch", TYPE_IVEC4, { TYPE_ISAMPLER2D, TYPE_IVEC2, TYPE_INT, TYPE_VOID }, TAG_GLOBAL, true },
@@ -2093,6 +2137,7 @@ const ShaderLanguage::BuiltinFuncDef ShaderLanguage::builtin_func_defs[] = {
 	{ "textureGrad", TYPE_IVEC4, { TYPE_ISAMPLER3D, TYPE_VEC3, TYPE_VEC3, TYPE_VEC3, TYPE_VOID }, TAG_GLOBAL, true },
 	{ "textureGrad", TYPE_UVEC4, { TYPE_USAMPLER3D, TYPE_VEC3, TYPE_VEC3, TYPE_VEC3, TYPE_VOID }, TAG_GLOBAL, true },
 	{ "textureGrad", TYPE_VEC4, { TYPE_SAMPLERCUBE, TYPE_VEC3, TYPE_VEC3, TYPE_VEC3, TYPE_VOID }, TAG_GLOBAL, true },
+	{ "textureGrad", TYPE_VEC4, { TYPE_SAMPLERCUBEARRAY, TYPE_VEC4, TYPE_VEC3, TYPE_VEC3, TYPE_VOID }, TAG_GLOBAL, true },
 
 	{ "dFdx", TYPE_FLOAT, { TYPE_FLOAT, TYPE_VOID }, TAG_GLOBAL, true },
 	{ "dFdx", TYPE_VEC2, { TYPE_VEC2, TYPE_VOID }, TAG_GLOBAL, true },
@@ -2583,7 +2628,8 @@ bool ShaderLanguage::is_sampler_type(DataType p_type) {
 		   p_type == TYPE_SAMPLER3D ||
 		   p_type == TYPE_ISAMPLER3D ||
 		   p_type == TYPE_USAMPLER3D ||
-		   p_type == TYPE_SAMPLERCUBE;
+		   p_type == TYPE_SAMPLERCUBE ||
+		   p_type == TYPE_SAMPLERCUBEARRAY;
 }
 
 Variant ShaderLanguage::constant_value_to_variant(const Vector<ShaderLanguage::ConstantNode::Value> &p_value, DataType p_type, ShaderLanguage::ShaderNode::Uniform::Hint p_hint) {
@@ -2677,7 +2723,9 @@ Variant ShaderLanguage::constant_value_to_variant(const Vector<ShaderLanguage::C
 			case ShaderLanguage::TYPE_USAMPLER2DARRAY:
 			case ShaderLanguage::TYPE_USAMPLER2D:
 			case ShaderLanguage::TYPE_USAMPLER3D:
-			case ShaderLanguage::TYPE_SAMPLERCUBE: {
+			case ShaderLanguage::TYPE_SAMPLERCUBE:
+			case ShaderLanguage::TYPE_SAMPLERCUBEARRAY: {
+
 				// Texture types, likely not relevant here.
 				break;
 			}
@@ -2696,8 +2744,12 @@ Variant ShaderLanguage::constant_value_to_variant(const Vector<ShaderLanguage::C
 PropertyInfo ShaderLanguage::uniform_to_property_info(const ShaderNode::Uniform &p_uniform) {
 	PropertyInfo pi;
 	switch (p_uniform.type) {
-		case ShaderLanguage::TYPE_VOID: pi.type = Variant::NIL; break;
-		case ShaderLanguage::TYPE_BOOL: pi.type = Variant::BOOL; break;
+		case ShaderLanguage::TYPE_VOID:
+			pi.type = Variant::NIL;
+			break;
+		case ShaderLanguage::TYPE_BOOL:
+			pi.type = Variant::BOOL;
+			break;
 		case ShaderLanguage::TYPE_BVEC2:
 			pi.type = Variant::INT;
 			pi.hint = PROPERTY_HINT_FLAGS;
@@ -2739,8 +2791,12 @@ PropertyInfo ShaderLanguage::uniform_to_property_info(const ShaderNode::Uniform 
 			}
 
 		} break;
-		case ShaderLanguage::TYPE_VEC2: pi.type = Variant::VECTOR2; break;
-		case ShaderLanguage::TYPE_VEC3: pi.type = Variant::VECTOR3; break;
+		case ShaderLanguage::TYPE_VEC2:
+			pi.type = Variant::VECTOR2;
+			break;
+		case ShaderLanguage::TYPE_VEC3:
+			pi.type = Variant::VECTOR3;
+			break;
 		case ShaderLanguage::TYPE_VEC4: {
 			if (p_uniform.hint == ShaderLanguage::ShaderNode::Uniform::HINT_COLOR) {
 				pi.type = Variant::COLOR;
@@ -2748,9 +2804,15 @@ PropertyInfo ShaderLanguage::uniform_to_property_info(const ShaderNode::Uniform 
 				pi.type = Variant::PLANE;
 			}
 		} break;
-		case ShaderLanguage::TYPE_MAT2: pi.type = Variant::TRANSFORM2D; break;
-		case ShaderLanguage::TYPE_MAT3: pi.type = Variant::BASIS; break;
-		case ShaderLanguage::TYPE_MAT4: pi.type = Variant::TRANSFORM; break;
+		case ShaderLanguage::TYPE_MAT2:
+			pi.type = Variant::TRANSFORM2D;
+			break;
+		case ShaderLanguage::TYPE_MAT3:
+			pi.type = Variant::BASIS;
+			break;
+		case ShaderLanguage::TYPE_MAT4:
+			pi.type = Variant::TRANSFORM;
+			break;
 		case ShaderLanguage::TYPE_SAMPLER2D:
 		case ShaderLanguage::TYPE_ISAMPLER2D:
 		case ShaderLanguage::TYPE_USAMPLER2D: {
@@ -2765,7 +2827,7 @@ PropertyInfo ShaderLanguage::uniform_to_property_info(const ShaderNode::Uniform 
 
 			pi.type = Variant::OBJECT;
 			pi.hint = PROPERTY_HINT_RESOURCE_TYPE;
-			pi.hint_string = "TextureArray";
+			pi.hint_string = "TextureLayered";
 		} break;
 		case ShaderLanguage::TYPE_SAMPLER3D:
 		case ShaderLanguage::TYPE_ISAMPLER3D:
@@ -2774,11 +2836,12 @@ PropertyInfo ShaderLanguage::uniform_to_property_info(const ShaderNode::Uniform 
 			pi.hint = PROPERTY_HINT_RESOURCE_TYPE;
 			pi.hint_string = "Texture3D";
 		} break;
-		case ShaderLanguage::TYPE_SAMPLERCUBE: {
+		case ShaderLanguage::TYPE_SAMPLERCUBE:
+		case ShaderLanguage::TYPE_SAMPLERCUBEARRAY: {
 
 			pi.type = Variant::OBJECT;
 			pi.hint = PROPERTY_HINT_RESOURCE_TYPE;
-			pi.hint_string = "CubeMap";
+			pi.hint_string = "TextureLayered";
 		} break;
 		case ShaderLanguage::TYPE_STRUCT: {
 			// FIXME: Implement this.
@@ -2829,6 +2892,7 @@ uint32_t ShaderLanguage::get_type_size(DataType p_type) {
 		case TYPE_ISAMPLER3D:
 		case TYPE_USAMPLER3D:
 		case TYPE_SAMPLERCUBE:
+		case TYPE_SAMPLERCUBEARRAY:
 			return 4; //not really, but useful for indices
 		case TYPE_STRUCT:
 			// FIXME: Implement.
@@ -3758,12 +3822,23 @@ ShaderLanguage::Node *ShaderLanguage::_parse_expression(BlockNode *p_block, cons
 			e.is_op = true;
 
 			switch (tk.type) {
-				case TK_OP_SUB: e.op = OP_NEGATE; break;
-				case TK_OP_NOT: e.op = OP_NOT; break;
-				case TK_OP_BIT_INVERT: e.op = OP_BIT_INVERT; break;
-				case TK_OP_INCREMENT: e.op = OP_INCREMENT; break;
-				case TK_OP_DECREMENT: e.op = OP_DECREMENT; break;
-				default: ERR_FAIL_V(nullptr);
+				case TK_OP_SUB:
+					e.op = OP_NEGATE;
+					break;
+				case TK_OP_NOT:
+					e.op = OP_NOT;
+					break;
+				case TK_OP_BIT_INVERT:
+					e.op = OP_BIT_INVERT;
+					break;
+				case TK_OP_INCREMENT:
+					e.op = OP_INCREMENT;
+					break;
+				case TK_OP_DECREMENT:
+					e.op = OP_DECREMENT;
+					break;
+				default:
+					ERR_FAIL_V(nullptr);
 			}
 
 			expression.push_back(e);
@@ -4157,12 +4232,23 @@ ShaderLanguage::Node *ShaderLanguage::_parse_expression(BlockNode *p_block, cons
 						}
 
 						switch (expr->get_datatype()) {
-							case TYPE_BVEC2: member_type = TYPE_BOOL; break;
-							case TYPE_VEC2: member_type = TYPE_FLOAT; break;
-							case TYPE_IVEC2: member_type = TYPE_INT; break;
-							case TYPE_UVEC2: member_type = TYPE_UINT; break;
-							case TYPE_MAT2: member_type = TYPE_VEC2; break;
-							default: break;
+							case TYPE_BVEC2:
+								member_type = TYPE_BOOL;
+								break;
+							case TYPE_VEC2:
+								member_type = TYPE_FLOAT;
+								break;
+							case TYPE_IVEC2:
+								member_type = TYPE_INT;
+								break;
+							case TYPE_UVEC2:
+								member_type = TYPE_UINT;
+								break;
+							case TYPE_MAT2:
+								member_type = TYPE_VEC2;
+								break;
+							default:
+								break;
 						}
 
 						break;
@@ -4180,12 +4266,23 @@ ShaderLanguage::Node *ShaderLanguage::_parse_expression(BlockNode *p_block, cons
 						}
 
 						switch (expr->get_datatype()) {
-							case TYPE_BVEC3: member_type = TYPE_BOOL; break;
-							case TYPE_VEC3: member_type = TYPE_FLOAT; break;
-							case TYPE_IVEC3: member_type = TYPE_INT; break;
-							case TYPE_UVEC3: member_type = TYPE_UINT; break;
-							case TYPE_MAT3: member_type = TYPE_VEC3; break;
-							default: break;
+							case TYPE_BVEC3:
+								member_type = TYPE_BOOL;
+								break;
+							case TYPE_VEC3:
+								member_type = TYPE_FLOAT;
+								break;
+							case TYPE_IVEC3:
+								member_type = TYPE_INT;
+								break;
+							case TYPE_UVEC3:
+								member_type = TYPE_UINT;
+								break;
+							case TYPE_MAT3:
+								member_type = TYPE_VEC3;
+								break;
+							default:
+								break;
 						}
 						break;
 					case TYPE_BVEC4:
@@ -4202,12 +4299,23 @@ ShaderLanguage::Node *ShaderLanguage::_parse_expression(BlockNode *p_block, cons
 						}
 
 						switch (expr->get_datatype()) {
-							case TYPE_BVEC4: member_type = TYPE_BOOL; break;
-							case TYPE_VEC4: member_type = TYPE_FLOAT; break;
-							case TYPE_IVEC4: member_type = TYPE_INT; break;
-							case TYPE_UVEC4: member_type = TYPE_UINT; break;
-							case TYPE_MAT4: member_type = TYPE_VEC4; break;
-							default: break;
+							case TYPE_BVEC4:
+								member_type = TYPE_BOOL;
+								break;
+							case TYPE_VEC4:
+								member_type = TYPE_FLOAT;
+								break;
+							case TYPE_IVEC4:
+								member_type = TYPE_INT;
+								break;
+							case TYPE_UVEC4:
+								member_type = TYPE_UINT;
+								break;
+							case TYPE_MAT4:
+								member_type = TYPE_VEC4;
+								break;
+							default:
+								break;
 						}
 						break;
 					default: {
@@ -4267,37 +4375,99 @@ ShaderLanguage::Node *ShaderLanguage::_parse_expression(BlockNode *p_block, cons
 
 			switch (tk.type) {
 
-				case TK_OP_EQUAL: o.op = OP_EQUAL; break;
-				case TK_OP_NOT_EQUAL: o.op = OP_NOT_EQUAL; break;
-				case TK_OP_LESS: o.op = OP_LESS; break;
-				case TK_OP_LESS_EQUAL: o.op = OP_LESS_EQUAL; break;
-				case TK_OP_GREATER: o.op = OP_GREATER; break;
-				case TK_OP_GREATER_EQUAL: o.op = OP_GREATER_EQUAL; break;
-				case TK_OP_AND: o.op = OP_AND; break;
-				case TK_OP_OR: o.op = OP_OR; break;
-				case TK_OP_ADD: o.op = OP_ADD; break;
-				case TK_OP_SUB: o.op = OP_SUB; break;
-				case TK_OP_MUL: o.op = OP_MUL; break;
-				case TK_OP_DIV: o.op = OP_DIV; break;
-				case TK_OP_MOD: o.op = OP_MOD; break;
-				case TK_OP_SHIFT_LEFT: o.op = OP_SHIFT_LEFT; break;
-				case TK_OP_SHIFT_RIGHT: o.op = OP_SHIFT_RIGHT; break;
-				case TK_OP_ASSIGN: o.op = OP_ASSIGN; break;
-				case TK_OP_ASSIGN_ADD: o.op = OP_ASSIGN_ADD; break;
-				case TK_OP_ASSIGN_SUB: o.op = OP_ASSIGN_SUB; break;
-				case TK_OP_ASSIGN_MUL: o.op = OP_ASSIGN_MUL; break;
-				case TK_OP_ASSIGN_DIV: o.op = OP_ASSIGN_DIV; break;
-				case TK_OP_ASSIGN_MOD: o.op = OP_ASSIGN_MOD; break;
-				case TK_OP_ASSIGN_SHIFT_LEFT: o.op = OP_ASSIGN_SHIFT_LEFT; break;
-				case TK_OP_ASSIGN_SHIFT_RIGHT: o.op = OP_ASSIGN_SHIFT_RIGHT; break;
-				case TK_OP_ASSIGN_BIT_AND: o.op = OP_ASSIGN_BIT_AND; break;
-				case TK_OP_ASSIGN_BIT_OR: o.op = OP_ASSIGN_BIT_OR; break;
-				case TK_OP_ASSIGN_BIT_XOR: o.op = OP_ASSIGN_BIT_XOR; break;
-				case TK_OP_BIT_AND: o.op = OP_BIT_AND; break;
-				case TK_OP_BIT_OR: o.op = OP_BIT_OR; break;
-				case TK_OP_BIT_XOR: o.op = OP_BIT_XOR; break;
-				case TK_QUESTION: o.op = OP_SELECT_IF; break;
-				case TK_COLON: o.op = OP_SELECT_ELSE; break;
+				case TK_OP_EQUAL:
+					o.op = OP_EQUAL;
+					break;
+				case TK_OP_NOT_EQUAL:
+					o.op = OP_NOT_EQUAL;
+					break;
+				case TK_OP_LESS:
+					o.op = OP_LESS;
+					break;
+				case TK_OP_LESS_EQUAL:
+					o.op = OP_LESS_EQUAL;
+					break;
+				case TK_OP_GREATER:
+					o.op = OP_GREATER;
+					break;
+				case TK_OP_GREATER_EQUAL:
+					o.op = OP_GREATER_EQUAL;
+					break;
+				case TK_OP_AND:
+					o.op = OP_AND;
+					break;
+				case TK_OP_OR:
+					o.op = OP_OR;
+					break;
+				case TK_OP_ADD:
+					o.op = OP_ADD;
+					break;
+				case TK_OP_SUB:
+					o.op = OP_SUB;
+					break;
+				case TK_OP_MUL:
+					o.op = OP_MUL;
+					break;
+				case TK_OP_DIV:
+					o.op = OP_DIV;
+					break;
+				case TK_OP_MOD:
+					o.op = OP_MOD;
+					break;
+				case TK_OP_SHIFT_LEFT:
+					o.op = OP_SHIFT_LEFT;
+					break;
+				case TK_OP_SHIFT_RIGHT:
+					o.op = OP_SHIFT_RIGHT;
+					break;
+				case TK_OP_ASSIGN:
+					o.op = OP_ASSIGN;
+					break;
+				case TK_OP_ASSIGN_ADD:
+					o.op = OP_ASSIGN_ADD;
+					break;
+				case TK_OP_ASSIGN_SUB:
+					o.op = OP_ASSIGN_SUB;
+					break;
+				case TK_OP_ASSIGN_MUL:
+					o.op = OP_ASSIGN_MUL;
+					break;
+				case TK_OP_ASSIGN_DIV:
+					o.op = OP_ASSIGN_DIV;
+					break;
+				case TK_OP_ASSIGN_MOD:
+					o.op = OP_ASSIGN_MOD;
+					break;
+				case TK_OP_ASSIGN_SHIFT_LEFT:
+					o.op = OP_ASSIGN_SHIFT_LEFT;
+					break;
+				case TK_OP_ASSIGN_SHIFT_RIGHT:
+					o.op = OP_ASSIGN_SHIFT_RIGHT;
+					break;
+				case TK_OP_ASSIGN_BIT_AND:
+					o.op = OP_ASSIGN_BIT_AND;
+					break;
+				case TK_OP_ASSIGN_BIT_OR:
+					o.op = OP_ASSIGN_BIT_OR;
+					break;
+				case TK_OP_ASSIGN_BIT_XOR:
+					o.op = OP_ASSIGN_BIT_XOR;
+					break;
+				case TK_OP_BIT_AND:
+					o.op = OP_BIT_AND;
+					break;
+				case TK_OP_BIT_OR:
+					o.op = OP_BIT_OR;
+					break;
+				case TK_OP_BIT_XOR:
+					o.op = OP_BIT_XOR;
+					break;
+				case TK_QUESTION:
+					o.op = OP_SELECT_IF;
+					break;
+				case TK_COLON:
+					o.op = OP_SELECT_ELSE;
+					break;
 				default: {
 					_set_error("Invalid token for operator: " + get_token_text(tk));
 					return nullptr;
@@ -4333,14 +4503,30 @@ ShaderLanguage::Node *ShaderLanguage::_parse_expression(BlockNode *p_block, cons
 
 			int priority;
 			switch (expression[i].op) {
-				case OP_EQUAL: priority = 8; break;
-				case OP_NOT_EQUAL: priority = 8; break;
-				case OP_LESS: priority = 7; break;
-				case OP_LESS_EQUAL: priority = 7; break;
-				case OP_GREATER: priority = 7; break;
-				case OP_GREATER_EQUAL: priority = 7; break;
-				case OP_AND: priority = 12; break;
-				case OP_OR: priority = 14; break;
+				case OP_EQUAL:
+					priority = 8;
+					break;
+				case OP_NOT_EQUAL:
+					priority = 8;
+					break;
+				case OP_LESS:
+					priority = 7;
+					break;
+				case OP_LESS_EQUAL:
+					priority = 7;
+					break;
+				case OP_GREATER:
+					priority = 7;
+					break;
+				case OP_GREATER_EQUAL:
+					priority = 7;
+					break;
+				case OP_AND:
+					priority = 12;
+					break;
+				case OP_OR:
+					priority = 14;
+					break;
 				case OP_NOT:
 					priority = 3;
 					unary = true;
@@ -4349,27 +4535,69 @@ ShaderLanguage::Node *ShaderLanguage::_parse_expression(BlockNode *p_block, cons
 					priority = 3;
 					unary = true;
 					break;
-				case OP_ADD: priority = 5; break;
-				case OP_SUB: priority = 5; break;
-				case OP_MUL: priority = 4; break;
-				case OP_DIV: priority = 4; break;
-				case OP_MOD: priority = 4; break;
-				case OP_SHIFT_LEFT: priority = 6; break;
-				case OP_SHIFT_RIGHT: priority = 6; break;
-				case OP_ASSIGN: priority = 16; break;
-				case OP_ASSIGN_ADD: priority = 16; break;
-				case OP_ASSIGN_SUB: priority = 16; break;
-				case OP_ASSIGN_MUL: priority = 16; break;
-				case OP_ASSIGN_DIV: priority = 16; break;
-				case OP_ASSIGN_MOD: priority = 16; break;
-				case OP_ASSIGN_SHIFT_LEFT: priority = 16; break;
-				case OP_ASSIGN_SHIFT_RIGHT: priority = 16; break;
-				case OP_ASSIGN_BIT_AND: priority = 16; break;
-				case OP_ASSIGN_BIT_OR: priority = 16; break;
-				case OP_ASSIGN_BIT_XOR: priority = 16; break;
-				case OP_BIT_AND: priority = 9; break;
-				case OP_BIT_OR: priority = 11; break;
-				case OP_BIT_XOR: priority = 10; break;
+				case OP_ADD:
+					priority = 5;
+					break;
+				case OP_SUB:
+					priority = 5;
+					break;
+				case OP_MUL:
+					priority = 4;
+					break;
+				case OP_DIV:
+					priority = 4;
+					break;
+				case OP_MOD:
+					priority = 4;
+					break;
+				case OP_SHIFT_LEFT:
+					priority = 6;
+					break;
+				case OP_SHIFT_RIGHT:
+					priority = 6;
+					break;
+				case OP_ASSIGN:
+					priority = 16;
+					break;
+				case OP_ASSIGN_ADD:
+					priority = 16;
+					break;
+				case OP_ASSIGN_SUB:
+					priority = 16;
+					break;
+				case OP_ASSIGN_MUL:
+					priority = 16;
+					break;
+				case OP_ASSIGN_DIV:
+					priority = 16;
+					break;
+				case OP_ASSIGN_MOD:
+					priority = 16;
+					break;
+				case OP_ASSIGN_SHIFT_LEFT:
+					priority = 16;
+					break;
+				case OP_ASSIGN_SHIFT_RIGHT:
+					priority = 16;
+					break;
+				case OP_ASSIGN_BIT_AND:
+					priority = 16;
+					break;
+				case OP_ASSIGN_BIT_OR:
+					priority = 16;
+					break;
+				case OP_ASSIGN_BIT_XOR:
+					priority = 16;
+					break;
+				case OP_BIT_AND:
+					priority = 9;
+					break;
+				case OP_BIT_OR:
+					priority = 11;
+					break;
+				case OP_BIT_XOR:
+					priority = 10;
+					break;
 				case OP_BIT_INVERT:
 					priority = 3;
 					unary = true;
@@ -5972,7 +6200,7 @@ Error ShaderLanguage::_parse_shader(const Map<StringName, FunctionInfo> &p_funct
 							return ERR_PARSE_ERROR;
 						}
 					} else {
-						if (uniform_scope == ShaderNode::Uniform::SCOPE_LOCAL && (type == TYPE_MAT2 || type == TYPE_MAT3 || type == TYPE_MAT4)) {
+						if (uniform_scope == ShaderNode::Uniform::SCOPE_INSTANCE && (type == TYPE_MAT2 || type == TYPE_MAT3 || type == TYPE_MAT4)) {
 							_set_error("Uniforms with 'instance' qualifiers can't be of matrix type.");
 							return ERR_PARSE_ERROR;
 						}
@@ -6334,6 +6562,7 @@ Error ShaderLanguage::_parse_shader(const Map<StringName, FunctionInfo> &p_funct
 
 					while (true) {
 						ShaderNode::Constant constant;
+						constant.name = name;
 						constant.type = is_struct ? TYPE_STRUCT : type;
 						constant.type_str = struct_name;
 						constant.precision = precision;
@@ -6373,6 +6602,8 @@ Error ShaderLanguage::_parse_shader(const Map<StringName, FunctionInfo> &p_funct
 						}
 
 						shader->constants[name] = constant;
+						shader->vconstants.push_back(constant);
+
 						if (tk.type == TK_COMMA) {
 							tk = _get_token();
 							if (tk.type != TK_IDENTIFIER) {
@@ -6685,7 +6916,8 @@ static int _get_first_ident_pos(const String &p_code) {
 		if (GETCHAR(0) == '/' && GETCHAR(1) == '/') {
 			idx += 2;
 			while (true) {
-				if (GETCHAR(0) == 0) return 0;
+				if (GETCHAR(0) == 0)
+					return 0;
 				if (GETCHAR(0) == '\n') {
 					idx++;
 					break; // loop
@@ -6695,7 +6927,8 @@ static int _get_first_ident_pos(const String &p_code) {
 		} else if (GETCHAR(0) == '/' && GETCHAR(1) == '*') {
 			idx += 2;
 			while (true) {
-				if (GETCHAR(0) == 0) return 0;
+				if (GETCHAR(0) == 0)
+					return 0;
 				if (GETCHAR(0) == '*' && GETCHAR(1) == '/') {
 					idx += 2;
 					break; // loop
@@ -7082,9 +7315,15 @@ Error ShaderLanguage::complete(const String &p_code, const Map<StringName, Funct
 					limit = 4;
 
 				} break;
-				case TYPE_MAT2: limit = 2; break;
-				case TYPE_MAT3: limit = 3; break;
-				case TYPE_MAT4: limit = 4; break;
+				case TYPE_MAT2:
+					limit = 2;
+					break;
+				case TYPE_MAT3:
+					limit = 3;
+					break;
+				case TYPE_MAT4:
+					limit = 4;
+					break;
 				default: {
 				}
 			}

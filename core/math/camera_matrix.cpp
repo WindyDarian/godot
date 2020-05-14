@@ -33,6 +33,22 @@
 #include "core/math/math_funcs.h"
 #include "core/print_string.h"
 
+float CameraMatrix::determinant() const {
+
+	return matrix[0][3] * matrix[1][2] * matrix[2][1] * matrix[3][0] - matrix[0][2] * matrix[1][3] * matrix[2][1] * matrix[3][0] -
+		   matrix[0][3] * matrix[1][1] * matrix[2][2] * matrix[3][0] + matrix[0][1] * matrix[1][3] * matrix[2][2] * matrix[3][0] +
+		   matrix[0][2] * matrix[1][1] * matrix[2][3] * matrix[3][0] - matrix[0][1] * matrix[1][2] * matrix[2][3] * matrix[3][0] -
+		   matrix[0][3] * matrix[1][2] * matrix[2][0] * matrix[3][1] + matrix[0][2] * matrix[1][3] * matrix[2][0] * matrix[3][1] +
+		   matrix[0][3] * matrix[1][0] * matrix[2][2] * matrix[3][1] - matrix[0][0] * matrix[1][3] * matrix[2][2] * matrix[3][1] -
+		   matrix[0][2] * matrix[1][0] * matrix[2][3] * matrix[3][1] + matrix[0][0] * matrix[1][2] * matrix[2][3] * matrix[3][1] +
+		   matrix[0][3] * matrix[1][1] * matrix[2][0] * matrix[3][2] - matrix[0][1] * matrix[1][3] * matrix[2][0] * matrix[3][2] -
+		   matrix[0][3] * matrix[1][0] * matrix[2][1] * matrix[3][2] + matrix[0][0] * matrix[1][3] * matrix[2][1] * matrix[3][2] +
+		   matrix[0][1] * matrix[1][0] * matrix[2][3] * matrix[3][2] - matrix[0][0] * matrix[1][1] * matrix[2][3] * matrix[3][2] -
+		   matrix[0][2] * matrix[1][1] * matrix[2][0] * matrix[3][3] + matrix[0][1] * matrix[1][2] * matrix[2][0] * matrix[3][3] +
+		   matrix[0][2] * matrix[1][0] * matrix[2][1] * matrix[3][3] - matrix[0][0] * matrix[1][2] * matrix[2][1] * matrix[3][3] -
+		   matrix[0][1] * matrix[1][0] * matrix[2][2] * matrix[3][3] + matrix[0][0] * matrix[1][1] * matrix[2][2] * matrix[3][3];
+}
+
 void CameraMatrix::set_identity() {
 
 	for (int i = 0; i < 4; i++) {
@@ -473,20 +489,23 @@ void CameraMatrix::invert() {
 
 		/** Divide column by minus pivot value **/
 		for (i = 0; i < 4; i++) {
-			if (i != k) matrix[i][k] /= (-pvt_val);
+			if (i != k)
+				matrix[i][k] /= (-pvt_val);
 		}
 
 		/** Reduce the matrix **/
 		for (i = 0; i < 4; i++) {
 			hold = matrix[i][k];
 			for (j = 0; j < 4; j++) {
-				if (i != k && j != k) matrix[i][j] += hold * matrix[k][j];
+				if (i != k && j != k)
+					matrix[i][j] += hold * matrix[k][j];
 			}
 		}
 
 		/** Divide row by pivot **/
 		for (j = 0; j < 4; j++) {
-			if (j != k) matrix[k][j] /= pvt_val;
+			if (j != k)
+				matrix[k][j] /= pvt_val;
 		}
 
 		/** Replace pivot by reciprocal (at last we can touch it). **/

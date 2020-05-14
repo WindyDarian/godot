@@ -30,7 +30,7 @@
 
 #include "asset_library_editor_plugin.h"
 
-#include "core/input/input_filter.h"
+#include "core/input/input.h"
 #include "core/io/json.h"
 #include "core/os/keyboard.h"
 #include "core/version.h"
@@ -1297,7 +1297,8 @@ void EditorAssetLibrary::_http_request_completed(int p_status, int p_code, const
 				}
 			}
 		} break;
-		default: break;
+		default:
+			break;
 	}
 }
 

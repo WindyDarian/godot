@@ -1,6 +1,36 @@
+/*************************************************************************/
+/*  rendering_device_binds.cpp                                           */
+/*************************************************************************/
+/*                       This file is part of:                           */
+/*                           GODOT ENGINE                                */
+/*                      https://godotengine.org                          */
+/*************************************************************************/
+/* Copyright (c) 2007-2020 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2020 Godot Engine contributors (cf. AUTHORS.md).   */
+/*                                                                       */
+/* Permission is hereby granted, free of charge, to any person obtaining */
+/* a copy of this software and associated documentation files (the       */
+/* "Software"), to deal in the Software without restriction, including   */
+/* without limitation the rights to use, copy, modify, merge, publish,   */
+/* distribute, sublicense, and/or sell copies of the Software, and to    */
+/* permit persons to whom the Software is furnished to do so, subject to */
+/* the following conditions:                                             */
+/*                                                                       */
+/* The above copyright notice and this permission notice shall be        */
+/* included in all copies or substantial portions of the Software.       */
+/*                                                                       */
+/* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,       */
+/* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF    */
+/* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.*/
+/* IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY  */
+/* CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,  */
+/* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE     */
+/* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
+/*************************************************************************/
+
 #include "rendering_device_binds.h"
 
-Error RDShaderFile::parse_versions_from_text(const String &p_text, OpenIncludeFunction p_include_func, void *p_include_func_userdata) {
+Error RDShaderFile::parse_versions_from_text(const String &p_text, const String p_defines, OpenIncludeFunction p_include_func, void *p_include_func_userdata) {
 
 	Vector<String> lines = p_text.split("\n");
 
@@ -26,6 +56,9 @@ Error RDShaderFile::parse_versions_from_text(const String &p_text, OpenIncludeFu
 
 		{
 			String ls = line.strip_edges();
+			if (ls.begins_with("#[")) { //workaround for clang format
+				ls = ls.replace_first("#[", "[");
+			}
 			if (ls.begins_with("[") && ls.ends_with("]")) {
 				String section = ls.substr(1, ls.length() - 2).strip_edges();
 				if (section == "versions") {
@@ -60,9 +93,17 @@ Error RDShaderFile::parse_versions_from_text(const String &p_text, OpenIncludeFu
 			}
 		}
 
+		if (stage == RD::SHADER_STAGE_MAX && line.strip_edges() != "") {
+			line = line.strip_edges();
+			if (line.begins_with("//") || line.begins_with("/*")) {
+				continue; //assuming comment (single line)
+			}
+		}
+
 		if (reading_versions) {
 			String l = line.strip_edges();
 			if (l != "") {
+
 				int eqpos = l.find("=");
 				if (eqpos == -1) {
 					base_error = "Version syntax is version=\"<defines with C escaping>\".";
@@ -80,7 +121,7 @@ Error RDShaderFile::parse_versions_from_text(const String &p_text, OpenIncludeFu
 				}
 				define = "\n" + define.substr(1, define.length() - 2).c_unescape() + "\n"; //add newline before and after jsut in case
 
-				version_texts[version] = define;
+				version_texts[version] = define + "\n" + p_defines;
 			}
 		} else {
 			if (stage == RD::SHADER_STAGE_MAX && line.strip_edges() != "") {
