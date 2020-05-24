@@ -1,5 +1,5 @@
 /*************************************************************************/
-/*  path_remap.h                                                         */
+/*  test_class_db.h                                                      */
 /*************************************************************************/
 /*                       This file is part of:                           */
 /*                           GODOT ENGINE                                */
@@ -28,7 +28,15 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
 
-#ifndef PATH_REMAP_H
-#define PATH_REMAP_H
+#ifndef GODOT_TEST_CLASS_DB_H
+#define GODOT_TEST_CLASS_DB_H
 
-#endif // PATH_REMAP_H
+#include "core/os/main_loop.h"
+
+namespace TestClassDB {
+
+MainLoop *test();
+
+}
+
+#endif //GODOT_TEST_CLASS_DB_H

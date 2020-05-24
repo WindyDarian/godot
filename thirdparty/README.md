@@ -184,14 +184,12 @@ Patches in the `patches` directory should be re-applied after updates.
 ## jpeg-compressor
 
 - Upstream: https://github.com/richgel999/jpeg-compressor
-- Version: 2.00 (1eb17d558b9d3b7442d256642a5745974e9eeb1e, 2020)
+- Version: 2.00 (aeb7d3b463aa8228b87a28013c15ee50a7e6fcf3, 2020)
 - License: Public domain
 
 Files extracted from upstream source:
 
 - `jpgd*.{c,h}`
-
-Patches in the `patches` directory should be re-applied after updates.
 
 
 ## libogg
@@ -386,7 +384,7 @@ Collection of single-file libraries used in Godot components.
   * License: Apache 2.0
 - `r128.h`
   * Upstream: https://github.com/fahickman/r128
-  * Version: 1.4.3 (2019)
+  * Version: git (423f693617faafd01de21e92818add4208eb8bd1, 2020)
   * License: Public Domain
 - `smaz.{c,h}`
   * Upstream: https://github.com/antirez/smaz
@@ -618,7 +616,7 @@ File extracted from upstream release tarball:
 ## xatlas
 
 - Upstream: https://github.com/jpcy/xatlas
-- Version: git (e12ea82, 2019)
+- Version: git (470576d3516f7e6d8b4554e7c941194a935969fd, 2020)
 - License: MIT
 
 Files extracted from upstream source:
