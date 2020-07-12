@@ -36,6 +36,7 @@
 #include "core/type_info.h"
 #include "scene/3d/physics_body_3d.h"
 #include "scene/resources/surface_tool.h"
+#include "scene/scene_string_names.h"
 
 void SkinReference::_skin_changed() {
 	if (skeleton_node) {
@@ -65,6 +66,8 @@ SkinReference::~SkinReference() {
 
 	RS::get_singleton()->free(skeleton);
 }
+
+///////////////////////////////////////
 
 bool Skeleton3D::_set(const StringName &p_path, const Variant &p_value) {
 	String path = p_path;
@@ -157,12 +160,12 @@ bool Skeleton3D::_get(const StringName &p_path, Variant &r_ret) const {
 void Skeleton3D::_get_property_list(List<PropertyInfo> *p_list) const {
 	for (int i = 0; i < bones.size(); i++) {
 		String prep = "bones/" + itos(i) + "/";
-		p_list->push_back(PropertyInfo(Variant::STRING, prep + "name"));
-		p_list->push_back(PropertyInfo(Variant::INT, prep + "parent", PROPERTY_HINT_RANGE, "-1," + itos(bones.size() - 1) + ",1"));
-		p_list->push_back(PropertyInfo(Variant::TRANSFORM, prep + "rest"));
-		p_list->push_back(PropertyInfo(Variant::BOOL, prep + "enabled"));
-		p_list->push_back(PropertyInfo(Variant::TRANSFORM, prep + "pose", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_EDITOR));
-		p_list->push_back(PropertyInfo(Variant::ARRAY, prep + "bound_children"));
+		p_list->push_back(PropertyInfo(Variant::STRING, prep + "name", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NOEDITOR));
+		p_list->push_back(PropertyInfo(Variant::INT, prep + "parent", PROPERTY_HINT_RANGE, "-1," + itos(bones.size() - 1) + ",1", PROPERTY_USAGE_NOEDITOR));
+		p_list->push_back(PropertyInfo(Variant::TRANSFORM, prep + "rest", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NOEDITOR));
+		p_list->push_back(PropertyInfo(Variant::BOOL, prep + "enabled", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NOEDITOR));
+		p_list->push_back(PropertyInfo(Variant::TRANSFORM, prep + "pose", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NOEDITOR));
+		p_list->push_back(PropertyInfo(Variant::ARRAY, prep + "bound_children", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NOEDITOR));
 	}
 }
 
@@ -214,7 +217,7 @@ void Skeleton3D::_update_process_order() {
 	}
 
 	if (pass_count == len * len) {
-		ERR_PRINT("Skeleton parenthood graph is cyclic");
+		ERR_PRINT("Skeleton3D parenthood graph is cyclic");
 	}
 
 	process_order_dirty = false;
@@ -223,7 +226,7 @@ void Skeleton3D::_update_process_order() {
 void Skeleton3D::_notification(int p_what) {
 	switch (p_what) {
 		case NOTIFICATION_UPDATE_SKELETON: {
-			RenderingServer *vs = RenderingServer::get_singleton();
+			RenderingServer *rs = RenderingServer::get_singleton();
 			Bone *bonesptr = bones.ptrw();
 			int len = bones.size();
 
@@ -288,9 +291,9 @@ void Skeleton3D::_notification(int p_what) {
 				for (List<ObjectID>::Element *E = b.nodes_bound.front(); E; E = E->next()) {
 					Object *obj = ObjectDB::get_instance(E->get());
 					ERR_CONTINUE(!obj);
-					Node3D *sp = Object::cast_to<Node3D>(obj);
-					ERR_CONTINUE(!sp);
-					sp->set_transform(b.pose_global);
+					Node3D *node_3d = Object::cast_to<Node3D>(obj);
+					ERR_CONTINUE(!node_3d);
+					node_3d->set_transform(b.pose_global);
 				}
 			}
 
@@ -323,7 +326,7 @@ void Skeleton3D::_notification(int p_what) {
 							}
 
 							if (!found) {
-								ERR_PRINT("Skin bind #" + itos(i) + " contains named bind '" + String(bind_name) + "' but Skeleton has no bone by that name.");
+								ERR_PRINT("Skin bind #" + itos(i) + " contains named bind '" + String(bind_name) + "' but Skeleton3D has no bone by that name.");
 								E->get()->skin_bone_indices_ptrs[i] = 0;
 							}
 						} else if (skin->get_bind_bone(i) >= 0) {
@@ -346,11 +349,16 @@ void Skeleton3D::_notification(int p_what) {
 				for (uint32_t i = 0; i < bind_count; i++) {
 					uint32_t bone_index = E->get()->skin_bone_indices_ptrs[i];
 					ERR_CONTINUE(bone_index >= (uint32_t)len);
-					vs->skeleton_bone_set_transform(skeleton, i, bonesptr[bone_index].pose_global * skin->get_bind_pose(i));
+					rs->skeleton_bone_set_transform(skeleton, i, bonesptr[bone_index].pose_global * skin->get_bind_pose(i));
 				}
 			}
 
 			dirty = false;
+
+#ifdef TOOLS_ENABLED
+			emit_signal(SceneStringNames::get_singleton()->pose_updated);
+#endif // TOOLS_ENABLED
+
 		} break;
 
 #ifndef _3D_DISABLED
@@ -603,6 +611,11 @@ int Skeleton3D::get_process_order(int p_idx) {
 	return process_order[p_idx];
 }
 
+Vector<int> Skeleton3D::get_bone_process_orders() {
+	_update_process_order();
+	return process_order;
+}
+
 void Skeleton3D::localize_rests() {
 	_update_process_order();
 
@@ -842,7 +855,17 @@ Ref<SkinReference> Skeleton3D::register_skin(const Ref<Skin> &p_skin) {
 	return skin_ref;
 }
 
+// helper functions
+Transform Skeleton3D::bone_transform_to_world_transform(Transform p_bone_transform) {
+	return get_global_transform() * p_bone_transform;
+}
+
+Transform Skeleton3D::world_transform_to_bone_transform(Transform p_world_transform) {
+	return get_global_transform().affine_inverse() * p_world_transform;
+}
+
 void Skeleton3D::_bind_methods() {
+	ClassDB::bind_method(D_METHOD("get_bone_process_orders"), &Skeleton3D::get_bone_process_orders);
 	ClassDB::bind_method(D_METHOD("add_bone", "name"), &Skeleton3D::add_bone);
 	ClassDB::bind_method(D_METHOD("find_bone", "name"), &Skeleton3D::find_bone);
 	ClassDB::bind_method(D_METHOD("get_bone_name", "bone_idx"), &Skeleton3D::get_bone_name);
@@ -880,6 +903,9 @@ void Skeleton3D::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_bone_custom_pose", "bone_idx"), &Skeleton3D::get_bone_custom_pose);
 	ClassDB::bind_method(D_METHOD("set_bone_custom_pose", "bone_idx", "custom_pose"), &Skeleton3D::set_bone_custom_pose);
 
+	ClassDB::bind_method(D_METHOD("bone_transform_to_world_transform", "bone_transform"), &Skeleton3D::bone_transform_to_world_transform);
+	ClassDB::bind_method(D_METHOD("world_transform_to_bone_transform", "world_transform"), &Skeleton3D::world_transform_to_bone_transform);
+
 #ifndef _3D_DISABLED
 
 	ClassDB::bind_method(D_METHOD("set_animate_physical_bones"), &Skeleton3D::set_animate_physical_bones);
@@ -892,6 +918,10 @@ void Skeleton3D::_bind_methods() {
 
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "animate_physical_bones"), "set_animate_physical_bones", "get_animate_physical_bones");
 #endif // _3D_DISABLED
+
+#ifdef TOOLS_ENABLED
+	ADD_SIGNAL(MethodInfo("pose_updated"));
+#endif // TOOLS_ENABLED
 
 	BIND_CONSTANT(NOTIFICATION_UPDATE_SKELETON);
 }

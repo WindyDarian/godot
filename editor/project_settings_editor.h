@@ -110,6 +110,10 @@ class ProjectSettingsEditor : public AcceptDialog {
 	Vector<TreeItem *> translation_filter_treeitems;
 	Vector<int> translation_locales_idxs_remap;
 
+	Tree *translation_pot_list;
+	EditorFileDialog *translation_pot_file_open;
+	EditorFileDialog *translation_pot_generate;
+
 	EditorAutoloadSettings *autoload_settings;
 
 	EditorPluginSettings *plugin_settings;
@@ -159,6 +163,13 @@ class ProjectSettingsEditor : public AcceptDialog {
 	void _translation_filter_option_changed();
 	void _translation_filter_mode_changed(int p_mode);
 
+	void _translation_pot_add(const String &p_path);
+	void _translation_pot_delete(Object *p_item, int p_column, int p_button);
+	void _translation_pot_file_open();
+	void _translation_pot_generate_open();
+	void _translation_pot_generate(const String &p_file);
+	void _update_translation_pot_file_extensions();
+
 	void _toggle_search_bar(bool p_pressed);
 
 	Variant get_drag_data_fw(const Point2 &p_point, Control *p_from);
@@ -174,7 +185,7 @@ class ProjectSettingsEditor : public AcceptDialog {
 	Label *restart_label;
 	TextureRect *restart_icon;
 	PanelContainer *restart_container;
-	ToolButton *restart_close_button;
+	Button *restart_close_button;
 
 	void _editor_restart_request();
 	void _editor_restart();

@@ -45,6 +45,14 @@ private:
 	T *data = nullptr;
 
 public:
+	T *ptr() {
+		return data;
+	}
+
+	const T *ptr() const {
+		return data;
+	}
+
 	_FORCE_INLINE_ void push_back(T p_elem) {
 		if (unlikely(count == capacity)) {
 			if (capacity == 0) {
@@ -75,7 +83,7 @@ public:
 	}
 
 	void erase(const T &p_val) {
-		U idx = find(p_val);
+		int64_t idx = find(p_val);
 		if (idx >= 0) {
 			remove(idx);
 		}

@@ -122,11 +122,11 @@ public:
 	bool intersect_frustum(const Camera3D *p_camera, const Vector<Plane> &p_frustum);
 	bool intersect_ray(Camera3D *p_camera, const Point2 &p_point, Vector3 &r_pos, Vector3 &r_normal, int *r_gizmo_handle = nullptr, bool p_sec_first = false);
 
-	virtual void clear();
-	virtual void create();
-	virtual void transform();
-	virtual void redraw();
-	virtual void free();
+	virtual void clear() override;
+	virtual void create() override;
+	virtual void transform() override;
+	virtual void redraw() override;
+	virtual void free() override;
 
 	virtual bool is_editable() const;
 
@@ -214,9 +214,11 @@ class Node3DEditorViewport : public Control {
 		VIEW_DISPLAY_DEBUG_GIPROBE_EMISSION,
 		VIEW_DISPLAY_DEBUG_SCENE_LUMINANCE,
 		VIEW_DISPLAY_DEBUG_SSAO,
-		VIEW_DISPLAY_DEBUG_ROUGHNESS_LIMITER,
 		VIEW_DISPLAY_DEBUG_PSSM_SPLITS,
 		VIEW_DISPLAY_DEBUG_DECAL_ATLAS,
+		VIEW_DISPLAY_DEBUG_SDFGI,
+		VIEW_DISPLAY_DEBUG_SDFGI_PROBES,
+		VIEW_DISPLAY_DEBUG_GI_BUFFER,
 		VIEW_LOCK_ROTATION,
 		VIEW_CINEMATIC_PREVIEW,
 		VIEW_AUTO_ORTHOGONAL,
@@ -284,8 +286,8 @@ private:
 
 	bool freelook_active;
 	real_t freelook_speed;
+	Vector2 previous_mouse_position;
 
-	TextureRect *crosshair;
 	Label *info_label;
 	Label *cinema_label;
 	Label *locked_label;
@@ -391,7 +393,9 @@ private:
 		Point2 region_begin, region_end;
 
 		Cursor() {
-			x_rot = y_rot = 0.5;
+			// These rotations place the camera in +X +Y +Z, aka south east, facing north west.
+			x_rot = 0.5;
+			y_rot = -0.5;
 			distance = 4;
 			region_select = false;
 		}
@@ -766,6 +770,7 @@ public:
 	Ref<ArrayMesh> get_scale_gizmo(int idx) const { return scale_gizmo[idx]; }
 	Ref<ArrayMesh> get_scale_plane_gizmo(int idx) const { return scale_plane_gizmo[idx]; }
 
+	void update_grid();
 	void update_transform_gizmo();
 	void update_all_gizmos(Node *p_node = nullptr);
 	void snap_selected_nodes_to_floor();
@@ -821,17 +826,17 @@ public:
 	void snap_cursor_to_plane(const Plane &p_plane);
 
 	Node3DEditor *get_spatial_editor() { return spatial_editor; }
-	virtual String get_name() const { return "3D"; }
-	bool has_main_screen() const { return true; }
-	virtual void make_visible(bool p_visible);
-	virtual void edit(Object *p_object);
-	virtual bool handles(Object *p_object) const;
+	virtual String get_name() const override { return "3D"; }
+	bool has_main_screen() const override { return true; }
+	virtual void make_visible(bool p_visible) override;
+	virtual void edit(Object *p_object) override;
+	virtual bool handles(Object *p_object) const override;
 
-	virtual Dictionary get_state() const;
-	virtual void set_state(const Dictionary &p_state);
-	virtual void clear() { spatial_editor->clear(); }
+	virtual Dictionary get_state() const override;
+	virtual void set_state(const Dictionary &p_state) override;
+	virtual void clear() override { spatial_editor->clear(); }
 
-	virtual void edited_scene_changed();
+	virtual void edited_scene_changed() override;
 
 	Node3DEditorPlugin(EditorNode *p_node);
 	~Node3DEditorPlugin();

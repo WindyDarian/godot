@@ -1688,7 +1688,7 @@ void FileSystemDock::_file_option(int p_option, const Vector<String> &p_selected
 						String name = to_rename.path.get_file();
 						rename_dialog->set_title(TTR("Renaming file:") + " " + name);
 						rename_dialog_text->set_text(name);
-						rename_dialog_text->select(0, name.find_last("."));
+						rename_dialog_text->select(0, name.rfind("."));
 					} else {
 						String name = to_rename.path.substr(0, to_rename.path.length() - 1).get_file();
 						rename_dialog->set_title(TTR("Renaming folder:") + " " + name);
@@ -1732,7 +1732,7 @@ void FileSystemDock::_file_option(int p_option, const Vector<String> &p_selected
 					String name = to_duplicate.path.get_file();
 					duplicate_dialog->set_title(TTR("Duplicating file:") + " " + name);
 					duplicate_dialog_text->set_text(name);
-					duplicate_dialog_text->select(0, name.find_last("."));
+					duplicate_dialog_text->select(0, name.rfind("."));
 				} else {
 					String name = to_duplicate.path.substr(0, to_duplicate.path.length() - 1).get_file();
 					duplicate_dialog->set_title(TTR("Duplicating folder:") + " " + name);
@@ -2085,7 +2085,32 @@ void FileSystemDock::drop_data_fw(const Point2 &p_point, const Variant &p_data, 
 				}
 			}
 			if (!to_move.empty()) {
-				_move_operation_confirm(to_dir);
+				if (Input::get_singleton()->is_key_pressed(KEY_CONTROL)) {
+					for (int i = 0; i < to_move.size(); i++) {
+						String new_path;
+						String new_path_base;
+
+						if (to_move[i].is_file) {
+							new_path = to_dir.plus_file(to_move[i].path.get_file());
+							new_path_base = new_path.get_basename() + " (%d)." + new_path.get_extension();
+						} else {
+							PackedStringArray path_split = to_move[i].path.split("/");
+							new_path = to_dir.plus_file(path_split[path_split.size() - 2]);
+							new_path_base = new_path + " (%d)";
+						}
+
+						int exist_counter = 1;
+						DirAccessRef da = DirAccess::create(DirAccess::ACCESS_RESOURCES);
+						while (da->file_exists(new_path) || da->dir_exists(new_path)) {
+							exist_counter++;
+							new_path = vformat(new_path_base, exist_counter);
+						}
+						_try_duplicate_item(to_move[i], new_path);
+					}
+					_rescan();
+				} else {
+					_move_operation_confirm(to_dir);
+				}
 			}
 		} else if (favorite) {
 			// Add the files from favorites.
@@ -2288,7 +2313,7 @@ void FileSystemDock::_tree_rmb_select(const Vector2 &p_pos) {
 		tree_popup->clear();
 		tree_popup->set_size(Size2(1, 1));
 		_file_and_folders_fill_popup(tree_popup, paths);
-		tree_popup->set_position(tree->get_global_position() + p_pos);
+		tree_popup->set_position(tree->get_screen_position() + p_pos);
 		tree_popup->popup();
 	}
 }
@@ -2483,10 +2508,10 @@ void FileSystemDock::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("_tree_thumbnail_done"), &FileSystemDock::_tree_thumbnail_done);
 	ClassDB::bind_method(D_METHOD("_select_file"), &FileSystemDock::_select_file);
 
-	ClassDB::bind_method(D_METHOD("get_drag_data_fw"), &FileSystemDock::get_drag_data_fw);
-	ClassDB::bind_method(D_METHOD("can_drop_data_fw"), &FileSystemDock::can_drop_data_fw);
-	ClassDB::bind_method(D_METHOD("drop_data_fw"), &FileSystemDock::drop_data_fw);
-	ClassDB::bind_method(D_METHOD("navigate_to_path"), &FileSystemDock::navigate_to_path);
+	ClassDB::bind_method(D_METHOD("get_drag_data_fw", "position", "from"), &FileSystemDock::get_drag_data_fw);
+	ClassDB::bind_method(D_METHOD("can_drop_data_fw", "position", "data", "from"), &FileSystemDock::can_drop_data_fw);
+	ClassDB::bind_method(D_METHOD("drop_data_fw", "position", "data", "from"), &FileSystemDock::drop_data_fw);
+	ClassDB::bind_method(D_METHOD("navigate_to_path", "path"), &FileSystemDock::navigate_to_path);
 
 	ClassDB::bind_method(D_METHOD("_update_import_dock"), &FileSystemDock::_update_import_dock);
 
@@ -2518,13 +2543,15 @@ FileSystemDock::FileSystemDock(EditorNode *p_editor) {
 	toolbar_hbc->add_theme_constant_override("separation", 0);
 	top_vbc->add_child(toolbar_hbc);
 
-	button_hist_prev = memnew(ToolButton);
+	button_hist_prev = memnew(Button);
+	button_hist_prev->set_flat(true);
 	button_hist_prev->set_disabled(true);
 	button_hist_prev->set_focus_mode(FOCUS_NONE);
 	button_hist_prev->set_tooltip(TTR("Previous Folder/File"));
 	toolbar_hbc->add_child(button_hist_prev);
 
-	button_hist_next = memnew(ToolButton);
+	button_hist_next = memnew(Button);
+	button_hist_next->set_flat(true);
 	button_hist_next->set_disabled(true);
 	button_hist_next->set_focus_mode(FOCUS_NONE);
 	button_hist_next->set_tooltip(TTR("Next Folder/File"));
@@ -2602,7 +2629,8 @@ FileSystemDock::FileSystemDock(EditorNode *p_editor) {
 	file_list_search_box->connect("text_changed", callable_mp(this, &FileSystemDock::_search_changed), varray(file_list_search_box));
 	path_hb->add_child(file_list_search_box);
 
-	button_file_list_display_mode = memnew(ToolButton);
+	button_file_list_display_mode = memnew(Button);
+	button_file_list_display_mode->set_flat(true);
 	path_hb->add_child(button_file_list_display_mode);
 
 	files = memnew(ItemList);

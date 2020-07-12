@@ -117,7 +117,6 @@
 #include "scene/gui/texture_button.h"
 #include "scene/gui/texture_progress.h"
 #include "scene/gui/texture_rect.h"
-#include "scene/gui/tool_button.h"
 #include "scene/gui/tree.h"
 #include "scene/gui/video_player.h"
 #include "scene/main/canvas_item.h"
@@ -132,6 +131,7 @@
 #include "scene/resources/audio_stream_sample.h"
 #include "scene/resources/bit_map.h"
 #include "scene/resources/box_shape_3d.h"
+#include "scene/resources/camera_effects.h"
 #include "scene/resources/capsule_shape_2d.h"
 #include "scene/resources/capsule_shape_3d.h"
 #include "scene/resources/circle_shape_2d.h"
@@ -154,6 +154,7 @@
 #include "scene/resources/physics_material.h"
 #include "scene/resources/polygon_path_finder.h"
 #include "scene/resources/primitive_meshes.h"
+#include "scene/resources/ray_shape_2d.h"
 #include "scene/resources/ray_shape_3d.h"
 #include "scene/resources/rectangle_shape_2d.h"
 #include "scene/resources/resource_format_text.h"
@@ -305,7 +306,6 @@ void register_scene_types() {
 	ClassDB::register_class<MenuButton>();
 	ClassDB::register_class<CheckBox>();
 	ClassDB::register_class<CheckButton>();
-	ClassDB::register_class<ToolButton>();
 	ClassDB::register_class<LinkButton>();
 	ClassDB::register_class<Panel>();
 	ClassDB::register_virtual_class<Range>();
@@ -540,6 +540,8 @@ void register_scene_types() {
 	ClassDB::register_class<VisualShaderNodeVectorDecompose>();
 	ClassDB::register_class<VisualShaderNodeTransformDecompose>();
 	ClassDB::register_class<VisualShaderNodeTexture>();
+	ClassDB::register_virtual_class<VisualShaderNodeSample3D>();
+	ClassDB::register_class<VisualShaderNodeTexture2DArray>();
 	ClassDB::register_class<VisualShaderNodeCubemap>();
 	ClassDB::register_virtual_class<VisualShaderNodeUniform>();
 	ClassDB::register_class<VisualShaderNodeFloatUniform>();
@@ -550,6 +552,7 @@ void register_scene_types() {
 	ClassDB::register_class<VisualShaderNodeTransformUniform>();
 	ClassDB::register_class<VisualShaderNodeTextureUniform>();
 	ClassDB::register_class<VisualShaderNodeTextureUniformTriplanar>();
+	ClassDB::register_class<VisualShaderNodeTexture2DArrayUniform>();
 	ClassDB::register_class<VisualShaderNodeCubemapUniform>();
 	ClassDB::register_class<VisualShaderNodeIf>();
 	ClassDB::register_class<VisualShaderNodeSwitch>();
@@ -559,6 +562,7 @@ void register_scene_types() {
 	ClassDB::register_class<VisualShaderNodeGlobalExpression>();
 	ClassDB::register_class<VisualShaderNodeIs>();
 	ClassDB::register_class<VisualShaderNodeCompare>();
+	ClassDB::register_class<VisualShaderNodeMultiplyAdd>();
 
 	ClassDB::register_class<ShaderMaterial>();
 	ClassDB::register_virtual_class<CanvasItem>();
@@ -763,6 +767,7 @@ void register_scene_types() {
 #ifndef DISABLE_DEPRECATED
 	// Dropped in 4.0, near approximation.
 	ClassDB::add_compatibility_class("AnimationTreePlayer", "AnimationTree");
+	ClassDB::add_compatibility_class("ToolButton", "Button");
 
 	// Renamed in 4.0.
 	// Keep alphabetical ordering to easily locate classes and avoid duplicates.

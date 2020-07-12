@@ -61,11 +61,11 @@ public:
 	virtual Transform2D get_transform() const = 0;
 
 	virtual void add_central_force(const Vector2 &p_force) = 0;
-	virtual void add_force(const Vector2 &p_offset, const Vector2 &p_force) = 0;
+	virtual void add_force(const Vector2 &p_force, const Vector2 &p_position = Vector2()) = 0;
 	virtual void add_torque(real_t p_torque) = 0;
 	virtual void apply_central_impulse(const Vector2 &p_impulse) = 0;
 	virtual void apply_torque_impulse(real_t p_torque) = 0;
-	virtual void apply_impulse(const Vector2 &p_offset, const Vector2 &p_impulse) = 0;
+	virtual void apply_impulse(const Vector2 &p_impulse, const Vector2 &p_position = Vector2()) = 0;
 
 	virtual void set_sleep_state(bool p_enable) = 0;
 	virtual bool is_sleeping() const = 0;
@@ -98,6 +98,8 @@ class PhysicsShapeQueryResult2D;
 class PhysicsShapeQueryParameters2D : public Reference {
 	GDCLASS(PhysicsShapeQueryParameters2D, Reference);
 	friend class PhysicsDirectSpaceState2D;
+
+	RES shape_ref;
 	RID shape;
 	Transform2D transform;
 	Vector2 motion;
@@ -112,7 +114,8 @@ protected:
 	static void _bind_methods();
 
 public:
-	void set_shape(const RES &p_shape);
+	void set_shape(const RES &p_shape_ref);
+	RES get_shape() const;
 	void set_shape_rid(const RID &p_shape);
 	RID get_shape_rid() const;
 
@@ -452,12 +455,12 @@ public:
 	virtual float body_get_applied_torque(RID p_body) const = 0;
 
 	virtual void body_add_central_force(RID p_body, const Vector2 &p_force) = 0;
-	virtual void body_add_force(RID p_body, const Vector2 &p_offset, const Vector2 &p_force) = 0;
+	virtual void body_add_force(RID p_body, const Vector2 &p_force, const Vector2 &p_position = Vector2()) = 0;
 	virtual void body_add_torque(RID p_body, float p_torque) = 0;
 
 	virtual void body_apply_central_impulse(RID p_body, const Vector2 &p_impulse) = 0;
 	virtual void body_apply_torque_impulse(RID p_body, float p_torque) = 0;
-	virtual void body_apply_impulse(RID p_body, const Vector2 &p_offset, const Vector2 &p_impulse) = 0;
+	virtual void body_apply_impulse(RID p_body, const Vector2 &p_impulse, const Vector2 &p_position = Vector2()) = 0;
 	virtual void body_set_axis_velocity(RID p_body, const Vector2 &p_axis_velocity) = 0;
 
 	//fix
@@ -552,13 +555,13 @@ public:
 	virtual void pin_joint_set_param(RID p_joint, PinJointParam p_param, real_t p_value) = 0;
 	virtual real_t pin_joint_get_param(RID p_joint, PinJointParam p_param) const = 0;
 
-	enum DampedStringParam {
-		DAMPED_STRING_REST_LENGTH,
-		DAMPED_STRING_STIFFNESS,
-		DAMPED_STRING_DAMPING
+	enum DampedSpringParam {
+		DAMPED_SPRING_REST_LENGTH,
+		DAMPED_SPRING_STIFFNESS,
+		DAMPED_SPRING_DAMPING
 	};
-	virtual void damped_string_joint_set_param(RID p_joint, DampedStringParam p_param, real_t p_value) = 0;
-	virtual real_t damped_string_joint_get_param(RID p_joint, DampedStringParam p_param) const = 0;
+	virtual void damped_spring_joint_set_param(RID p_joint, DampedSpringParam p_param, real_t p_value) = 0;
+	virtual real_t damped_spring_joint_get_param(RID p_joint, DampedSpringParam p_param) const = 0;
 
 	virtual JointType joint_get_type(RID p_joint) const = 0;
 
@@ -678,7 +681,7 @@ VARIANT_ENUM_CAST(PhysicsServer2D::BodyState);
 VARIANT_ENUM_CAST(PhysicsServer2D::CCDMode);
 VARIANT_ENUM_CAST(PhysicsServer2D::JointParam);
 VARIANT_ENUM_CAST(PhysicsServer2D::JointType);
-VARIANT_ENUM_CAST(PhysicsServer2D::DampedStringParam);
+VARIANT_ENUM_CAST(PhysicsServer2D::DampedSpringParam);
 //VARIANT_ENUM_CAST( PhysicsServer2D::ObjectType );
 VARIANT_ENUM_CAST(PhysicsServer2D::AreaBodyStatus);
 VARIANT_ENUM_CAST(PhysicsServer2D::ProcessInfo);

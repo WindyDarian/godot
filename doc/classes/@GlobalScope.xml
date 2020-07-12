@@ -27,8 +27,14 @@
 		<member name="Engine" type="Engine" setter="" getter="">
 			The [Engine] singleton.
 		</member>
-		<member name="Geometry" type="Geometry" setter="" getter="">
-			The [Geometry] singleton.
+		<member name="Geometry2D" type="Geometry2D" setter="" getter="">
+			The [Geometry2D] singleton.
+		</member>
+		<member name="Geometry3D" type="Geometry3D" setter="" getter="">
+			The [Geometry3D] singleton.
+		</member>
+		<member name="GodotSharp" type="GodotSharp" setter="" getter="">
+			The [GodotSharp] singleton.
 		</member>
 		<member name="IP" type="IP" setter="" getter="">
 			The [IP] singleton.

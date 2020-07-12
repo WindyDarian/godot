@@ -32,12 +32,12 @@
 #define GRAPH_EDIT_H
 
 #include "scene/gui/box_container.h"
+#include "scene/gui/button.h"
 #include "scene/gui/graph_node.h"
 #include "scene/gui/scroll_bar.h"
 #include "scene/gui/slider.h"
 #include "scene/gui/spin_box.h"
 #include "scene/gui/texture_rect.h"
-#include "scene/gui/tool_button.h"
 
 class GraphEdit;
 
@@ -46,7 +46,7 @@ class GraphEditFilter : public Control {
 
 	friend class GraphEdit;
 	GraphEdit *ge;
-	virtual bool has_point(const Point2 &p_point) const;
+	virtual bool has_point(const Point2 &p_point) const override;
 
 public:
 	GraphEditFilter(GraphEdit *p_edit);
@@ -65,11 +65,11 @@ public:
 	};
 
 private:
-	ToolButton *zoom_minus;
-	ToolButton *zoom_reset;
-	ToolButton *zoom_plus;
+	Button *zoom_minus;
+	Button *zoom_reset;
+	Button *zoom_plus;
 
-	ToolButton *snap_button;
+	Button *snap_button;
 	SpinBox *snap_amount;
 
 	void _zoom_minus();
@@ -93,6 +93,8 @@ private:
 	String connecting_target_to;
 	int connecting_target_index;
 	bool just_disconnected;
+	bool connecting_valid;
+	Vector2 click_pos;
 
 	bool dragging;
 	bool just_selected;
@@ -172,10 +174,10 @@ private:
 
 protected:
 	static void _bind_methods();
-	virtual void add_child_notify(Node *p_child);
-	virtual void remove_child_notify(Node *p_child);
+	virtual void add_child_notify(Node *p_child) override;
+	virtual void remove_child_notify(Node *p_child) override;
 	void _notification(int p_what);
-	virtual bool clips_input() const;
+	virtual bool clips_input() const override;
 
 public:
 	Error connect_node(const StringName &p_from, int p_from_port, const StringName &p_to, int p_to_port);

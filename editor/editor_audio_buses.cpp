@@ -545,6 +545,17 @@ void EditorAudioBus::_gui_input(const Ref<InputEvent> &p_event) {
 	}
 }
 
+void EditorAudioBus::_unhandled_key_input(Ref<InputEvent> p_event) {
+	Ref<InputEventKey> k = p_event;
+	if (k.is_valid() && k->is_pressed() && !k->is_echo() && k->get_keycode() == KEY_DELETE) {
+		TreeItem *current_effect = effects->get_selected();
+		if (current_effect && current_effect->get_metadata(0).get_type() == Variant::INT) {
+			_delete_effect_pressed(0);
+			accept_event();
+		}
+	}
+}
+
 void EditorAudioBus::_bus_popup_pressed(int p_option) {
 	if (p_option == 2) {
 		// Reset volume
@@ -738,6 +749,7 @@ void EditorAudioBus::_bind_methods() {
 	ClassDB::bind_method("update_bus", &EditorAudioBus::update_bus);
 	ClassDB::bind_method("update_send", &EditorAudioBus::update_send);
 	ClassDB::bind_method("_gui_input", &EditorAudioBus::_gui_input);
+	ClassDB::bind_method("_unhandled_key_input", &EditorAudioBus::_unhandled_key_input);
 	ClassDB::bind_method("get_drag_data_fw", &EditorAudioBus::get_drag_data_fw);
 	ClassDB::bind_method("can_drop_data_fw", &EditorAudioBus::can_drop_data_fw);
 	ClassDB::bind_method("drop_data_fw", &EditorAudioBus::drop_data_fw);
@@ -761,6 +773,7 @@ EditorAudioBus::EditorAudioBus(EditorAudioBuses *p_buses, bool p_is_master) {
 	add_child(vb);
 
 	set_v_size_flags(SIZE_EXPAND_FILL);
+	set_process_unhandled_key_input(true);
 
 	track_name = memnew(LineEdit);
 	track_name->connect("text_entered", callable_mp(this, &EditorAudioBus::_name_changed));
@@ -769,19 +782,22 @@ EditorAudioBus::EditorAudioBus(EditorAudioBuses *p_buses, bool p_is_master) {
 
 	HBoxContainer *hbc = memnew(HBoxContainer);
 	vb->add_child(hbc);
-	solo = memnew(ToolButton);
+	solo = memnew(Button);
+	solo->set_flat(true);
 	solo->set_toggle_mode(true);
 	solo->set_tooltip(TTR("Solo"));
 	solo->set_focus_mode(FOCUS_NONE);
 	solo->connect("pressed", callable_mp(this, &EditorAudioBus::_solo_toggled));
 	hbc->add_child(solo);
-	mute = memnew(ToolButton);
+	mute = memnew(Button);
+	mute->set_flat(true);
 	mute->set_toggle_mode(true);
 	mute->set_tooltip(TTR("Mute"));
 	mute->set_focus_mode(FOCUS_NONE);
 	mute->connect("pressed", callable_mp(this, &EditorAudioBus::_mute_toggled));
 	hbc->add_child(mute);
-	bypass = memnew(ToolButton);
+	bypass = memnew(Button);
+	bypass->set_flat(true);
 	bypass->set_toggle_mode(true);
 	bypass->set_tooltip(TTR("Bypass"));
 	bypass->set_focus_mode(FOCUS_NONE);

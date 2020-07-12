@@ -244,7 +244,6 @@ struct _VariantCall {
 	VCALL_LOCALMEM3R(String, countn);
 	VCALL_LOCALMEM2R(String, substr);
 	VCALL_LOCALMEM2R(String, find);
-	VCALL_LOCALMEM1R(String, find_last);
 	VCALL_LOCALMEM2R(String, findn);
 	VCALL_LOCALMEM2R(String, rfind);
 	VCALL_LOCALMEM2R(String, rfindn);
@@ -702,6 +701,8 @@ struct _VariantCall {
 	VCALL_PARRMEM1(PackedByteArray, uint8_t, remove);
 	VCALL_PARRMEM1(PackedByteArray, uint8_t, append);
 	VCALL_PARRMEM1(PackedByteArray, uint8_t, append_array);
+	VCALL_PARRMEM1R(PackedByteArray, uint8_t, has);
+	VCALL_PARRMEM0(PackedByteArray, uint8_t, sort);
 	VCALL_PARRMEM0(PackedByteArray, uint8_t, invert);
 	VCALL_PARRMEM2R(PackedByteArray, uint8_t, subarray);
 
@@ -715,6 +716,8 @@ struct _VariantCall {
 	VCALL_PARRMEM1(PackedInt32Array, int32_t, remove);
 	VCALL_PARRMEM1(PackedInt32Array, int32_t, append);
 	VCALL_PARRMEM1(PackedInt32Array, int32_t, append_array);
+	VCALL_PARRMEM1R(PackedInt32Array, int32_t, has);
+	VCALL_PARRMEM0(PackedInt32Array, int32_t, sort);
 	VCALL_PARRMEM0(PackedInt32Array, int32_t, invert);
 
 	VCALL_PARRMEM0R(PackedInt64Array, int64_t, size);
@@ -727,6 +730,8 @@ struct _VariantCall {
 	VCALL_PARRMEM1(PackedInt64Array, int64_t, remove);
 	VCALL_PARRMEM1(PackedInt64Array, int64_t, append);
 	VCALL_PARRMEM1(PackedInt64Array, int64_t, append_array);
+	VCALL_PARRMEM1R(PackedInt64Array, int64_t, has);
+	VCALL_PARRMEM0(PackedInt64Array, int64_t, sort);
 	VCALL_PARRMEM0(PackedInt64Array, int64_t, invert);
 
 	VCALL_PARRMEM0R(PackedFloat32Array, float, size);
@@ -739,6 +744,8 @@ struct _VariantCall {
 	VCALL_PARRMEM1(PackedFloat32Array, float, remove);
 	VCALL_PARRMEM1(PackedFloat32Array, float, append);
 	VCALL_PARRMEM1(PackedFloat32Array, float, append_array);
+	VCALL_PARRMEM1R(PackedFloat32Array, float, has);
+	VCALL_PARRMEM0(PackedFloat32Array, float, sort);
 	VCALL_PARRMEM0(PackedFloat32Array, float, invert);
 
 	VCALL_PARRMEM0R(PackedFloat64Array, double, size);
@@ -751,6 +758,8 @@ struct _VariantCall {
 	VCALL_PARRMEM1(PackedFloat64Array, double, remove);
 	VCALL_PARRMEM1(PackedFloat64Array, double, append);
 	VCALL_PARRMEM1(PackedFloat64Array, double, append_array);
+	VCALL_PARRMEM1R(PackedFloat64Array, double, has);
+	VCALL_PARRMEM0(PackedFloat64Array, double, sort);
 	VCALL_PARRMEM0(PackedFloat64Array, double, invert);
 
 	VCALL_PARRMEM0R(PackedStringArray, String, size);
@@ -763,6 +772,8 @@ struct _VariantCall {
 	VCALL_PARRMEM1(PackedStringArray, String, remove);
 	VCALL_PARRMEM1(PackedStringArray, String, append);
 	VCALL_PARRMEM1(PackedStringArray, String, append_array);
+	VCALL_PARRMEM1R(PackedStringArray, String, has);
+	VCALL_PARRMEM0(PackedStringArray, String, sort);
 	VCALL_PARRMEM0(PackedStringArray, String, invert);
 
 	VCALL_PARRMEM0R(PackedVector2Array, Vector2, size);
@@ -775,6 +786,8 @@ struct _VariantCall {
 	VCALL_PARRMEM1(PackedVector2Array, Vector2, remove);
 	VCALL_PARRMEM1(PackedVector2Array, Vector2, append);
 	VCALL_PARRMEM1(PackedVector2Array, Vector2, append_array);
+	VCALL_PARRMEM1R(PackedVector2Array, Vector2, has);
+	VCALL_PARRMEM0(PackedVector2Array, Vector2, sort);
 	VCALL_PARRMEM0(PackedVector2Array, Vector2, invert);
 
 	VCALL_PARRMEM0R(PackedVector3Array, Vector3, size);
@@ -787,6 +800,8 @@ struct _VariantCall {
 	VCALL_PARRMEM1(PackedVector3Array, Vector3, remove);
 	VCALL_PARRMEM1(PackedVector3Array, Vector3, append);
 	VCALL_PARRMEM1(PackedVector3Array, Vector3, append_array);
+	VCALL_PARRMEM1R(PackedVector3Array, Vector3, has);
+	VCALL_PARRMEM0(PackedVector3Array, Vector3, sort);
 	VCALL_PARRMEM0(PackedVector3Array, Vector3, invert);
 
 	VCALL_PARRMEM0R(PackedColorArray, Color, size);
@@ -799,6 +814,8 @@ struct _VariantCall {
 	VCALL_PARRMEM1(PackedColorArray, Color, remove);
 	VCALL_PARRMEM1(PackedColorArray, Color, append);
 	VCALL_PARRMEM1(PackedColorArray, Color, append_array);
+	VCALL_PARRMEM1R(PackedColorArray, Color, has);
+	VCALL_PARRMEM0(PackedColorArray, Color, sort);
 	VCALL_PARRMEM0(PackedColorArray, Color, invert);
 
 #define VCALL_PTR0(m_type, m_method) \
@@ -923,6 +940,18 @@ struct _VariantCall {
 	VCALL_PTR1R(Basis, scaled);
 	VCALL_PTR0R(Basis, get_scale);
 	VCALL_PTR0R(Basis, get_euler);
+	VCALL_PTR0R(Basis, get_euler_xyz);
+	VCALL_PTR1(Basis, set_euler_xyz);
+	VCALL_PTR0R(Basis, get_euler_xzy);
+	VCALL_PTR1(Basis, set_euler_xzy);
+	VCALL_PTR0R(Basis, get_euler_yzx);
+	VCALL_PTR1(Basis, set_euler_yzx);
+	VCALL_PTR0R(Basis, get_euler_yxz);
+	VCALL_PTR1(Basis, set_euler_yxz);
+	VCALL_PTR0R(Basis, get_euler_zxy);
+	VCALL_PTR1(Basis, set_euler_zxy);
+	VCALL_PTR0R(Basis, get_euler_zyx);
+	VCALL_PTR1(Basis, set_euler_zyx);
 	VCALL_PTR1R(Basis, tdotx);
 	VCALL_PTR1R(Basis, tdoty);
 	VCALL_PTR1R(Basis, tdotz);
@@ -1296,10 +1325,16 @@ Variant Variant::construct(const Variant::Type p_type, const Variant **p_args, i
 			// math types
 			case VECTOR2:
 				return Vector2();
+			case VECTOR2I:
+				return Vector2i();
 			case RECT2:
 				return Rect2();
+			case RECT2I:
+				return Rect2i();
 			case VECTOR3:
 				return Vector3();
+			case VECTOR3I:
+				return Vector3i();
 			case TRANSFORM2D:
 				return Transform2D();
 			case PLANE:
@@ -1762,7 +1797,6 @@ void register_variant_methods() {
 	ADDFUNC3R(STRING, INT, String, count, STRING, "what", INT, "from", INT, "to", varray(0, 0));
 	ADDFUNC3R(STRING, INT, String, countn, STRING, "what", INT, "from", INT, "to", varray(0, 0));
 
-	ADDFUNC1R(STRING, INT, String, find_last, STRING, "what", varray());
 	ADDFUNC2R(STRING, INT, String, findn, STRING, "what", INT, "from", varray(0));
 	ADDFUNC2R(STRING, INT, String, rfind, STRING, "what", INT, "from", varray(-1));
 	ADDFUNC2R(STRING, INT, String, rfindn, STRING, "what", INT, "from", varray(-1));
@@ -2069,6 +2103,8 @@ void register_variant_methods() {
 	ADDFUNC1(PACKED_BYTE_ARRAY, NIL, PackedByteArray, remove, INT, "idx", varray());
 	ADDFUNC2R(PACKED_BYTE_ARRAY, INT, PackedByteArray, insert, INT, "idx", INT, "byte", varray());
 	ADDFUNC1(PACKED_BYTE_ARRAY, NIL, PackedByteArray, resize, INT, "idx", varray());
+	ADDFUNC1R(PACKED_BYTE_ARRAY, BOOL, PackedByteArray, has, INT, "value", varray());
+	ADDFUNC0(PACKED_BYTE_ARRAY, NIL, PackedByteArray, sort, varray());
 	ADDFUNC0(PACKED_BYTE_ARRAY, NIL, PackedByteArray, invert, varray());
 	ADDFUNC2R(PACKED_BYTE_ARRAY, PACKED_BYTE_ARRAY, PackedByteArray, subarray, INT, "from", INT, "to", varray());
 
@@ -2087,6 +2123,8 @@ void register_variant_methods() {
 	ADDFUNC1(PACKED_INT32_ARRAY, NIL, PackedInt32Array, remove, INT, "idx", varray());
 	ADDFUNC2R(PACKED_INT32_ARRAY, INT, PackedInt32Array, insert, INT, "idx", INT, "integer", varray());
 	ADDFUNC1(PACKED_INT32_ARRAY, NIL, PackedInt32Array, resize, INT, "idx", varray());
+	ADDFUNC1R(PACKED_INT32_ARRAY, BOOL, PackedInt32Array, has, INT, "value", varray());
+	ADDFUNC0(PACKED_INT32_ARRAY, NIL, PackedInt32Array, sort, varray());
 	ADDFUNC0(PACKED_INT32_ARRAY, NIL, PackedInt32Array, invert, varray());
 
 	ADDFUNC0R(PACKED_INT64_ARRAY, INT, PackedInt64Array, size, varray());
@@ -2098,6 +2136,8 @@ void register_variant_methods() {
 	ADDFUNC1(PACKED_INT64_ARRAY, NIL, PackedInt64Array, remove, INT, "idx", varray());
 	ADDFUNC2R(PACKED_INT64_ARRAY, INT, PackedInt64Array, insert, INT, "idx", INT, "integer", varray());
 	ADDFUNC1(PACKED_INT64_ARRAY, NIL, PackedInt64Array, resize, INT, "idx", varray());
+	ADDFUNC1R(PACKED_INT64_ARRAY, BOOL, PackedInt64Array, has, INT, "value", varray());
+	ADDFUNC0(PACKED_INT64_ARRAY, NIL, PackedInt64Array, sort, varray());
 	ADDFUNC0(PACKED_INT64_ARRAY, NIL, PackedInt64Array, invert, varray());
 
 	ADDFUNC0R(PACKED_FLOAT32_ARRAY, INT, PackedFloat32Array, size, varray());
@@ -2109,6 +2149,8 @@ void register_variant_methods() {
 	ADDFUNC1(PACKED_FLOAT32_ARRAY, NIL, PackedFloat32Array, remove, INT, "idx", varray());
 	ADDFUNC2R(PACKED_FLOAT32_ARRAY, INT, PackedFloat32Array, insert, INT, "idx", FLOAT, "value", varray());
 	ADDFUNC1(PACKED_FLOAT32_ARRAY, NIL, PackedFloat32Array, resize, INT, "idx", varray());
+	ADDFUNC1R(PACKED_FLOAT32_ARRAY, BOOL, PackedFloat32Array, has, FLOAT, "value", varray());
+	ADDFUNC0(PACKED_FLOAT32_ARRAY, NIL, PackedFloat32Array, sort, varray());
 	ADDFUNC0(PACKED_FLOAT32_ARRAY, NIL, PackedFloat32Array, invert, varray());
 
 	ADDFUNC0R(PACKED_FLOAT64_ARRAY, INT, PackedFloat64Array, size, varray());
@@ -2120,6 +2162,8 @@ void register_variant_methods() {
 	ADDFUNC1(PACKED_FLOAT64_ARRAY, NIL, PackedFloat64Array, remove, INT, "idx", varray());
 	ADDFUNC2R(PACKED_FLOAT64_ARRAY, INT, PackedFloat64Array, insert, INT, "idx", FLOAT, "value", varray());
 	ADDFUNC1(PACKED_FLOAT64_ARRAY, NIL, PackedFloat64Array, resize, INT, "idx", varray());
+	ADDFUNC1R(PACKED_FLOAT64_ARRAY, BOOL, PackedFloat64Array, has, FLOAT, "value", varray());
+	ADDFUNC0(PACKED_FLOAT64_ARRAY, NIL, PackedFloat64Array, sort, varray());
 	ADDFUNC0(PACKED_FLOAT64_ARRAY, NIL, PackedFloat64Array, invert, varray());
 
 	ADDFUNC0R(PACKED_STRING_ARRAY, INT, PackedStringArray, size, varray());
@@ -2131,6 +2175,8 @@ void register_variant_methods() {
 	ADDFUNC1(PACKED_STRING_ARRAY, NIL, PackedStringArray, remove, INT, "idx", varray());
 	ADDFUNC2R(PACKED_STRING_ARRAY, INT, PackedStringArray, insert, INT, "idx", STRING, "string", varray());
 	ADDFUNC1(PACKED_STRING_ARRAY, NIL, PackedStringArray, resize, INT, "idx", varray());
+	ADDFUNC1R(PACKED_STRING_ARRAY, BOOL, PackedStringArray, has, STRING, "value", varray());
+	ADDFUNC0(PACKED_STRING_ARRAY, NIL, PackedStringArray, sort, varray());
 	ADDFUNC0(PACKED_STRING_ARRAY, NIL, PackedStringArray, invert, varray());
 
 	ADDFUNC0R(PACKED_VECTOR2_ARRAY, INT, PackedVector2Array, size, varray());
@@ -2142,6 +2188,8 @@ void register_variant_methods() {
 	ADDFUNC1(PACKED_VECTOR2_ARRAY, NIL, PackedVector2Array, remove, INT, "idx", varray());
 	ADDFUNC2R(PACKED_VECTOR2_ARRAY, INT, PackedVector2Array, insert, INT, "idx", VECTOR2, "vector2", varray());
 	ADDFUNC1(PACKED_VECTOR2_ARRAY, NIL, PackedVector2Array, resize, INT, "idx", varray());
+	ADDFUNC1R(PACKED_VECTOR2_ARRAY, BOOL, PackedVector2Array, has, VECTOR2, "value", varray());
+	ADDFUNC0(PACKED_VECTOR2_ARRAY, NIL, PackedVector2Array, sort, varray());
 	ADDFUNC0(PACKED_VECTOR2_ARRAY, NIL, PackedVector2Array, invert, varray());
 
 	ADDFUNC0R(PACKED_VECTOR3_ARRAY, INT, PackedVector3Array, size, varray());
@@ -2153,6 +2201,8 @@ void register_variant_methods() {
 	ADDFUNC1(PACKED_VECTOR3_ARRAY, NIL, PackedVector3Array, remove, INT, "idx", varray());
 	ADDFUNC2R(PACKED_VECTOR3_ARRAY, INT, PackedVector3Array, insert, INT, "idx", VECTOR3, "vector3", varray());
 	ADDFUNC1(PACKED_VECTOR3_ARRAY, NIL, PackedVector3Array, resize, INT, "idx", varray());
+	ADDFUNC1R(PACKED_VECTOR3_ARRAY, BOOL, PackedVector3Array, has, VECTOR3, "value", varray());
+	ADDFUNC0(PACKED_VECTOR3_ARRAY, NIL, PackedVector3Array, sort, varray());
 	ADDFUNC0(PACKED_VECTOR3_ARRAY, NIL, PackedVector3Array, invert, varray());
 
 	ADDFUNC0R(PACKED_COLOR_ARRAY, INT, PackedColorArray, size, varray());
@@ -2164,6 +2214,8 @@ void register_variant_methods() {
 	ADDFUNC1(PACKED_COLOR_ARRAY, NIL, PackedColorArray, remove, INT, "idx", varray());
 	ADDFUNC2R(PACKED_COLOR_ARRAY, INT, PackedColorArray, insert, INT, "idx", COLOR, "color", varray());
 	ADDFUNC1(PACKED_COLOR_ARRAY, NIL, PackedColorArray, resize, INT, "idx", varray());
+	ADDFUNC1R(PACKED_COLOR_ARRAY, BOOL, PackedColorArray, has, COLOR, "value", varray());
+	ADDFUNC0(PACKED_COLOR_ARRAY, NIL, PackedColorArray, sort, varray());
 	ADDFUNC0(PACKED_COLOR_ARRAY, NIL, PackedColorArray, invert, varray());
 
 	//pointerbased

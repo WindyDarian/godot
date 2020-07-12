@@ -631,8 +631,8 @@ void RigidBody2D::apply_central_impulse(const Vector2 &p_impulse) {
 	PhysicsServer2D::get_singleton()->body_apply_central_impulse(get_rid(), p_impulse);
 }
 
-void RigidBody2D::apply_impulse(const Vector2 &p_offset, const Vector2 &p_impulse) {
-	PhysicsServer2D::get_singleton()->body_apply_impulse(get_rid(), p_offset, p_impulse);
+void RigidBody2D::apply_impulse(const Vector2 &p_impulse, const Vector2 &p_position) {
+	PhysicsServer2D::get_singleton()->body_apply_impulse(get_rid(), p_impulse, p_position);
 }
 
 void RigidBody2D::apply_torque_impulse(float p_torque) {
@@ -659,8 +659,8 @@ void RigidBody2D::add_central_force(const Vector2 &p_force) {
 	PhysicsServer2D::get_singleton()->body_add_central_force(get_rid(), p_force);
 }
 
-void RigidBody2D::add_force(const Vector2 &p_offset, const Vector2 &p_force) {
-	PhysicsServer2D::get_singleton()->body_add_force(get_rid(), p_offset, p_force);
+void RigidBody2D::add_force(const Vector2 &p_force, const Vector2 &p_position) {
+	PhysicsServer2D::get_singleton()->body_add_force(get_rid(), p_force, p_position);
 }
 
 void RigidBody2D::add_torque(const float p_torque) {
@@ -801,8 +801,8 @@ void RigidBody2D::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_continuous_collision_detection_mode"), &RigidBody2D::get_continuous_collision_detection_mode);
 
 	ClassDB::bind_method(D_METHOD("set_axis_velocity", "axis_velocity"), &RigidBody2D::set_axis_velocity);
-	ClassDB::bind_method(D_METHOD("apply_central_impulse", "impulse"), &RigidBody2D::apply_central_impulse);
-	ClassDB::bind_method(D_METHOD("apply_impulse", "offset", "impulse"), &RigidBody2D::apply_impulse);
+	ClassDB::bind_method(D_METHOD("apply_central_impulse", "impulse"), &RigidBody2D::apply_central_impulse, Vector2());
+	ClassDB::bind_method(D_METHOD("apply_impulse", "impulse", "position"), &RigidBody2D::apply_impulse, Vector2());
 	ClassDB::bind_method(D_METHOD("apply_torque_impulse", "torque"), &RigidBody2D::apply_torque_impulse);
 
 	ClassDB::bind_method(D_METHOD("set_applied_force", "force"), &RigidBody2D::set_applied_force);
@@ -812,7 +812,7 @@ void RigidBody2D::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_applied_torque"), &RigidBody2D::get_applied_torque);
 
 	ClassDB::bind_method(D_METHOD("add_central_force", "force"), &RigidBody2D::add_central_force);
-	ClassDB::bind_method(D_METHOD("add_force", "offset", "force"), &RigidBody2D::add_force);
+	ClassDB::bind_method(D_METHOD("add_force", "force", "position"), &RigidBody2D::add_force, Vector2());
 	ClassDB::bind_method(D_METHOD("add_torque", "torque"), &RigidBody2D::add_torque);
 
 	ClassDB::bind_method(D_METHOD("set_sleeping", "sleeping"), &RigidBody2D::set_sleeping);
@@ -997,6 +997,7 @@ bool KinematicBody2D::move_and_collide(const Vector2 &p_motion, bool p_infinite_
 Vector2 KinematicBody2D::move_and_slide(const Vector2 &p_linear_velocity, const Vector2 &p_up_direction, bool p_stop_on_slope, int p_max_slides, float p_floor_max_angle, bool p_infinite_inertia) {
 	Vector2 body_velocity = p_linear_velocity;
 	Vector2 body_velocity_normal = body_velocity.normalized();
+	Vector2 up_direction = p_up_direction.normalized();
 
 	Vector2 current_floor_velocity = floor_velocity;
 	if (on_floor && on_floor_body.is_valid()) {
@@ -1043,11 +1044,11 @@ Vector2 KinematicBody2D::move_and_slide(const Vector2 &p_linear_velocity, const 
 				colliders.push_back(collision);
 				motion = collision.remainder;
 
-				if (p_up_direction == Vector2()) {
+				if (up_direction == Vector2()) {
 					//all is a wall
 					on_wall = true;
 				} else {
-					if (Math::acos(collision.normal.dot(p_up_direction)) <= p_floor_max_angle + FLOOR_ANGLE_THRESHOLD) { //floor
+					if (Math::acos(collision.normal.dot(up_direction)) <= p_floor_max_angle + FLOOR_ANGLE_THRESHOLD) { //floor
 
 						on_floor = true;
 						floor_normal = collision.normal;
@@ -1055,14 +1056,14 @@ Vector2 KinematicBody2D::move_and_slide(const Vector2 &p_linear_velocity, const 
 						floor_velocity = collision.collider_vel;
 
 						if (p_stop_on_slope) {
-							if ((body_velocity_normal + p_up_direction).length() < 0.01 && collision.travel.length() < 1) {
+							if ((body_velocity_normal + up_direction).length() < 0.01 && collision.travel.length() < 1) {
 								Transform2D gt = get_global_transform();
-								gt.elements[2] -= collision.travel.slide(p_up_direction);
+								gt.elements[2] -= collision.travel.slide(up_direction);
 								set_global_transform(gt);
 								return Vector2();
 							}
 						}
-					} else if (Math::acos(collision.normal.dot(-p_up_direction)) <= p_floor_max_angle + FLOOR_ANGLE_THRESHOLD) { //ceiling
+					} else if (Math::acos(collision.normal.dot(-up_direction)) <= p_floor_max_angle + FLOOR_ANGLE_THRESHOLD) { //ceiling
 						on_ceiling = true;
 					} else {
 						on_wall = true;
@@ -1085,9 +1086,10 @@ Vector2 KinematicBody2D::move_and_slide(const Vector2 &p_linear_velocity, const 
 }
 
 Vector2 KinematicBody2D::move_and_slide_with_snap(const Vector2 &p_linear_velocity, const Vector2 &p_snap, const Vector2 &p_up_direction, bool p_stop_on_slope, int p_max_slides, float p_floor_max_angle, bool p_infinite_inertia) {
+	Vector2 up_direction = p_up_direction.normalized();
 	bool was_on_floor = on_floor;
 
-	Vector2 ret = move_and_slide(p_linear_velocity, p_up_direction, p_stop_on_slope, p_max_slides, p_floor_max_angle, p_infinite_inertia);
+	Vector2 ret = move_and_slide(p_linear_velocity, up_direction, p_stop_on_slope, p_max_slides, p_floor_max_angle, p_infinite_inertia);
 	if (!was_on_floor || p_snap == Vector2()) {
 		return ret;
 	}
@@ -1097,8 +1099,8 @@ Vector2 KinematicBody2D::move_and_slide_with_snap(const Vector2 &p_linear_veloci
 
 	if (move_and_collide(p_snap, p_infinite_inertia, col, false, true)) {
 		bool apply = true;
-		if (p_up_direction != Vector2()) {
-			if (Math::acos(p_up_direction.normalized().dot(col.normal)) < p_floor_max_angle) {
+		if (up_direction != Vector2()) {
+			if (Math::acos(col.normal.dot(up_direction)) <= p_floor_max_angle + FLOOR_ANGLE_THRESHOLD) {
 				on_floor = true;
 				floor_normal = col.normal;
 				on_floor_body = col.collider_rid;
@@ -1106,7 +1108,7 @@ Vector2 KinematicBody2D::move_and_slide_with_snap(const Vector2 &p_linear_veloci
 				if (p_stop_on_slope) {
 					// move and collide may stray the object a bit because of pre un-stucking,
 					// so only ensure that motion happens on floor direction in this case.
-					col.travel = p_up_direction * p_up_direction.dot(col.travel);
+					col.travel = up_direction * up_direction.dot(col.travel);
 				}
 
 			} else {

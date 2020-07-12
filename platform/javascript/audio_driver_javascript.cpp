@@ -36,6 +36,15 @@
 
 AudioDriverJavaScript *AudioDriverJavaScript::singleton = nullptr;
 
+bool AudioDriverJavaScript::is_available() {
+	return EM_ASM_INT({
+		if (!(window.AudioContext || window.webkitAudioContext)) {
+			return 0;
+		}
+		return 1;
+	}) != 0;
+}
+
 const char *AudioDriverJavaScript::get_name() const {
 	return "JavaScript";
 }
@@ -70,14 +79,14 @@ Error AudioDriverJavaScript::init() {
 	/* clang-format off */
 	_driver_id = EM_ASM_INT({
 		const MIX_RATE = $0;
-		const LATENCY = $1;
+		const LATENCY = $1 / 1000;
 		return Module.IDHandler.add({
 			'context': new (window.AudioContext || window.webkitAudioContext)({ sampleRate: MIX_RATE, latencyHint: LATENCY}),
 			'input': null,
 			'stream': null,
 			'script': null
 		});
-	});
+	}, mix_rate, latency);
 	/* clang-format on */
 
 	int channel_count = get_total_channels_by_speaker_mode(get_speaker_mode());
@@ -207,12 +216,14 @@ void AudioDriverJavaScript::finish_async() {
 
 	/* clang-format off */
 	EM_ASM({
-		var ref = Module.IDHandler.get($0);
+		const id = $0;
+		var ref = Module.IDHandler.get(id);
 		Module.async_finish.push(new Promise(function(accept, reject) {
 			if (!ref) {
-				console.log("Ref not found!", $0, Module.IDHandler);
+				console.log("Ref not found!", id, Module.IDHandler);
 				setTimeout(accept, 0);
 			} else {
+				Module.IDHandler.remove(id);
 				const context = ref['context'];
 				// Disconnect script and input.
 				ref['script'].disconnect();
@@ -226,7 +237,6 @@ void AudioDriverJavaScript::finish_async() {
 				});
 			}
 		}));
-		Module.IDHandler.remove($0);
 	}, id);
 	/* clang-format on */
 }
@@ -293,9 +303,5 @@ Error AudioDriverJavaScript::capture_stop() {
 }
 
 AudioDriverJavaScript::AudioDriverJavaScript() {
-	_driver_id = 0;
-	internal_buffer = nullptr;
-	buffer_length = 0;
-
 	singleton = this;
 }

@@ -49,7 +49,7 @@ public:
 	void set_curve(const Ref<Curve3D> &p_curve);
 	Ref<Curve3D> get_curve() const;
 
-	Path3D();
+	Path3D() {}
 };
 
 class PathFollow3D : public Node3D {
@@ -75,10 +75,10 @@ private:
 	bool loop;
 	RotationMode rotation_mode;
 
-	void _update_transform();
+	void _update_transform(bool p_update_xyz_rot = true);
 
 protected:
-	virtual void _validate_property(PropertyInfo &property) const;
+	virtual void _validate_property(PropertyInfo &property) const override;
 
 	void _notification(int p_what);
 	static void _bind_methods();
@@ -105,7 +105,7 @@ public:
 	void set_cubic_interpolation(bool p_enable);
 	bool get_cubic_interpolation() const;
 
-	String get_configuration_warning() const;
+	String get_configuration_warning() const override;
 
 	PathFollow3D();
 };

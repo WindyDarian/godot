@@ -247,6 +247,9 @@ void ShaderCompilerGLES2::_dump_function_deps(SL::ShaderNode *p_node, const Stri
 		for (int i = 0; i < fnode->arguments.size(); i++) {
 			if (i > 0)
 				header += ", ";
+			if (fnode->arguments[i].is_const) {
+				header += "const ";
+			}
 			if (fnode->arguments[i].type == SL::TYPE_STRUCT) {
 				header += _qualstr(fnode->arguments[i].qualifier) + _mkid(fnode->arguments[i].type_str) + " " + _mkid(fnode->arguments[i].name);
 			} else {
@@ -262,7 +265,7 @@ void ShaderCompilerGLES2::_dump_function_deps(SL::ShaderNode *p_node, const Stri
 	}
 }
 
-String ShaderCompilerGLES2::_dump_node_code(SL::Node *p_node, int p_level, GeneratedCode &r_gen_code, IdentifierActions &p_actions, const DefaultIdentifierActions &p_default_actions, bool p_assigning) {
+String ShaderCompilerGLES2::_dump_node_code(SL::Node *p_node, int p_level, GeneratedCode &r_gen_code, IdentifierActions &p_actions, const DefaultIdentifierActions &p_default_actions, bool p_assigning, bool p_use_scope) {
 	StringBuilder code;
 
 	switch (p_node->type) {
@@ -626,7 +629,7 @@ String ShaderCompilerGLES2::_dump_node_code(SL::Node *p_node, int p_level, Gener
 
 			if (arr_node->call_expression != nullptr) {
 				code += ".";
-				code += _dump_node_code(arr_node->call_expression, p_level, r_gen_code, p_actions, p_default_actions, p_assigning);
+				code += _dump_node_code(arr_node->call_expression, p_level, r_gen_code, p_actions, p_default_actions, p_assigning, false);
 			}
 
 			if (arr_node->index_expression != nullptr) {
@@ -822,13 +825,17 @@ String ShaderCompilerGLES2::_dump_node_code(SL::Node *p_node, int p_level, Gener
 				} break;
 
 				default: {
-					code += "(";
+					if (p_use_scope) {
+						code += "(";
+					}
 					code += _dump_node_code(op_node->arguments[0], p_level, r_gen_code, p_actions, p_default_actions, p_assigning);
 					code += " ";
 					code += _opstr(op_node->op);
 					code += " ";
 					code += _dump_node_code(op_node->arguments[1], p_level, r_gen_code, p_actions, p_default_actions, p_assigning);
-					code += ")";
+					if (p_use_scope) {
+						code += ")";
+					}
 				} break;
 			}
 		} break;
@@ -1009,6 +1016,7 @@ ShaderCompilerGLES2::ShaderCompilerGLES2() {
 	actions[RS::SHADER_CANVAS_ITEM].usage_defines["isinf"] = "#define IS_INF_USED\n";
 	actions[RS::SHADER_CANVAS_ITEM].usage_defines["isnan"] = "#define IS_NAN_USED\n";
 	actions[RS::SHADER_CANVAS_ITEM].usage_defines["trunc"] = "#define TRUNC_USED\n";
+	actions[RS::SHADER_CANVAS_ITEM].usage_defines["fma"] = "#define FMA_USED\n";
 
 	/** SPATIAL SHADER **/
 
@@ -1119,6 +1127,7 @@ ShaderCompilerGLES2::ShaderCompilerGLES2() {
 	actions[RS::SHADER_SPATIAL].usage_defines["isinf"] = "#define IS_INF_USED\n";
 	actions[RS::SHADER_SPATIAL].usage_defines["isnan"] = "#define IS_NAN_USED\n";
 	actions[RS::SHADER_SPATIAL].usage_defines["trunc"] = "#define TRUNC_USED\n";
+	actions[RS::SHADER_SPATIAL].usage_defines["fma"] = "#define FMA_USED\n";
 
 	actions[RS::SHADER_SPATIAL].render_mode_defines["skip_vertex_transform"] = "#define SKIP_TRANSFORM_USED\n";
 	actions[RS::SHADER_SPATIAL].render_mode_defines["world_vertex_coords"] = "#define VERTEX_WORLD_COORDS_USED\n";

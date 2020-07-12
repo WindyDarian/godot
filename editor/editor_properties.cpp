@@ -164,7 +164,8 @@ EditorPropertyMultilineText::EditorPropertyMultilineText() {
 	add_focusable(text);
 	hb->add_child(text);
 	text->set_h_size_flags(SIZE_EXPAND_FILL);
-	open_big_text = memnew(ToolButton);
+	open_big_text = memnew(Button);
+	open_big_text->set_flat(true);
 	open_big_text->connect("pressed", callable_mp(this, &EditorPropertyMultilineText::_open_big_text));
 	hb->add_child(open_big_text);
 	big_text_dialog = nullptr;
@@ -376,13 +377,13 @@ void EditorPropertyMember::_property_select() {
 		selector->select_method_from_base_type(hint_text, current);
 
 	} else if (hint == MEMBER_METHOD_OF_INSTANCE) {
-		Object *instance = ObjectDB::get_instance(ObjectID(hint_text.to_int64()));
+		Object *instance = ObjectDB::get_instance(ObjectID(hint_text.to_int()));
 		if (instance) {
 			selector->select_method_from_instance(instance, current);
 		}
 
 	} else if (hint == MEMBER_METHOD_OF_SCRIPT) {
-		Object *obj = ObjectDB::get_instance(ObjectID(hint_text.to_int64()));
+		Object *obj = ObjectDB::get_instance(ObjectID(hint_text.to_int()));
 		if (Object::cast_to<Script>(obj)) {
 			selector->select_method_from_script(Object::cast_to<Script>(obj), current);
 		}
@@ -407,13 +408,13 @@ void EditorPropertyMember::_property_select() {
 		selector->select_property_from_base_type(hint_text, current);
 
 	} else if (hint == MEMBER_PROPERTY_OF_INSTANCE) {
-		Object *instance = ObjectDB::get_instance(ObjectID(hint_text.to_int64()));
+		Object *instance = ObjectDB::get_instance(ObjectID(hint_text.to_int()));
 		if (instance) {
 			selector->select_property_from_instance(instance, current);
 		}
 
 	} else if (hint == MEMBER_PROPERTY_OF_SCRIPT) {
-		Object *obj = ObjectDB::get_instance(ObjectID(hint_text.to_int64()));
+		Object *obj = ObjectDB::get_instance(ObjectID(hint_text.to_int()));
 		if (Object::cast_to<Script>(obj)) {
 			selector->select_property_from_script(Object::cast_to<Script>(obj), current);
 		}
@@ -487,7 +488,7 @@ void EditorPropertyEnum::setup(const Vector<String> &p_options) {
 	for (int i = 0; i < p_options.size(); i++) {
 		Vector<String> text_split = p_options[i].split(":");
 		if (text_split.size() != 1) {
-			current_val = text_split[1].to_int64();
+			current_val = text_split[1].to_int();
 		}
 		options->add_item(text_split[0]);
 		options->set_item_metadata(i, current_val);
@@ -581,13 +582,14 @@ public:
 	Vector<Rect2> flag_rects;
 	Vector<String> names;
 	Vector<String> tooltips;
+	int hovered_index;
 
-	virtual Size2 get_minimum_size() const {
+	virtual Size2 get_minimum_size() const override {
 		Ref<Font> font = get_theme_font("font", "Label");
 		return Vector2(0, font->get_height() * 2);
 	}
 
-	virtual String get_tooltip(const Point2 &p_pos) const {
+	virtual String get_tooltip(const Point2 &p_pos) const override {
 		for (int i = 0; i < flag_rects.size(); i++) {
 			if (i < tooltips.size() && flag_rects[i].has_point(p_pos)) {
 				return tooltips[i];
@@ -596,56 +598,79 @@ public:
 		return String();
 	}
 	void _gui_input(const Ref<InputEvent> &p_ev) {
-		Ref<InputEventMouseButton> mb = p_ev;
-		if (mb.is_valid() && mb->get_button_index() == BUTTON_LEFT && mb->is_pressed()) {
+		const Ref<InputEventMouseMotion> mm = p_ev;
+
+		if (mm.is_valid()) {
 			for (int i = 0; i < flag_rects.size(); i++) {
-				if (flag_rects[i].has_point(mb->get_position())) {
-					//toggle
-					if (value & (1 << i)) {
-						value &= ~(1 << i);
-					} else {
-						value |= (1 << i);
-					}
-					emit_signal("flag_changed", value);
+				if (flag_rects[i].has_point(mm->get_position())) {
+					// Used to highlight the hovered flag in the layers grid.
+					hovered_index = i;
 					update();
+					break;
 				}
 			}
+		}
+
+		const Ref<InputEventMouseButton> mb = p_ev;
+
+		if (mb.is_valid() && mb->get_button_index() == BUTTON_LEFT && mb->is_pressed()) {
+			// Toggle the flag.
+			// We base our choice on the hovered flag, so that it always matches the hovered flag.
+			if (value & (1 << hovered_index)) {
+				value &= ~(1 << hovered_index);
+			} else {
+				value |= (1 << hovered_index);
+			}
+
+			emit_signal("flag_changed", value);
+			update();
 		}
 	}
 
 	void _notification(int p_what) {
-		if (p_what == NOTIFICATION_DRAW) {
-			Rect2 rect;
-			rect.size = get_size();
-			flag_rects.clear();
+		switch (p_what) {
+			case NOTIFICATION_DRAW: {
+				Rect2 rect;
+				rect.size = get_size();
+				flag_rects.clear();
 
-			int bsize = (rect.size.height * 80 / 100) / 2;
+				const int bsize = (rect.size.height * 80 / 100) / 2;
+				const int h = bsize * 2 + 1;
+				const int vofs = (rect.size.height - h) / 2;
 
-			int h = bsize * 2 + 1;
-			int vofs = (rect.size.height - h) / 2;
+				Color color = get_theme_color("highlight_color", "Editor");
+				for (int i = 0; i < 2; i++) {
+					Point2 ofs(4, vofs);
+					if (i == 1)
+						ofs.y += bsize + 1;
 
-			Color color = get_theme_color("highlight_color", "Editor");
-			for (int i = 0; i < 2; i++) {
-				Point2 ofs(4, vofs);
-				if (i == 1) {
-					ofs.y += bsize + 1;
-				}
+					ofs += rect.position;
+					for (int j = 0; j < 10; j++) {
+						Point2 o = ofs + Point2(j * (bsize + 1), 0);
+						if (j >= 5)
+							o.x += 1;
 
-				ofs += rect.position;
-				for (int j = 0; j < 10; j++) {
-					Point2 o = ofs + Point2(j * (bsize + 1), 0);
-					if (j >= 5) {
-						o.x += 1;
+						const int idx = i * 10 + j;
+						const bool on = value & (1 << idx);
+						Rect2 rect2 = Rect2(o, Size2(bsize, bsize));
+
+						color.a = on ? 0.6 : 0.2;
+						if (idx == hovered_index) {
+							// Add visual feedback when hovering a flag.
+							color.a += 0.15;
+						}
+
+						draw_rect(rect2, color);
+						flag_rects.push_back(rect2);
 					}
-
-					uint32_t idx = i * 10 + j;
-					bool on = value & (1 << idx);
-					Rect2 rect2 = Rect2(o, Size2(bsize, bsize));
-					color.a = on ? 0.6 : 0.2;
-					draw_rect(rect2, color);
-					flag_rects.push_back(rect2);
 				}
-			}
+			} break;
+			case NOTIFICATION_MOUSE_EXIT: {
+				hovered_index = -1;
+				update();
+			} break;
+			default:
+				break;
 		}
 	}
 
@@ -661,6 +686,7 @@ public:
 
 	EditorPropertyLayersGrid() {
 		value = 0;
+		hovered_index = -1; // Nothing is hovered.
 	}
 };
 void EditorPropertyLayers::_grid_changed(uint32_t p_grid) {
@@ -752,7 +778,7 @@ EditorPropertyLayers::EditorPropertyLayers() {
 	hb->add_child(grid);
 	button = memnew(Button);
 	button->set_toggle_mode(true);
-	button->set_text("..");
+	button->set_text("...");
 	button->connect("pressed", callable_mp(this, &EditorPropertyLayers::_button_pressed));
 	hb->add_child(button);
 	set_bottom_editor(hb);
@@ -1258,12 +1284,23 @@ void EditorPropertyVector3::_value_changed(double val, const String &p_name) {
 }
 
 void EditorPropertyVector3::update_property() {
-	Vector3 val = get_edited_object()->get(get_edited_property());
+	update_using_vector(get_edited_object()->get(get_edited_property()));
+}
+
+void EditorPropertyVector3::update_using_vector(Vector3 p_vector) {
 	setting = true;
-	spin[0]->set_value(val.x);
-	spin[1]->set_value(val.y);
-	spin[2]->set_value(val.z);
+	spin[0]->set_value(p_vector.x);
+	spin[1]->set_value(p_vector.y);
+	spin[2]->set_value(p_vector.z);
 	setting = false;
+}
+
+Vector3 EditorPropertyVector3::get_vector() {
+	Vector3 v3;
+	v3.x = spin[0]->get_value();
+	v3.y = spin[1]->get_value();
+	v3.z = spin[2]->get_value();
+	return v3;
 }
 
 void EditorPropertyVector3::_notification(int p_what) {
@@ -1409,7 +1446,7 @@ EditorPropertyVector2i::EditorPropertyVector2i(bool p_force_wide) {
 	setting = false;
 }
 
-///////////////////// RECT2 /////////////////////////
+///////////////////// RECT2i /////////////////////////
 
 void EditorPropertyRect2i::_value_changed(double val, const String &p_name) {
 	if (setting) {
@@ -1495,7 +1532,7 @@ EditorPropertyRect2i::EditorPropertyRect2i(bool p_force_wide) {
 	setting = false;
 }
 
-///////////////////// VECTOR3 /////////////////////////
+///////////////////// VECTOR3i /////////////////////////
 
 void EditorPropertyVector3i::_value_changed(double val, const String &p_name) {
 	if (setting) {
@@ -2004,21 +2041,23 @@ void EditorPropertyTransform::_value_changed(double val, const String &p_name) {
 }
 
 void EditorPropertyTransform::update_property() {
-	Transform val = get_edited_object()->get(get_edited_property());
-	setting = true;
-	spin[0]->set_value(val.basis[0][0]);
-	spin[1]->set_value(val.basis[1][0]);
-	spin[2]->set_value(val.basis[2][0]);
-	spin[3]->set_value(val.basis[0][1]);
-	spin[4]->set_value(val.basis[1][1]);
-	spin[5]->set_value(val.basis[2][1]);
-	spin[6]->set_value(val.basis[0][2]);
-	spin[7]->set_value(val.basis[1][2]);
-	spin[8]->set_value(val.basis[2][2]);
-	spin[9]->set_value(val.origin[0]);
-	spin[10]->set_value(val.origin[1]);
-	spin[11]->set_value(val.origin[2]);
+	update_using_transform(get_edited_object()->get(get_edited_property()));
+}
 
+void EditorPropertyTransform::update_using_transform(Transform p_transform) {
+	setting = true;
+	spin[0]->set_value(p_transform.basis[0][0]);
+	spin[1]->set_value(p_transform.basis[1][0]);
+	spin[2]->set_value(p_transform.basis[2][0]);
+	spin[3]->set_value(p_transform.basis[0][1]);
+	spin[4]->set_value(p_transform.basis[1][1]);
+	spin[5]->set_value(p_transform.basis[2][1]);
+	spin[6]->set_value(p_transform.basis[0][2]);
+	spin[7]->set_value(p_transform.basis[1][2]);
+	spin[8]->set_value(p_transform.basis[2][2]);
+	spin[9]->set_value(p_transform.origin[0]);
+	spin[10]->set_value(p_transform.origin[1]);
+	spin[11]->set_value(p_transform.origin[2]);
 	setting = false;
 }
 
@@ -2944,8 +2983,16 @@ bool EditorPropertyResource::_is_drop_valid(const Dictionary &p_drag_data) const
 	String allowed_type = base_type;
 
 	Dictionary drag_data = p_drag_data;
-	if (drag_data.has("type") && String(drag_data["type"]) == "resource") {
-		Ref<Resource> res = drag_data["resource"];
+
+	Ref<Resource> res;
+	if (drag_data.has("type") && String(drag_data["type"]) == "script_list_element") {
+		ScriptEditorBase *se = Object::cast_to<ScriptEditorBase>(drag_data["script_list_element"]);
+		res = se->get_edited_resource();
+	} else if (drag_data.has("type") && String(drag_data["type"]) == "resource") {
+		res = drag_data["resource"];
+	}
+
+	if (res.is_valid()) {
 		for (int i = 0; i < allowed_type.get_slice_count(","); i++) {
 			String at = allowed_type.get_slice(",", i).strip_edges();
 			if (res.is_valid() && ClassDB::is_parent_class(res->get_class(), at)) {
@@ -2983,13 +3030,19 @@ void EditorPropertyResource::drop_data_fw(const Point2 &p_point, const Variant &
 	ERR_FAIL_COND(!_is_drop_valid(p_data));
 
 	Dictionary drag_data = p_data;
-	if (drag_data.has("type") && String(drag_data["type"]) == "resource") {
-		Ref<Resource> res = drag_data["resource"];
-		if (res.is_valid()) {
-			emit_changed(get_edited_property(), res);
-			update_property();
-			return;
-		}
+
+	Ref<Resource> res;
+	if (drag_data.has("type") && String(drag_data["type"]) == "script_list_element") {
+		ScriptEditorBase *se = Object::cast_to<ScriptEditorBase>(drag_data["script_list_element"]);
+		res = se->get_edited_resource();
+	} else if (drag_data.has("type") && String(drag_data["type"]) == "resource") {
+		res = drag_data["resource"];
+	}
+
+	if (res.is_valid()) {
+		emit_changed(get_edited_property(), res);
+		update_property();
+		return;
 	}
 
 	if (drag_data.has("type") && String(drag_data["type"]) == "files") {
@@ -2997,9 +3050,9 @@ void EditorPropertyResource::drop_data_fw(const Point2 &p_point, const Variant &
 
 		if (files.size() == 1) {
 			String file = files[0];
-			RES res = ResourceLoader::load(file);
-			if (res.is_valid()) {
-				emit_changed(get_edited_property(), res);
+			RES file_res = ResourceLoader::load(file);
+			if (file_res.is_valid()) {
+				emit_changed(get_edited_property(), file_res);
 				update_property();
 				return;
 			}

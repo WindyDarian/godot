@@ -33,6 +33,7 @@
 #include "atlas_import_failed.xpm"
 #include "core/io/image_loader.h"
 #include "core/io/resource_saver.h"
+#include "core/math/geometry_2d.h"
 #include "core/os/file_access.h"
 #include "editor/editor_atlas_packer.h"
 #include "scene/resources/mesh.h"
@@ -129,7 +130,8 @@ static void _plot_triangle(Vector2 *vertices, const Vector2 &p_offset, bool p_tr
 	double dx_low = double(x[2] - x[1]) / (y[2] - y[1] + 1);
 	double xf = x[0];
 	double xt = x[0] + dx_upper; // if y[0] == y[1], special case
-	for (int yi = y[0]; yi <= (y[2] > height - 1 ? height - 1 : y[2]); yi++) {
+	int max_y = MIN(y[2], height - p_offset.y - 1);
+	for (int yi = y[0]; yi <= max_y; yi++) {
 		if (yi >= 0) {
 			for (int xi = (xf > 0 ? int(xf) : 0); xi <= (xt < width ? xt : width - 1); xi++) {
 				int px = xi, py = yi;
@@ -247,7 +249,7 @@ Error ResourceImporterTextureAtlas::import_group_file(const String &p_group_file
 				chart.vertices = polygons[j];
 				chart.can_transpose = true;
 
-				Vector<int> poly = Geometry::triangulate_polygon(polygons[j]);
+				Vector<int> poly = Geometry2D::triangulate_polygon(polygons[j]);
 				for (int i = 0; i < poly.size(); i += 3) {
 					EditorAtlasPacker::Chart::Face f;
 					f.vertex[0] = poly[i + 0];

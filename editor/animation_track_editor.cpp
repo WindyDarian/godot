@@ -1783,7 +1783,8 @@ AnimationTimelineEdit::AnimationTimelineEdit() {
 	length->set_tooltip(TTR("Animation length (seconds)"));
 	length->connect("value_changed", callable_mp(this, &AnimationTimelineEdit::_anim_length_changed));
 	len_hb->add_child(length);
-	loop = memnew(ToolButton);
+	loop = memnew(Button);
+	loop->set_flat(true);
 	loop->set_tooltip(TTR("Animation Looping"));
 	loop->connect("pressed", callable_mp(this, &AnimationTimelineEdit::_anim_loop_pressed));
 	loop->set_toggle_mode(true);
@@ -2786,7 +2787,8 @@ Variant AnimationTrackEdit::get_drag_data(const Point2 &p_point) {
 	drag_data["group"] = base_path;
 	drag_data["index"] = track;
 
-	ToolButton *tb = memnew(ToolButton);
+	Button *tb = memnew(Button);
+	tb->set_flat(true);
 	tb->set_text(path_cache);
 	tb->set_icon(icon_cache);
 	set_drag_preview(tb);
@@ -3199,7 +3201,7 @@ void AnimationTrackEditor::update_keying() {
 	}
 
 	keying = keying_enabled;
-	//_update_menu();
+
 	emit_signal("keying_changed");
 }
 
@@ -3555,7 +3557,7 @@ void AnimationTrackEditor::insert_node_value_key(Node *p_node, const String &p_p
 			if (track_path == np) {
 				value = p_value; //all good
 			} else {
-				int sep = track_path.find_last(":");
+				int sep = track_path.rfind(":");
 				if (sep != -1) {
 					String base_path = track_path.substr(0, sep);
 					if (base_path == np) {
@@ -3654,7 +3656,7 @@ void AnimationTrackEditor::insert_value_key(const String &p_property, const Vari
 				value = p_value; //all good
 			} else {
 				String tpath = animation->track_get_path(i);
-				int index = tpath.find_last(":");
+				int index = tpath.rfind(":");
 				if (NodePath(tpath.substr(0, index + 1)) == np) {
 					String subindex = tpath.substr(index + 1, tpath.length() - index);
 					value = p_value.get(subindex);
@@ -4882,12 +4884,12 @@ void AnimationTrackEditor::_box_selection_draw() {
 void AnimationTrackEditor::_scroll_input(const Ref<InputEvent> &p_event) {
 	Ref<InputEventMouseButton> mb = p_event;
 
-	if (mb.is_valid() && mb->is_pressed() && mb->get_command() && mb->get_button_index() == BUTTON_WHEEL_DOWN) {
+	if (mb.is_valid() && mb->is_pressed() && mb->get_command() && mb->get_button_index() == BUTTON_WHEEL_UP) {
 		timeline->get_zoom()->set_value(timeline->get_zoom()->get_value() * 1.05);
 		scroll->accept_event();
 	}
 
-	if (mb.is_valid() && mb->is_pressed() && mb->get_command() && mb->get_button_index() == BUTTON_WHEEL_UP) {
+	if (mb.is_valid() && mb->is_pressed() && mb->get_command() && mb->get_button_index() == BUTTON_WHEEL_DOWN) {
 		timeline->get_zoom()->set_value(timeline->get_zoom()->get_value() / 1.05);
 		scroll->accept_event();
 	}
@@ -5640,14 +5642,16 @@ AnimationTrackEditor::AnimationTrackEditor() {
 
 	bottom_hb->add_spacer();
 
-	selected_filter = memnew(ToolButton);
+	selected_filter = memnew(Button);
+	selected_filter->set_flat(true);
 	selected_filter->connect("pressed", callable_mp(this, &AnimationTrackEditor::_view_group_toggle)); //same function works the same
 	selected_filter->set_toggle_mode(true);
 	selected_filter->set_tooltip(TTR("Only show tracks from nodes selected in tree."));
 
 	bottom_hb->add_child(selected_filter);
 
-	view_group = memnew(ToolButton);
+	view_group = memnew(Button);
+	view_group->set_flat(true);
 	view_group->connect("pressed", callable_mp(this, &AnimationTrackEditor::_view_group_toggle));
 	view_group->set_toggle_mode(true);
 	view_group->set_tooltip(TTR("Group tracks by node or display them as plain list."));
@@ -5655,7 +5659,8 @@ AnimationTrackEditor::AnimationTrackEditor() {
 	bottom_hb->add_child(view_group);
 	bottom_hb->add_child(memnew(VSeparator));
 
-	snap = memnew(ToolButton);
+	snap = memnew(Button);
+	snap->set_flat(true);
 	snap->set_text(TTR("Snap:") + " ");
 	bottom_hb->add_child(snap);
 	snap->set_disabled(true);

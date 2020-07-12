@@ -31,6 +31,7 @@
 #include "abstract_polygon_2d_editor.h"
 
 #include "canvas_item_editor_plugin.h"
+#include "core/math/geometry_2d.h"
 #include "core/os/keyboard.h"
 #include "editor/editor_scale.h"
 
@@ -368,7 +369,7 @@ bool AbstractPolygon2DEditor::forward_gui_input(const Ref<InputEvent> &p_event) 
 				} else {
 					const real_t grab_threshold = EDITOR_GET("editors/poly_editor/point_grab_radius");
 
-					if (!_is_line() && wip.size() > 1 && xform.xform(wip[0]).distance_to(gpoint) < grab_threshold) {
+					if (!_is_line() && wip.size() > 1 && xform.xform(wip[0]).distance_to(xform.xform(cpoint)) < grab_threshold) {
 						//wip closed
 						_wip_close();
 
@@ -671,7 +672,7 @@ AbstractPolygon2DEditor::PosVertex AbstractPolygon2DEditor::closest_edge_point(c
 			Vector2 segment[2] = { xform.xform(points[i] + offset),
 				xform.xform(points[(i + 1) % n_points] + offset) };
 
-			Vector2 cp = Geometry::get_closest_point_to_segment_2d(p_pos, segment);
+			Vector2 cp = Geometry2D::get_closest_point_to_segment(p_pos, segment);
 
 			if (cp.distance_squared_to(segment[0]) < eps2 || cp.distance_squared_to(segment[1]) < eps2) {
 				continue; //not valid to reuse point
@@ -702,17 +703,20 @@ AbstractPolygon2DEditor::AbstractPolygon2DEditor(EditorNode *p_editor, bool p_wi
 	edge_point = PosVertex();
 
 	add_child(memnew(VSeparator));
-	button_create = memnew(ToolButton);
+	button_create = memnew(Button);
+	button_create->set_flat(true);
 	add_child(button_create);
 	button_create->connect("pressed", callable_mp(this, &AbstractPolygon2DEditor::_menu_option), varray(MODE_CREATE));
 	button_create->set_toggle_mode(true);
 
-	button_edit = memnew(ToolButton);
+	button_edit = memnew(Button);
+	button_edit->set_flat(true);
 	add_child(button_edit);
 	button_edit->connect("pressed", callable_mp(this, &AbstractPolygon2DEditor::_menu_option), varray(MODE_EDIT));
 	button_edit->set_toggle_mode(true);
 
-	button_delete = memnew(ToolButton);
+	button_delete = memnew(Button);
+	button_delete->set_flat(true);
 	add_child(button_delete);
 	button_delete->connect("pressed", callable_mp(this, &AbstractPolygon2DEditor::_menu_option), varray(MODE_DELETE));
 	button_delete->set_toggle_mode(true);

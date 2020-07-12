@@ -31,6 +31,7 @@
 #include "path_2d.h"
 
 #include "core/engine.h"
+#include "core/math/geometry_2d.h"
 #include "scene/scene_string_names.h"
 
 #ifdef TOOLS_ENABLED
@@ -73,7 +74,7 @@ bool Path2D::_edit_is_selected_on_click(const Point2 &p_point, double p_toleranc
 			real_t frac = j / 8.0;
 			s[1] = curve->interpolate(i, frac);
 
-			Vector2 p = Geometry::get_closest_point_to_segment_2d(p_point, s);
+			Vector2 p = Geometry2D::get_closest_point_to_segment(p_point, s);
 			if (p.distance_to(p_point) <= p_tolerance) {
 				return true;
 			}
@@ -148,11 +149,7 @@ void Path2D::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_curve", "curve"), &Path2D::set_curve);
 	ClassDB::bind_method(D_METHOD("get_curve"), &Path2D::get_curve);
 
-	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "curve", PROPERTY_HINT_RESOURCE_TYPE, "Curve2D"), "set_curve", "get_curve");
-}
-
-Path2D::Path2D() {
-	set_curve(Ref<Curve2D>(memnew(Curve2D))); //create one by default
+	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "curve", PROPERTY_HINT_RESOURCE_TYPE, "Curve2D", PROPERTY_USAGE_DEFAULT | PROPERTY_USAGE_EDITOR_INSTANTIATE_OBJECT), "set_curve", "get_curve");
 }
 
 /////////////////////////////////////////////////////////////////////////////////

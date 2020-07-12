@@ -30,6 +30,8 @@
 
 #include "path_3d_editor_plugin.h"
 
+#include "core/math/geometry_2d.h"
+#include "core/math/geometry_3d.h"
 #include "core/os/keyboard.h"
 #include "node_3d_editor_plugin.h"
 #include "scene/resources/curve.h"
@@ -344,7 +346,7 @@ bool Path3DEditorPlugin::forward_spatial_gui_input(Camera3D *p_camera, const Ref
 							Vector2 s[2];
 							s[0] = p_camera->unproject_position(from);
 							s[1] = p_camera->unproject_position(to);
-							Vector2 inters = Geometry::get_closest_point_to_segment_2d(mbpos, s);
+							Vector2 inters = Geometry2D::get_closest_point_to_segment(mbpos, s);
 							float d = inters.distance_to(mbpos);
 
 							if (d < 10 && d < closest_d) {
@@ -354,7 +356,7 @@ bool Path3DEditorPlugin::forward_spatial_gui_input(Camera3D *p_camera, const Ref
 								Vector3 ray_dir = p_camera->project_ray_normal(mbpos);
 
 								Vector3 ra, rb;
-								Geometry::get_closest_points_between_segments(ray_from, ray_from + ray_dir * 4096, from, to, ra, rb);
+								Geometry3D::get_closest_points_between_segments(ray_from, ray_from + ray_dir * 4096, from, to, ra, rb);
 
 								closest_seg_point = it.xform(rb);
 							}
@@ -555,28 +557,32 @@ Path3DEditorPlugin::Path3DEditorPlugin(EditorNode *p_node) {
 	sep = memnew(VSeparator);
 	sep->hide();
 	Node3DEditor::get_singleton()->add_control_to_menu_panel(sep);
-	curve_edit = memnew(ToolButton);
+	curve_edit = memnew(Button);
+	curve_edit->set_flat(true);
 	curve_edit->set_icon(EditorNode::get_singleton()->get_gui_base()->get_theme_icon("CurveEdit", "EditorIcons"));
 	curve_edit->set_toggle_mode(true);
 	curve_edit->hide();
 	curve_edit->set_focus_mode(Control::FOCUS_NONE);
 	curve_edit->set_tooltip(TTR("Select Points") + "\n" + TTR("Shift+Drag: Select Control Points") + "\n" + keycode_get_string(KEY_MASK_CMD) + TTR("Click: Add Point") + "\n" + TTR("Right Click: Delete Point"));
 	Node3DEditor::get_singleton()->add_control_to_menu_panel(curve_edit);
-	curve_create = memnew(ToolButton);
+	curve_create = memnew(Button);
+	curve_create->set_flat(true);
 	curve_create->set_icon(EditorNode::get_singleton()->get_gui_base()->get_theme_icon("CurveCreate", "EditorIcons"));
 	curve_create->set_toggle_mode(true);
 	curve_create->hide();
 	curve_create->set_focus_mode(Control::FOCUS_NONE);
 	curve_create->set_tooltip(TTR("Add Point (in empty space)") + "\n" + TTR("Split Segment (in curve)"));
 	Node3DEditor::get_singleton()->add_control_to_menu_panel(curve_create);
-	curve_del = memnew(ToolButton);
+	curve_del = memnew(Button);
+	curve_del->set_flat(true);
 	curve_del->set_icon(EditorNode::get_singleton()->get_gui_base()->get_theme_icon("CurveDelete", "EditorIcons"));
 	curve_del->set_toggle_mode(true);
 	curve_del->hide();
 	curve_del->set_focus_mode(Control::FOCUS_NONE);
 	curve_del->set_tooltip(TTR("Delete Point"));
 	Node3DEditor::get_singleton()->add_control_to_menu_panel(curve_del);
-	curve_close = memnew(ToolButton);
+	curve_close = memnew(Button);
+	curve_close->set_flat(true);
 	curve_close->set_icon(EditorNode::get_singleton()->get_gui_base()->get_theme_icon("CurveClose", "EditorIcons"));
 	curve_close->hide();
 	curve_close->set_focus_mode(Control::FOCUS_NONE);

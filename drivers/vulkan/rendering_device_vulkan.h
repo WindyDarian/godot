@@ -42,7 +42,9 @@
 #endif
 #endif
 #include "vk_mem_alloc.h"
+
 #include <vulkan/vulkan.h>
+
 //todo:
 //compute
 //push constants
@@ -203,11 +205,13 @@ class RenderingDeviceVulkan : public RenderingDevice {
 
 	struct Buffer {
 		uint32_t size;
+		uint32_t usage;
 		VkBuffer buffer;
 		VmaAllocation allocation;
 		VkDescriptorBufferInfo buffer_info; //used for binding
 		Buffer() {
 			size = 0;
+			usage = 0;
 			buffer = VK_NULL_HANDLE;
 			allocation = nullptr;
 		}
@@ -232,8 +236,13 @@ class RenderingDeviceVulkan : public RenderingDevice {
 	// used for the render pipelines.
 
 	struct FramebufferFormatKey {
+		Size2i empty_size;
 		Vector<AttachmentFormat> attachments;
 		bool operator<(const FramebufferFormatKey &p_key) const {
+			if (empty_size != p_key.empty_size) {
+				return empty_size < p_key.empty_size;
+			}
+
 			int as = attachments.size();
 			int bs = p_key.attachments.size();
 			if (as != bs) {
@@ -570,7 +579,7 @@ class RenderingDeviceVulkan : public RenderingDevice {
 	struct DescriptorPoolKey {
 		union {
 			struct {
-				uint16_t uniform_type[UNIFORM_TYPE_MAX]; //using 16 bits because, for sending arrays, each element is a pool set.
+				uint16_t uniform_type[UNIFORM_TYPE_MAX]; // Using 16 bits because, for sending arrays, each element is a pool set.
 			};
 			struct {
 				uint64_t key1;
@@ -712,115 +721,77 @@ class RenderingDeviceVulkan : public RenderingDevice {
 	Vector<SplitDrawListAllocator> split_draw_list_allocators;
 
 	struct DrawList {
-		VkCommandBuffer command_buffer; //if persistent, this is owned, otherwise it's shared with the ringbuffer
+		VkCommandBuffer command_buffer; // If persistent, this is owned, otherwise it's shared with the ringbuffer.
 		Rect2i viewport;
 
 		struct SetState {
-			uint32_t pipeline_expected_format;
-			uint32_t uniform_set_format;
-			VkDescriptorSet descriptor_set;
+			uint32_t pipeline_expected_format = 0;
+			uint32_t uniform_set_format = 0;
+			VkDescriptorSet descriptor_set = VK_NULL_HANDLE;
 			RID uniform_set;
-			bool bound;
-			SetState() {
-				bound = false;
-				pipeline_expected_format = 0;
-				uniform_set_format = 0;
-				descriptor_set = VK_NULL_HANDLE;
-			}
+			bool bound = false;
 		};
 
 		struct State {
 			SetState sets[MAX_UNIFORM_SETS];
-			uint32_t set_count;
+			uint32_t set_count = 0;
 			RID pipeline;
 			RID pipeline_shader;
-			VkPipelineLayout pipeline_layout;
+			VkPipelineLayout pipeline_layout = VK_NULL_HANDLE;
 			RID vertex_array;
 			RID index_array;
-			uint32_t pipeline_push_constant_stages;
-
-			State() {
-				set_count = 0;
-				pipeline_layout = VK_NULL_HANDLE;
-				pipeline_push_constant_stages = 0;
-			}
+			uint32_t pipeline_push_constant_stages = 0;
 		} state;
-#ifdef DEBUG_ENABLED
 
+#ifdef DEBUG_ENABLED
 		struct Validation {
-			bool active; //means command buffer was not closes, so you can keep adding things
-			FramebufferFormatID framebuffer_format;
-			//actual render pass values
-			uint32_t dynamic_state;
-			VertexFormatID vertex_format; //INVALID_ID if not set
-			uint32_t vertex_array_size; //0 if not set
-			uint32_t vertex_max_instances_allowed;
-			bool index_buffer_uses_restart_indices;
-			uint32_t index_array_size; //0 if index buffer not set
-			uint32_t index_array_max_index;
+			bool active = true; // Means command buffer was not closed, so you can keep adding things.
+			FramebufferFormatID framebuffer_format = INVALID_ID;
+			// Actual render pass values.
+			uint32_t dynamic_state = 0;
+			VertexFormatID vertex_format = INVALID_ID;
+			uint32_t vertex_array_size = 0;
+			uint32_t vertex_max_instances_allowed = 0xFFFFFFFF;
+			bool index_buffer_uses_restart_indices = false;
+			uint32_t index_array_size = 0;
+			uint32_t index_array_max_index = 0;
 			uint32_t index_array_offset;
 			Vector<uint32_t> set_formats;
 			Vector<bool> set_bound;
 			Vector<RID> set_rids;
-			//last pipeline set values
-			bool pipeline_active;
-			uint32_t pipeline_dynamic_state;
-			VertexFormatID pipeline_vertex_format;
+			// Last pipeline set values.
+			bool pipeline_active = false;
+			uint32_t pipeline_dynamic_state = 0;
+			VertexFormatID pipeline_vertex_format = INVALID_ID;
 			RID pipeline_shader;
-			uint32_t invalid_set_from;
-			bool pipeline_uses_restart_indices;
+			uint32_t invalid_set_from = 0;
+			bool pipeline_uses_restart_indices = false;
 			uint32_t pipeline_primitive_divisor;
 			uint32_t pipeline_primitive_minimum;
 			Vector<uint32_t> pipeline_set_formats;
-			uint32_t pipeline_push_constant_size;
-			bool pipeline_push_constant_suppplied;
-
-			Validation() {
-				active = true;
-				dynamic_state = 0;
-				vertex_format = INVALID_ID;
-				vertex_array_size = 0;
-				vertex_max_instances_allowed = 0xFFFFFFFF;
-				framebuffer_format = INVALID_ID;
-				index_array_size = 0; //not sent
-				index_array_max_index = 0; //not set
-				index_buffer_uses_restart_indices = false;
-				invalid_set_from = 0;
-
-				//pipeline state initalize
-				pipeline_active = false;
-				pipeline_dynamic_state = 0;
-				pipeline_vertex_format = INVALID_ID;
-				pipeline_uses_restart_indices = false;
-				pipeline_push_constant_size = 0;
-				pipeline_push_constant_suppplied = false;
-			}
+			uint32_t pipeline_push_constant_size = 0;
+			bool pipeline_push_constant_supplied = false;
 		} validation;
 #else
 		struct Validation {
-			uint32_t vertex_array_size; //0 if not set
-			uint32_t index_array_size; //0 if index buffer not set
+			uint32_t vertex_array_size = 0;
+			uint32_t index_array_size = 0;
 			uint32_t index_array_offset;
-
-			Validation() {
-				vertex_array_size = 0;
-				index_array_size = 0; //not sent
-			}
 		} validation;
-
 #endif
 	};
 
-	DrawList *draw_list; //one for regular draw lists, multiple for split.
+	DrawList *draw_list; // One for regular draw lists, multiple for split.
 	uint32_t draw_list_count;
 	bool draw_list_split;
 	Vector<RID> draw_list_bound_textures;
+	Vector<RID> draw_list_storage_textures;
 	bool draw_list_unbind_color_textures;
 	bool draw_list_unbind_depth_textures;
 
 	void _draw_list_insert_clear_region(DrawList *draw_list, Framebuffer *framebuffer, Point2i viewport_offset, Point2i viewport_size, bool p_clear_color, const Vector<Color> &p_clear_colors, bool p_clear_depth, float p_depth, uint32_t p_stencil);
 	Error _draw_list_setup_framebuffer(Framebuffer *p_framebuffer, InitialAction p_initial_color_action, FinalAction p_final_color_action, InitialAction p_initial_depth_action, FinalAction p_final_depth_action, VkFramebuffer *r_framebuffer, VkRenderPass *r_render_pass);
-	Error _draw_list_render_pass_begin(Framebuffer *framebuffer, InitialAction p_initial_color_action, FinalAction p_final_color_action, InitialAction p_initial_depth_action, FinalAction p_final_depth_action, const Vector<Color> &p_clear_colors, float p_clear_depth, uint32_t p_clear_stencil, Point2i viewport_offset, Point2i viewport_size, VkFramebuffer vkframebuffer, VkRenderPass render_pass, VkCommandBuffer command_buffer, VkSubpassContents subpass_contents);
+	Error _draw_list_render_pass_begin(Framebuffer *framebuffer, InitialAction p_initial_color_action, FinalAction p_final_color_action, InitialAction p_initial_depth_action, FinalAction p_final_depth_action, const Vector<Color> &p_clear_colors, float p_clear_depth, uint32_t p_clear_stencil, Point2i viewport_offset, Point2i viewport_size, VkFramebuffer vkframebuffer, VkRenderPass render_pass, VkCommandBuffer command_buffer, VkSubpassContents subpass_contents, const Vector<RID> &p_storage_textures);
 	_FORCE_INLINE_ DrawList *_get_draw_list_ptr(DrawListID p_id);
 
 	/**********************/
@@ -828,62 +799,39 @@ class RenderingDeviceVulkan : public RenderingDevice {
 	/**********************/
 
 	struct ComputeList {
-		VkCommandBuffer command_buffer; //if persistent, this is owned, otherwise it's shared with the ringbuffer
+		VkCommandBuffer command_buffer; // If persistent, this is owned, otherwise it's shared with the ringbuffer.
 
 		struct SetState {
-			uint32_t pipeline_expected_format;
-			uint32_t uniform_set_format;
-			VkDescriptorSet descriptor_set;
+			uint32_t pipeline_expected_format = 0;
+			uint32_t uniform_set_format = 0;
+			VkDescriptorSet descriptor_set = VK_NULL_HANDLE;
 			RID uniform_set;
-			bool bound;
-			SetState() {
-				bound = false;
-				pipeline_expected_format = 0;
-				uniform_set_format = 0;
-				descriptor_set = VK_NULL_HANDLE;
-			}
+			bool bound = false;
 		};
 
 		struct State {
 			Set<Texture *> textures_to_sampled_layout;
-
 			SetState sets[MAX_UNIFORM_SETS];
-			uint32_t set_count;
+			uint32_t set_count = 0;
 			RID pipeline;
 			RID pipeline_shader;
-			VkPipelineLayout pipeline_layout;
-			uint32_t pipeline_push_constant_stages;
-
-			State() {
-				set_count = 0;
-				pipeline_layout = VK_NULL_HANDLE;
-				pipeline_push_constant_stages = 0;
-			}
+			VkPipelineLayout pipeline_layout = VK_NULL_HANDLE;
+			uint32_t pipeline_push_constant_stages = 0;
 		} state;
-#ifdef DEBUG_ENABLED
 
+#ifdef DEBUG_ENABLED
 		struct Validation {
-			bool active; //means command buffer was not closes, so you can keep adding things
+			bool active = true; // Means command buffer was not closed, so you can keep adding things.
 			Vector<uint32_t> set_formats;
 			Vector<bool> set_bound;
 			Vector<RID> set_rids;
-			//last pipeline set values
-			bool pipeline_active;
+			// Last pipeline set values.
+			bool pipeline_active = false;
 			RID pipeline_shader;
-			uint32_t invalid_set_from;
+			uint32_t invalid_set_from = 0;
 			Vector<uint32_t> pipeline_set_formats;
-			uint32_t pipeline_push_constant_size;
-			bool pipeline_push_constant_suppplied;
-
-			Validation() {
-				active = true;
-				invalid_set_from = 0;
-
-				//pipeline state initalize
-				pipeline_active = false;
-				pipeline_push_constant_size = 0;
-				pipeline_push_constant_suppplied = false;
-			}
+			uint32_t pipeline_push_constant_size = 0;
+			bool pipeline_push_constant_supplied = false;
 		} validation;
 #endif
 	};
@@ -988,9 +936,11 @@ public:
 	/*********************/
 
 	virtual FramebufferFormatID framebuffer_format_create(const Vector<AttachmentFormat> &p_format);
+	virtual FramebufferFormatID framebuffer_format_create_empty(const Size2i &p_size);
 	virtual TextureSamples framebuffer_format_get_texture_samples(FramebufferFormatID p_format);
 
 	virtual RID framebuffer_create(const Vector<RID> &p_texture_attachments, FramebufferFormatID p_format_check = INVALID_ID);
+	virtual RID framebuffer_create_empty(const Size2i &p_size, FramebufferFormatID p_format_check = INVALID_ID);
 
 	virtual FramebufferFormatID framebuffer_get_format(RID p_framebuffer);
 
@@ -1026,7 +976,7 @@ public:
 	/*****************/
 
 	virtual RID uniform_buffer_create(uint32_t p_size_bytes, const Vector<uint8_t> &p_data = Vector<uint8_t>());
-	virtual RID storage_buffer_create(uint32_t p_size_bytes, const Vector<uint8_t> &p_data = Vector<uint8_t>());
+	virtual RID storage_buffer_create(uint32_t p_size_bytes, const Vector<uint8_t> &p_data = Vector<uint8_t>(), uint32_t p_usage = 0);
 	virtual RID texture_buffer_create(uint32_t p_size_elements, DataFormat p_format, const Vector<uint8_t> &p_data = Vector<uint8_t>());
 
 	virtual RID uniform_set_create(const Vector<Uniform> &p_uniforms, RID p_shader, uint32_t p_shader_set);
@@ -1063,8 +1013,8 @@ public:
 
 	virtual DrawListID draw_list_begin_for_screen(DisplayServer::WindowID p_screen = 0, const Color &p_clear_color = Color());
 
-	virtual DrawListID draw_list_begin(RID p_framebuffer, InitialAction p_initial_color_action, FinalAction p_final_color_action, InitialAction p_initial_depth_action, FinalAction p_final_depth_action, const Vector<Color> &p_clear_color_values = Vector<Color>(), float p_clear_depth = 1.0, uint32_t p_clear_stencil = 0, const Rect2 &p_region = Rect2());
-	virtual Error draw_list_begin_split(RID p_framebuffer, uint32_t p_splits, DrawListID *r_split_ids, InitialAction p_initial_color_action, FinalAction p_final_color_action, InitialAction p_initial_depth_action, FinalAction p_final_depth_action, const Vector<Color> &p_clear_color_values = Vector<Color>(), float p_clear_depth = 1.0, uint32_t p_clear_stencil = 0, const Rect2 &p_region = Rect2());
+	virtual DrawListID draw_list_begin(RID p_framebuffer, InitialAction p_initial_color_action, FinalAction p_final_color_action, InitialAction p_initial_depth_action, FinalAction p_final_depth_action, const Vector<Color> &p_clear_color_values = Vector<Color>(), float p_clear_depth = 1.0, uint32_t p_clear_stencil = 0, const Rect2 &p_region = Rect2(), const Vector<RID> &p_storage_textures = Vector<RID>());
+	virtual Error draw_list_begin_split(RID p_framebuffer, uint32_t p_splits, DrawListID *r_split_ids, InitialAction p_initial_color_action, FinalAction p_final_color_action, InitialAction p_initial_depth_action, FinalAction p_final_depth_action, const Vector<Color> &p_clear_color_values = Vector<Color>(), float p_clear_depth = 1.0, uint32_t p_clear_stencil = 0, const Rect2 &p_region = Rect2(), const Vector<RID> &p_storage_textures = Vector<RID>());
 
 	virtual void draw_list_bind_render_pipeline(DrawListID p_list, RID p_render_pipeline);
 	virtual void draw_list_bind_uniform_set(DrawListID p_list, RID p_uniform_set, uint32_t p_index);
@@ -1091,7 +1041,10 @@ public:
 	virtual void compute_list_add_barrier(ComputeListID p_list);
 
 	virtual void compute_list_dispatch(ComputeListID p_list, uint32_t p_x_groups, uint32_t p_y_groups, uint32_t p_z_groups);
+	virtual void compute_list_dispatch_indirect(ComputeListID p_list, RID p_buffer, uint32_t p_offset);
 	virtual void compute_list_end();
+
+	virtual void full_barrier();
 
 	/**************/
 	/**** FREE ****/

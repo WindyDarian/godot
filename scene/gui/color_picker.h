@@ -41,7 +41,6 @@
 #include "scene/gui/slider.h"
 #include "scene/gui/spin_box.h"
 #include "scene/gui/texture_rect.h"
-#include "scene/gui/tool_button.h"
 
 class ColorPicker : public BoxContainer {
 	GDCLASS(ColorPicker, BoxContainer);
@@ -57,7 +56,7 @@ private:
 	HSeparator *preset_separator;
 	Button *bt_add_preset;
 	List<Color> presets;
-	ToolButton *btn_pick;
+	Button *btn_pick;
 	CheckButton *btn_hsv;
 	CheckButton *btn_raw;
 	HSlider *scroll[4];
@@ -148,7 +147,7 @@ class ColorPickerButton : public Button {
 	void _color_changed(const Color &p_color);
 	void _modal_closed();
 
-	virtual void pressed();
+	virtual void pressed() override;
 
 	void _update_picker();
 

@@ -537,11 +537,14 @@ void ScriptEditor::_close_tab(int p_idx, bool p_save, bool p_history_back) {
 
 	ScriptEditorBase *current = Object::cast_to<ScriptEditorBase>(tab_container->get_child(selected));
 	if (current) {
+		Ref<Script> script = current->get_edited_resource();
 		if (p_save) {
-			apply_scripts();
+			// Do not try to save internal scripts
+			if (!(script->get_path() == "" || script->get_path().find("local://") != -1 || script->get_path().find("::") != -1)) {
+				_menu_option(FILE_SAVE);
+			}
 		}
 
-		Ref<Script> script = current->get_edited_resource();
 		if (script != nullptr) {
 			previous_scripts.push_back(script->get_path());
 			notify_script_close(script);
@@ -837,7 +840,6 @@ void ScriptEditor::_file_dialog_action(String p_file) {
 			Error err;
 			FileAccess *file = FileAccess::open(p_file, FileAccess::WRITE, &err);
 			if (err) {
-				memdelete(file);
 				editor->show_warning(TTR("Error writing TextFile:") + "\n" + p_file, TTR("Error!"));
 				break;
 			}
@@ -1338,7 +1340,7 @@ void ScriptEditor::_notification(int p_what) {
 			editor->disconnect("stop_pressed", callable_mp(this, &ScriptEditor::_editor_stop));
 		} break;
 
-		case NOTIFICATION_WM_FOCUS_IN: {
+		case NOTIFICATION_WM_WINDOW_FOCUS_IN: {
 			_test_script_times_on_disk();
 			_update_modified_scripts_for_external_editor();
 		} break;
@@ -1730,6 +1732,19 @@ void ScriptEditor::_update_script_names() {
 			}
 
 			sedata.push_back(sd);
+		}
+
+		Vector<String> disambiguated_script_names;
+		Vector<String> full_script_paths;
+		for (int j = 0; j < sedata.size(); j++) {
+			disambiguated_script_names.append(sedata[j].name);
+			full_script_paths.append(sedata[j].tooltip);
+		}
+
+		EditorNode::disambiguate_filenames(full_script_paths, disambiguated_script_names);
+
+		for (int j = 0; j < sedata.size(); j++) {
+			sedata.write[j].name = disambiguated_script_names[j];
 		}
 
 		EditorHelp *eh = Object::cast_to<EditorHelp>(tab_container->get_child(i));
@@ -2989,7 +3004,8 @@ ScriptEditor::ScriptEditor(EditorNode *p_editor) {
 	filename->add_theme_style_override("normal", EditorNode::get_singleton()->get_gui_base()->get_theme_stylebox("normal", "LineEdit"));
 	buttons_hbox->add_child(filename);
 
-	members_overview_alphabeta_sort_button = memnew(ToolButton);
+	members_overview_alphabeta_sort_button = memnew(Button);
+	members_overview_alphabeta_sort_button->set_flat(true);
 	members_overview_alphabeta_sort_button->set_tooltip(TTR("Toggle alphabetical sorting of the method list."));
 	members_overview_alphabeta_sort_button->set_toggle_mode(true);
 	members_overview_alphabeta_sort_button->set_pressed(EditorSettings::get_singleton()->get("text_editor/tools/sort_members_outline_alphabetically"));
@@ -3050,7 +3066,7 @@ ScriptEditor::ScriptEditor(EditorNode *p_editor) {
 	file_menu->get_popup()->add_separator();
 	file_menu->get_popup()->add_shortcut(ED_SHORTCUT("script_editor/save", TTR("Save"), KEY_MASK_ALT | KEY_MASK_CMD | KEY_S), FILE_SAVE);
 	file_menu->get_popup()->add_shortcut(ED_SHORTCUT("script_editor/save_as", TTR("Save As...")), FILE_SAVE_AS);
-	file_menu->get_popup()->add_shortcut(ED_SHORTCUT("script_editor/save_all", TTR("Save All"), KEY_MASK_CMD | KEY_MASK_SHIFT | KEY_MASK_ALT | KEY_S), FILE_SAVE_ALL);
+	file_menu->get_popup()->add_shortcut(ED_SHORTCUT("script_editor/save_all", TTR("Save All"), KEY_MASK_SHIFT | KEY_MASK_ALT | KEY_S), FILE_SAVE_ALL);
 	file_menu->get_popup()->add_separator();
 	file_menu->get_popup()->add_shortcut(ED_SHORTCUT("script_editor/reload_script_soft", TTR("Soft Reload Script"), KEY_MASK_CMD | KEY_MASK_ALT | KEY_R), FILE_TOOL_RELOAD_SOFT);
 	file_menu->get_popup()->add_shortcut(ED_SHORTCUT("script_editor/copy_path", TTR("Copy Script Path")), FILE_COPY_PATH);
@@ -3116,13 +3132,15 @@ ScriptEditor::ScriptEditor(EditorNode *p_editor) {
 
 	menu_hb->add_spacer();
 
-	site_search = memnew(ToolButton);
+	site_search = memnew(Button);
+	site_search->set_flat(true);
 	site_search->set_text(TTR("Online Docs"));
 	site_search->connect("pressed", callable_mp(this, &ScriptEditor::_menu_option), varray(SEARCH_WEBSITE));
 	menu_hb->add_child(site_search);
 	site_search->set_tooltip(TTR("Open Godot online documentation."));
 
-	help_search = memnew(ToolButton);
+	help_search = memnew(Button);
+	help_search->set_flat(true);
 	help_search->set_text(TTR("Search Help"));
 	help_search->connect("pressed", callable_mp(this, &ScriptEditor::_menu_option), varray(SEARCH_HELP));
 	menu_hb->add_child(help_search);
@@ -3130,13 +3148,15 @@ ScriptEditor::ScriptEditor(EditorNode *p_editor) {
 
 	menu_hb->add_child(memnew(VSeparator));
 
-	script_back = memnew(ToolButton);
+	script_back = memnew(Button);
+	script_back->set_flat(true);
 	script_back->connect("pressed", callable_mp(this, &ScriptEditor::_history_back));
 	menu_hb->add_child(script_back);
 	script_back->set_disabled(true);
 	script_back->set_tooltip(TTR("Go to previous edited document."));
 
-	script_forward = memnew(ToolButton);
+	script_forward = memnew(Button);
+	script_forward->set_flat(true);
 	script_forward->connect("pressed", callable_mp(this, &ScriptEditor::_history_forward));
 	menu_hb->add_child(script_forward);
 	script_forward->set_disabled(true);

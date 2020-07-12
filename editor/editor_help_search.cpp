@@ -201,14 +201,16 @@ EditorHelpSearch::EditorHelpSearch() {
 	register_text_enter(search_box);
 	hbox->add_child(search_box);
 
-	case_sensitive_button = memnew(ToolButton);
+	case_sensitive_button = memnew(Button);
+	case_sensitive_button->set_flat(true);
 	case_sensitive_button->set_tooltip(TTR("Case Sensitive"));
 	case_sensitive_button->connect("pressed", callable_mp(this, &EditorHelpSearch::_update_results));
 	case_sensitive_button->set_toggle_mode(true);
 	case_sensitive_button->set_focus_mode(Control::FOCUS_NONE);
 	hbox->add_child(case_sensitive_button);
 
-	hierarchy_button = memnew(ToolButton);
+	hierarchy_button = memnew(Button);
+	hierarchy_button->set_flat(true);
 	hierarchy_button->set_tooltip(TTR("Show Hierarchy"));
 	hierarchy_button->connect("pressed", callable_mp(this, &EditorHelpSearch::_update_results));
 	hierarchy_button->set_toggle_mode(true);
@@ -330,17 +332,10 @@ bool EditorHelpSearch::Runner::_phase_match_classes() {
 			if (search_flags & SEARCH_METHODS) {
 				for (int i = 0; i < class_doc.methods.size(); i++) {
 					String method_name = (search_flags & SEARCH_CASE_SENSITIVE) ? class_doc.methods[i].name : class_doc.methods[i].name.to_lower();
-					String aux_term = (search_flags & SEARCH_CASE_SENSITIVE) ? term : term.to_lower();
-
-					if (aux_term.begins_with(".")) {
-						aux_term = aux_term.right(1);
-					}
-
-					if (aux_term.ends_with("(")) {
-						aux_term = aux_term.left(aux_term.length() - 1).strip_edges();
-					}
-
-					if (aux_term.is_subsequence_of(method_name)) {
+					if (method_name.find(term) > -1 ||
+							(term.begins_with(".") && method_name.begins_with(term.right(1))) ||
+							(term.ends_with("(") && method_name.ends_with(term.left(term.length() - 1).strip_edges())) ||
+							(term.begins_with(".") && term.ends_with("(") && method_name == term.substr(1, term.length() - 2).strip_edges())) {
 						match.methods.push_back(const_cast<DocData::MethodDoc *>(&class_doc.methods[i]));
 					}
 				}
@@ -446,9 +441,9 @@ bool EditorHelpSearch::Runner::_phase_select_match() {
 
 bool EditorHelpSearch::Runner::_match_string(const String &p_term, const String &p_string) const {
 	if (search_flags & SEARCH_CASE_SENSITIVE) {
-		return p_term.is_subsequence_of(p_string);
+		return p_string.find(p_term) > -1;
 	} else {
-		return p_term.is_subsequence_ofi(p_string);
+		return p_string.findn(p_term) > -1;
 	}
 }
 

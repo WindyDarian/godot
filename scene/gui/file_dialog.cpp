@@ -45,9 +45,9 @@ VBoxContainer *FileDialog::get_vbox() {
 }
 
 void FileDialog::_theme_changed() {
-	Color font_color = vbox->get_theme_color("font_color", "ToolButton");
-	Color font_color_hover = vbox->get_theme_color("font_color_hover", "ToolButton");
-	Color font_color_pressed = vbox->get_theme_color("font_color_pressed", "ToolButton");
+	Color font_color = vbox->get_theme_color("font_color", "Button");
+	Color font_color_hover = vbox->get_theme_color("font_color_hover", "Button");
+	Color font_color_pressed = vbox->get_theme_color("font_color_pressed", "Button");
 
 	dir_up->add_theme_color_override("icon_color_normal", font_color);
 	dir_up->add_theme_color_override("icon_color_hover", font_color_hover);
@@ -402,7 +402,9 @@ void FileDialog::update_file_list() {
 
 	TreeItem *root = tree->create_item();
 	Ref<Texture2D> folder = vbox->get_theme_icon("folder", "FileDialog");
+	Ref<Texture2D> file_icon = vbox->get_theme_icon("file", "FileDialog");
 	const Color folder_color = vbox->get_theme_color("folder_icon_modulate", "FileDialog");
+	const Color file_color = vbox->get_theme_color("file_icon_modulate", "FileDialog");
 	List<String> files;
 	List<String> dirs;
 
@@ -491,7 +493,10 @@ void FileDialog::update_file_list() {
 			if (get_icon_func) {
 				Ref<Texture2D> icon = get_icon_func(base_dir.plus_file(files.front()->get()));
 				ti->set_icon(0, icon);
+			} else {
+				ti->set_icon(0, file_icon);
 			}
+			ti->set_icon_modulate(0, file_color);
 
 			if (mode == FILE_MODE_OPEN_DIR) {
 				ti->set_custom_color(0, vbox->get_theme_color("files_disabled", "FileDialog"));
@@ -599,7 +604,7 @@ void FileDialog::set_current_file(const String &p_file) {
 	file->set_text(p_file);
 	update_dir();
 	invalidate();
-	int lp = p_file.find_last(".");
+	int lp = p_file.rfind(".");
 	if (lp != -1) {
 		file->select(0, lp);
 		if (file->is_inside_tree() && !get_tree()->is_node_being_edited(file)) {
@@ -612,7 +617,7 @@ void FileDialog::set_current_path(const String &p_path) {
 	if (!p_path.size()) {
 		return;
 	}
-	int pos = MAX(p_path.find_last("/"), p_path.find_last("\\"));
+	int pos = MAX(p_path.rfind("/"), p_path.rfind("\\"));
 	if (pos == -1) {
 		set_current_file(p_path);
 	} else {
@@ -854,7 +859,8 @@ FileDialog::FileDialog() {
 
 	HBoxContainer *hbc = memnew(HBoxContainer);
 
-	dir_up = memnew(ToolButton);
+	dir_up = memnew(Button);
+	dir_up->set_flat(true);
 	dir_up->set_tooltip(RTR("Go to parent folder."));
 	hbc->add_child(dir_up);
 	dir_up->connect("pressed", callable_mp(this, &FileDialog::_go_up));
@@ -872,12 +878,14 @@ FileDialog::FileDialog() {
 	hbc->add_child(dir);
 	dir->set_h_size_flags(Control::SIZE_EXPAND_FILL);
 
-	refresh = memnew(ToolButton);
+	refresh = memnew(Button);
+	refresh->set_flat(true);
 	refresh->set_tooltip(RTR("Refresh files."));
 	refresh->connect("pressed", callable_mp(this, &FileDialog::update_file_list));
 	hbc->add_child(refresh);
 
-	show_hidden = memnew(ToolButton);
+	show_hidden = memnew(Button);
+	show_hidden->set_flat(true);
 	show_hidden->set_toggle_mode(true);
 	show_hidden->set_pressed(is_showing_hidden_files());
 	show_hidden->set_tooltip(RTR("Toggle the visibility of hidden files."));

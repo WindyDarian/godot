@@ -30,6 +30,7 @@
 
 #include "control.h"
 
+#include "core/math/geometry_2d.h"
 #include "core/message_queue.h"
 #include "core/os/keyboard.h"
 #include "core/os/os.h"
@@ -1172,7 +1173,17 @@ Rect2 Control::get_parent_anchorable_rect() const {
 	if (data.parent_canvas_item) {
 		parent_rect = data.parent_canvas_item->get_anchorable_rect();
 	} else {
+#ifdef TOOLS_ENABLED
+		Node *edited_root = get_tree()->get_edited_scene_root();
+		if (edited_root && (this == edited_root || edited_root->is_a_parent_of(this))) {
+			parent_rect.size = Size2(ProjectSettings::get_singleton()->get("display/window/size/width"), ProjectSettings::get_singleton()->get("display/window/size/height"));
+		} else {
+			parent_rect = get_viewport()->get_visible_rect();
+		}
+
+#else
 		parent_rect = get_viewport()->get_visible_rect();
+#endif
 	}
 
 	return parent_rect;
@@ -2293,8 +2304,8 @@ void Control::_window_find_focus_neighbour(const Vector2 &p_dir, Node *p_at, con
 					Vector2 fb = points[(j + 1) % 4];
 
 					Vector2 pa, pb;
-					float d = Geometry::get_closest_points_between_segments(la, lb, fa, fb, pa, pb);
-					//float d = Geometry::get_closest_distance_between_segments(Vector3(la.x,la.y,0),Vector3(lb.x,lb.y,0),Vector3(fa.x,fa.y,0),Vector3(fb.x,fb.y,0));
+					float d = Geometry2D::get_closest_points_between_segments(la, lb, fa, fb, pa, pb);
+					//float d = Geometry2D::get_closest_distance_between_segments(Vector3(la.x,la.y,0),Vector3(lb.x,lb.y,0),Vector3(fa.x,fa.y,0),Vector3(fb.x,fb.y,0));
 					if (d < r_closest_dist) {
 						r_closest_dist = d;
 						*r_closest = c;

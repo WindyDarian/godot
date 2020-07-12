@@ -32,6 +32,7 @@
 
 #include "canvas_item_editor_plugin.h"
 #include "core/input/input.h"
+#include "core/math/geometry_2d.h"
 #include "core/os/file_access.h"
 #include "core/os/keyboard.h"
 #include "editor/editor_settings.h"
@@ -196,7 +197,7 @@ bool CollisionPolygon3DEditor::forward_spatial_gui_input(Camera3D *p_camera, con
 									p_camera->unproject_position(gt.xform(Vector3(poly[(i + 1) % poly.size()].x, poly[(i + 1) % poly.size()].y, depth)))
 								};
 
-								Vector2 cp = Geometry::get_closest_point_to_segment_2d(gpoint, points);
+								Vector2 cp = Geometry2D::get_closest_point_to_segment(gpoint, points);
 								if (cp.distance_squared_to(points[0]) < CMP_EPSILON2 || cp.distance_squared_to(points[1]) < CMP_EPSILON2) {
 									continue; //not valid to reuse point
 								}
@@ -500,12 +501,14 @@ CollisionPolygon3DEditor::CollisionPolygon3DEditor(EditorNode *p_editor) {
 	undo_redo = EditorNode::get_undo_redo();
 
 	add_child(memnew(VSeparator));
-	button_create = memnew(ToolButton);
+	button_create = memnew(Button);
+	button_create->set_flat(true);
 	add_child(button_create);
 	button_create->connect("pressed", callable_mp(this, &CollisionPolygon3DEditor::_menu_option), varray(MODE_CREATE));
 	button_create->set_toggle_mode(true);
 
-	button_edit = memnew(ToolButton);
+	button_edit = memnew(Button);
+	button_edit->set_flat(true);
 	add_child(button_edit);
 	button_edit->connect("pressed", callable_mp(this, &CollisionPolygon3DEditor::_menu_option), varray(MODE_EDIT));
 	button_edit->set_toggle_mode(true);

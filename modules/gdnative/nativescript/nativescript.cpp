@@ -1498,7 +1498,7 @@ void NativeScriptLanguage::profiling_add_data(StringName p_signature, uint64_t p
 #endif
 }
 
-int NativeScriptLanguage::register_binding_functions(godot_instance_binding_functions p_binding_functions) {
+int NativeScriptLanguage::register_binding_functions(godot_nativescript_instance_binding_functions p_binding_functions) {
 	// find index
 
 	int idx = -1;
@@ -1853,7 +1853,7 @@ void NativeReloadNode::_notification(int p_what) {
 #ifdef TOOLS_ENABLED
 
 	switch (p_what) {
-		case NOTIFICATION_WM_FOCUS_OUT: {
+		case NOTIFICATION_APPLICATION_FOCUS_OUT: {
 			if (unloaded) {
 				break;
 			}
@@ -1887,7 +1887,7 @@ void NativeReloadNode::_notification(int p_what) {
 
 		} break;
 
-		case NOTIFICATION_WM_FOCUS_IN: {
+		case NOTIFICATION_APPLICATION_FOCUS_IN: {
 			if (!unloaded) {
 				break;
 			}

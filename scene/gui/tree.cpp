@@ -1786,7 +1786,7 @@ int Tree::propagate_mouse_event(const Point2i &p_pos, int x_ofs, int y_ofs, bool
 			case TreeItem::CELL_MODE_STRING: {
 				//nothing in particular
 
-				if (select_mode == SELECT_MULTI && (get_tree()->get_event_count() == focus_in_id || !already_cursor)) {
+				if (select_mode == SELECT_MULTI && (get_viewport()->get_processed_events_count() == focus_in_id || !already_cursor)) {
 					bring_up_editor = false;
 				}
 
@@ -1861,7 +1861,7 @@ int Tree::propagate_mouse_event(const Point2i &p_pos, int x_ofs, int y_ofs, bool
 
 					} else {
 						editor_text = String::num(p_item->cells[col].val, Math::range_step_decimals(p_item->cells[col].step));
-						if (select_mode == SELECT_MULTI && get_tree()->get_event_count() == focus_in_id) {
+						if (select_mode == SELECT_MULTI && get_viewport()->get_processed_events_count() == focus_in_id) {
 							bring_up_editor = false;
 						}
 					}
@@ -2364,7 +2364,6 @@ void Tree::_gui_input(Ref<InputEvent> p_event) {
 					if (pos.x < len) {
 						cache.hover_type = Cache::CLICK_TITLE;
 						cache.hover_index = i;
-						update();
 						break;
 					}
 				}
@@ -2383,6 +2382,9 @@ void Tree::_gui_input(Ref<InputEvent> p_event) {
 					mpos.y += v_scroll->get_value();
 				}
 
+				TreeItem *old_it = cache.hover_item;
+				int old_col = cache.hover_cell;
+
 				int col, h, section;
 				TreeItem *it = _find_item_at_pos(root, mpos, col, h, section);
 
@@ -2397,18 +2399,21 @@ void Tree::_gui_input(Ref<InputEvent> p_event) {
 					}
 				}
 
-				if (it != cache.hover_item) {
-					cache.hover_item = it;
-					update();
-				}
+				cache.hover_item = it;
+				cache.hover_cell = col;
 
-				if (it && col != cache.hover_cell) {
-					cache.hover_cell = col;
-					update();
+				if (it != old_it || col != old_col) {
+					// Only need to update if mouse enters/exits a button
+					bool was_over_button = old_it && old_it->cells[old_col].custom_button;
+					bool is_over_button = it && it->cells[col].custom_button;
+					if (was_over_button || is_over_button) {
+						update();
+					}
 				}
 			}
 		}
 
+		// Update if mouse enters/exits columns
 		if (cache.hover_type != old_hover || cache.hover_index != old_index) {
 			update();
 		}
@@ -2782,7 +2787,7 @@ int Tree::_get_title_button_height() const {
 
 void Tree::_notification(int p_what) {
 	if (p_what == NOTIFICATION_FOCUS_ENTER) {
-		focus_in_id = get_tree()->get_event_count();
+		focus_in_id = get_viewport()->get_processed_events_count();
 	}
 	if (p_what == NOTIFICATION_MOUSE_EXIT) {
 		if (cache.hover_type != Cache::CLICK_NONE) {
@@ -3405,7 +3410,7 @@ void Tree::scroll_to_item(TreeItem *p_item) {
 
 	const Rect2 r = get_item_rect(p_item);
 
-	if (r.position.y < v_scroll->get_value()) {
+	if (r.position.y <= v_scroll->get_value()) {
 		v_scroll->set_value(r.position.y);
 	} else if (r.position.y + r.size.y + 2 * cache.vseparation > v_scroll->get_value() + get_size().y) {
 		v_scroll->set_value(r.position.y + r.size.y + 2 * cache.vseparation - get_size().y);
@@ -3616,6 +3621,47 @@ TreeItem *Tree::get_item_at_position(const Point2 &p_pos) const {
 	}
 
 	return nullptr;
+}
+
+int Tree::get_button_id_at_position(const Point2 &p_pos) const {
+	if (root) {
+		Point2 pos = p_pos;
+		pos -= cache.bg->get_offset();
+		pos.y -= _get_title_button_height();
+		if (pos.y < 0) {
+			return -1;
+		}
+
+		if (h_scroll->is_visible_in_tree()) {
+			pos.x += h_scroll->get_value();
+		}
+		if (v_scroll->is_visible_in_tree()) {
+			pos.y += v_scroll->get_value();
+		}
+
+		int col, h, section;
+		TreeItem *it = _find_item_at_pos(root, pos, col, h, section);
+
+		if (it) {
+			const TreeItem::Cell &c = it->cells[col];
+			int col_width = get_column_width(col);
+
+			for (int i = 0; i < col; i++) {
+				pos.x -= get_column_width(i);
+			}
+
+			for (int j = c.buttons.size() - 1; j >= 0; j--) {
+				Ref<Texture2D> b = c.buttons[j].texture;
+				Size2 size = b->get_size() + cache.button_pressed->get_minimum_size();
+				if (pos.x > col_width - size.width) {
+					return c.buttons[j].id;
+				}
+				col_width -= size.width;
+			}
+		}
+	}
+
+	return -1;
 }
 
 String Tree::get_tooltip(const Point2 &p_pos) const {
@@ -3834,7 +3880,7 @@ Tree::Tree() {
 	add_child(popup_menu);
 	//	popup_menu->set_as_toplevel(true);
 
-	popup_editor = memnew(PopupPanel);
+	popup_editor = memnew(Popup);
 	popup_editor->set_wrap_controls(true);
 	add_child(popup_editor);
 	popup_editor_vb = memnew(VBoxContainer);

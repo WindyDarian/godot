@@ -36,6 +36,7 @@
 #include "scene/resources/concave_polygon_shape_2d.h"
 #include "scene/resources/convex_polygon_shape_2d.h"
 #include "scene/resources/line_shape_2d.h"
+#include "scene/resources/ray_shape_2d.h"
 #include "scene/resources/rectangle_shape_2d.h"
 #include "scene/resources/segment_shape_2d.h"
 
@@ -241,9 +242,11 @@ void CollisionShape2DEditor::commit_handle(int idx, Variant &p_org) {
 		} break;
 
 		case CONCAVE_POLYGON_SHAPE: {
+			// Cannot be edited directly, use CollisionPolygon2D instead.
 		} break;
 
 		case CONVEX_POLYGON_SHAPE: {
+			// Cannot be edited directly, use CollisionPolygon2D instead.
 		} break;
 
 		case LINE_SHAPE: {

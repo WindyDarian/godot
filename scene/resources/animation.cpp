@@ -31,7 +31,7 @@
 #include "animation.h"
 #include "scene/scene_string_names.h"
 
-#include "core/math/geometry.h"
+#include "core/math/geometry_3d.h"
 
 #define ANIM_MIN_LENGTH 0.001
 
@@ -2577,7 +2577,10 @@ void Animation::copy_track(int p_track, Ref<Animation> p_to_animation) {
 	p_to_animation->track_set_enabled(dst_track, track_is_enabled(p_track));
 	p_to_animation->track_set_interpolation_type(dst_track, track_get_interpolation_type(p_track));
 	p_to_animation->track_set_interpolation_loop_wrap(dst_track, track_get_interpolation_loop_wrap(p_track));
-	p_to_animation->value_track_set_update_mode(dst_track, value_track_get_update_mode(p_track));
+	if (track_get_type(p_track) == TYPE_VALUE) {
+		p_to_animation->value_track_set_update_mode(dst_track, value_track_get_update_mode(p_track));
+	}
+
 	for (int i = 0; i < track_get_key_count(p_track); i++) {
 		p_to_animation->track_insert_key(dst_track, track_get_key_time(p_track, i), track_get_key_value(p_track, i), track_get_key_transition(p_track, i));
 	}
@@ -2730,7 +2733,7 @@ bool Animation::_transform_track_optimize_key(const TKey<TransformKey> &t0, cons
 			}
 
 			Vector3 s[2] = { v0, v2 };
-			real_t d = Geometry::get_closest_point_to_segment(v1, s).distance_to(v1);
+			real_t d = Geometry3D::get_closest_point_to_segment(v1, s).distance_to(v1);
 
 			if (d > pd.length() * p_alowed_linear_err) {
 				return false; //beyond allowed error for colinearity
@@ -2820,7 +2823,7 @@ bool Animation::_transform_track_optimize_key(const TKey<TransformKey> &t0, cons
 			}
 
 			Vector3 s[2] = { v0, v2 };
-			real_t d = Geometry::get_closest_point_to_segment(v1, s).distance_to(v1);
+			real_t d = Geometry3D::get_closest_point_to_segment(v1, s).distance_to(v1);
 
 			if (d > pd.length() * p_alowed_linear_err) {
 				return false; //beyond allowed error for colinearity

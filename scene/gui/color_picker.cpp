@@ -66,7 +66,7 @@ void ColorPicker::_notification(int p_what) {
 		} break;
 		case NOTIFICATION_PARENTED: {
 			for (int i = 0; i < 4; i++) {
-				set_margin((Margin)i, get_theme_constant("margin"));
+				set_margin((Margin)i, get_margin((Margin)i) + get_theme_constant("margin"));
 			}
 		} break;
 		case NOTIFICATION_VISIBILITY_CHANGED: {
@@ -758,7 +758,8 @@ ColorPicker::ColorPicker() :
 	sample->set_h_size_flags(SIZE_EXPAND_FILL);
 	sample->connect("draw", callable_mp(this, &ColorPicker::_sample_draw));
 
-	btn_pick = memnew(ToolButton);
+	btn_pick = memnew(Button);
+	btn_pick->set_flat(true);
 	hb_smpl->add_child(btn_pick);
 	btn_pick->set_toggle_mode(true);
 	btn_pick->set_tooltip(TTR("Pick a color from the editor window."));

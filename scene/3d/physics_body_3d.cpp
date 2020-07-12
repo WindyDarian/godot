@@ -638,8 +638,9 @@ void RigidBody3D::add_central_force(const Vector3 &p_force) {
 	PhysicsServer3D::get_singleton()->body_add_central_force(get_rid(), p_force);
 }
 
-void RigidBody3D::add_force(const Vector3 &p_force, const Vector3 &p_pos) {
-	PhysicsServer3D::get_singleton()->body_add_force(get_rid(), p_force, p_pos);
+void RigidBody3D::add_force(const Vector3 &p_force, const Vector3 &p_position) {
+	PhysicsServer3D *singleton = PhysicsServer3D::get_singleton();
+	singleton->body_add_force(get_rid(), p_force, p_position);
 }
 
 void RigidBody3D::add_torque(const Vector3 &p_torque) {
@@ -650,8 +651,9 @@ void RigidBody3D::apply_central_impulse(const Vector3 &p_impulse) {
 	PhysicsServer3D::get_singleton()->body_apply_central_impulse(get_rid(), p_impulse);
 }
 
-void RigidBody3D::apply_impulse(const Vector3 &p_pos, const Vector3 &p_impulse) {
-	PhysicsServer3D::get_singleton()->body_apply_impulse(get_rid(), p_pos, p_impulse);
+void RigidBody3D::apply_impulse(const Vector3 &p_impulse, const Vector3 &p_position) {
+	PhysicsServer3D *singleton = PhysicsServer3D::get_singleton();
+	singleton->body_apply_impulse(get_rid(), p_impulse, p_position);
 }
 
 void RigidBody3D::apply_torque_impulse(const Vector3 &p_impulse) {
@@ -782,11 +784,11 @@ void RigidBody3D::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_axis_velocity", "axis_velocity"), &RigidBody3D::set_axis_velocity);
 
 	ClassDB::bind_method(D_METHOD("add_central_force", "force"), &RigidBody3D::add_central_force);
-	ClassDB::bind_method(D_METHOD("add_force", "force", "position"), &RigidBody3D::add_force);
+	ClassDB::bind_method(D_METHOD("add_force", "force", "position"), &RigidBody3D::add_force, Vector3());
 	ClassDB::bind_method(D_METHOD("add_torque", "torque"), &RigidBody3D::add_torque);
 
 	ClassDB::bind_method(D_METHOD("apply_central_impulse", "impulse"), &RigidBody3D::apply_central_impulse);
-	ClassDB::bind_method(D_METHOD("apply_impulse", "position", "impulse"), &RigidBody3D::apply_impulse);
+	ClassDB::bind_method(D_METHOD("apply_impulse", "impulse", "position"), &RigidBody3D::apply_impulse, Vector3());
 	ClassDB::bind_method(D_METHOD("apply_torque_impulse", "impulse"), &RigidBody3D::apply_torque_impulse);
 
 	ClassDB::bind_method(D_METHOD("set_sleeping", "sleeping"), &RigidBody3D::set_sleeping);
@@ -945,6 +947,7 @@ bool KinematicBody3D::move_and_collide(const Vector3 &p_motion, bool p_infinite_
 Vector3 KinematicBody3D::move_and_slide(const Vector3 &p_linear_velocity, const Vector3 &p_up_direction, bool p_stop_on_slope, int p_max_slides, float p_floor_max_angle, bool p_infinite_inertia) {
 	Vector3 body_velocity = p_linear_velocity;
 	Vector3 body_velocity_normal = body_velocity.normalized();
+	Vector3 up_direction = p_up_direction.normalized();
 
 	for (int i = 0; i < 3; i++) {
 		if (locked_axis & (1 << i)) {
@@ -988,11 +991,11 @@ Vector3 KinematicBody3D::move_and_slide(const Vector3 &p_linear_velocity, const 
 				colliders.push_back(collision);
 				motion = collision.remainder;
 
-				if (p_up_direction == Vector3()) {
+				if (up_direction == Vector3()) {
 					//all is a wall
 					on_wall = true;
 				} else {
-					if (Math::acos(collision.normal.dot(p_up_direction)) <= p_floor_max_angle + FLOOR_ANGLE_THRESHOLD) { //floor
+					if (Math::acos(collision.normal.dot(up_direction)) <= p_floor_max_angle + FLOOR_ANGLE_THRESHOLD) { //floor
 
 						on_floor = true;
 						floor_normal = collision.normal;
@@ -1000,14 +1003,14 @@ Vector3 KinematicBody3D::move_and_slide(const Vector3 &p_linear_velocity, const 
 						floor_velocity = collision.collider_vel;
 
 						if (p_stop_on_slope) {
-							if ((body_velocity_normal + p_up_direction).length() < 0.01 && collision.travel.length() < 1) {
+							if ((body_velocity_normal + up_direction).length() < 0.01 && collision.travel.length() < 1) {
 								Transform gt = get_global_transform();
-								gt.origin -= collision.travel.slide(p_up_direction);
+								gt.origin -= collision.travel.slide(up_direction);
 								set_global_transform(gt);
 								return Vector3();
 							}
 						}
-					} else if (Math::acos(collision.normal.dot(-p_up_direction)) <= p_floor_max_angle + FLOOR_ANGLE_THRESHOLD) { //ceiling
+					} else if (Math::acos(collision.normal.dot(-up_direction)) <= p_floor_max_angle + FLOOR_ANGLE_THRESHOLD) { //ceiling
 						on_ceiling = true;
 					} else {
 						on_wall = true;
@@ -1036,9 +1039,10 @@ Vector3 KinematicBody3D::move_and_slide(const Vector3 &p_linear_velocity, const 
 }
 
 Vector3 KinematicBody3D::move_and_slide_with_snap(const Vector3 &p_linear_velocity, const Vector3 &p_snap, const Vector3 &p_up_direction, bool p_stop_on_slope, int p_max_slides, float p_floor_max_angle, bool p_infinite_inertia) {
+	Vector3 up_direction = p_up_direction.normalized();
 	bool was_on_floor = on_floor;
 
-	Vector3 ret = move_and_slide(p_linear_velocity, p_up_direction, p_stop_on_slope, p_max_slides, p_floor_max_angle, p_infinite_inertia);
+	Vector3 ret = move_and_slide(p_linear_velocity, up_direction, p_stop_on_slope, p_max_slides, p_floor_max_angle, p_infinite_inertia);
 	if (!was_on_floor || p_snap == Vector3()) {
 		return ret;
 	}
@@ -1048,8 +1052,8 @@ Vector3 KinematicBody3D::move_and_slide_with_snap(const Vector3 &p_linear_veloci
 
 	if (move_and_collide(p_snap, p_infinite_inertia, col, false, true)) {
 		bool apply = true;
-		if (p_up_direction != Vector3()) {
-			if (Math::acos(p_up_direction.normalized().dot(col.normal)) < p_floor_max_angle) {
+		if (up_direction != Vector3()) {
+			if (Math::acos(col.normal.dot(up_direction)) <= p_floor_max_angle + FLOOR_ANGLE_THRESHOLD) {
 				on_floor = true;
 				floor_normal = col.normal;
 				on_floor_body = col.collider_rid;
@@ -1057,7 +1061,7 @@ Vector3 KinematicBody3D::move_and_slide_with_snap(const Vector3 &p_linear_veloci
 				if (p_stop_on_slope) {
 					// move and collide may stray the object a bit because of pre un-stucking,
 					// so only ensure that motion happens on floor direction in this case.
-					col.travel = col.travel.project(p_up_direction);
+					col.travel = col.travel.project(up_direction);
 				}
 			} else {
 				apply = false; //snapped with floor direction, but did not snap to a floor, do not snap.
@@ -1370,8 +1374,8 @@ void PhysicalBone3D::apply_central_impulse(const Vector3 &p_impulse) {
 	PhysicsServer3D::get_singleton()->body_apply_central_impulse(get_rid(), p_impulse);
 }
 
-void PhysicalBone3D::apply_impulse(const Vector3 &p_pos, const Vector3 &p_impulse) {
-	PhysicsServer3D::get_singleton()->body_apply_impulse(get_rid(), p_pos, p_impulse);
+void PhysicalBone3D::apply_impulse(const Vector3 &p_impulse, const Vector3 &p_position) {
+	PhysicsServer3D::get_singleton()->body_apply_impulse(get_rid(), p_impulse, p_position);
 }
 
 void PhysicalBone3D::reset_physics_simulation_state() {
@@ -2097,7 +2101,7 @@ void PhysicalBone3D::_direct_state_changed(Object *p_state) {
 
 void PhysicalBone3D::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("apply_central_impulse", "impulse"), &PhysicalBone3D::apply_central_impulse);
-	ClassDB::bind_method(D_METHOD("apply_impulse", "position", "impulse"), &PhysicalBone3D::apply_impulse);
+	ClassDB::bind_method(D_METHOD("apply_impulse", "impulse", "position"), &PhysicalBone3D::apply_impulse, Vector3());
 
 	ClassDB::bind_method(D_METHOD("_direct_state_changed"), &PhysicalBone3D::_direct_state_changed);
 

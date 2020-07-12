@@ -33,6 +33,7 @@
 #include "core/input/input.h"
 #include "core/os/keyboard.h"
 #include "scene/gui/box_container.h"
+#include "scene/gui/button.h"
 
 #ifdef TOOLS_ENABLED
 #include "editor/editor_scale.h"
@@ -369,8 +370,9 @@ bool GraphEdit::_filter_input(const Point2 &p_point) {
 void GraphEdit::_top_layer_input(const Ref<InputEvent> &p_ev) {
 	Ref<InputEventMouseButton> mb = p_ev;
 	if (mb.is_valid() && mb->get_button_index() == BUTTON_LEFT && mb->is_pressed()) {
+		connecting_valid = false;
 		Ref<Texture2D> port = get_theme_icon("port", "GraphNode");
-		Vector2 mpos(mb->get_position().x, mb->get_position().y);
+		click_pos = mb->get_position();
 		for (int i = get_child_count() - 1; i >= 0; i--) {
 			GraphNode *gn = Object::cast_to<GraphNode>(get_child(i));
 			if (!gn) {
@@ -379,7 +381,7 @@ void GraphEdit::_top_layer_input(const Ref<InputEvent> &p_ev) {
 
 			for (int j = 0; j < gn->get_connection_output_count(); j++) {
 				Vector2 pos = gn->get_connection_output_position(j) + gn->get_position();
-				if (is_in_hot_zone(pos, mpos)) {
+				if (is_in_hot_zone(pos, click_pos)) {
 					if (valid_left_disconnect_types.has(gn->get_connection_output_type(j))) {
 						//check disconnect
 						for (List<Connection>::Element *E = connections.front(); E; E = E->next()) {
@@ -421,7 +423,7 @@ void GraphEdit::_top_layer_input(const Ref<InputEvent> &p_ev) {
 
 			for (int j = 0; j < gn->get_connection_input_count(); j++) {
 				Vector2 pos = gn->get_connection_input_position(j) + gn->get_position();
-				if (is_in_hot_zone(pos, mpos)) {
+				if (is_in_hot_zone(pos, click_pos)) {
 					if (right_disconnects || valid_right_disconnect_types.has(gn->get_connection_input_type(j))) {
 						//check disconnect
 						for (List<Connection>::Element *E = connections.front(); E; E = E->next()) {
@@ -469,37 +471,40 @@ void GraphEdit::_top_layer_input(const Ref<InputEvent> &p_ev) {
 		connecting_to = mm->get_position();
 		connecting_target = false;
 		top_layer->update();
+		connecting_valid = just_disconnected || click_pos.distance_to(connecting_to) > 20.0 * zoom;
 
-		Ref<Texture2D> port = get_theme_icon("port", "GraphNode");
-		Vector2 mpos = mm->get_position();
-		for (int i = get_child_count() - 1; i >= 0; i--) {
-			GraphNode *gn = Object::cast_to<GraphNode>(get_child(i));
-			if (!gn) {
-				continue;
-			}
-
-			if (!connecting_out) {
-				for (int j = 0; j < gn->get_connection_output_count(); j++) {
-					Vector2 pos = gn->get_connection_output_position(j) + gn->get_position();
-					int type = gn->get_connection_output_type(j);
-					if ((type == connecting_type || valid_connection_types.has(ConnType(type, connecting_type))) && is_in_hot_zone(pos, mpos)) {
-						connecting_target = true;
-						connecting_to = pos;
-						connecting_target_to = gn->get_name();
-						connecting_target_index = j;
-						return;
-					}
+		if (connecting_valid) {
+			Ref<Texture2D> port = get_theme_icon("port", "GraphNode");
+			Vector2 mpos = mm->get_position();
+			for (int i = get_child_count() - 1; i >= 0; i--) {
+				GraphNode *gn = Object::cast_to<GraphNode>(get_child(i));
+				if (!gn) {
+					continue;
 				}
-			} else {
-				for (int j = 0; j < gn->get_connection_input_count(); j++) {
-					Vector2 pos = gn->get_connection_input_position(j) + gn->get_position();
-					int type = gn->get_connection_input_type(j);
-					if ((type == connecting_type || valid_connection_types.has(ConnType(type, connecting_type))) && is_in_hot_zone(pos, mpos)) {
-						connecting_target = true;
-						connecting_to = pos;
-						connecting_target_to = gn->get_name();
-						connecting_target_index = j;
-						return;
+
+				if (!connecting_out) {
+					for (int j = 0; j < gn->get_connection_output_count(); j++) {
+						Vector2 pos = gn->get_connection_output_position(j) + gn->get_position();
+						int type = gn->get_connection_output_type(j);
+						if ((type == connecting_type || valid_connection_types.has(ConnType(type, connecting_type))) && is_in_hot_zone(pos, mpos)) {
+							connecting_target = true;
+							connecting_to = pos;
+							connecting_target_to = gn->get_name();
+							connecting_target_index = j;
+							return;
+						}
+					}
+				} else {
+					for (int j = 0; j < gn->get_connection_input_count(); j++) {
+						Vector2 pos = gn->get_connection_input_position(j) + gn->get_position();
+						int type = gn->get_connection_input_type(j);
+						if ((type == connecting_type || valid_connection_types.has(ConnType(type, connecting_type))) && is_in_hot_zone(pos, mpos)) {
+							connecting_target = true;
+							connecting_to = pos;
+							connecting_target_to = gn->get_name();
+							connecting_target_index = j;
+							return;
+						}
 					}
 				}
 			}
@@ -507,27 +512,29 @@ void GraphEdit::_top_layer_input(const Ref<InputEvent> &p_ev) {
 	}
 
 	if (mb.is_valid() && mb->get_button_index() == BUTTON_LEFT && !mb->is_pressed()) {
-		if (connecting && connecting_target) {
-			String from = connecting_from;
-			int from_slot = connecting_index;
-			String to = connecting_target_to;
-			int to_slot = connecting_target_index;
+		if (connecting_valid) {
+			if (connecting && connecting_target) {
+				String from = connecting_from;
+				int from_slot = connecting_index;
+				String to = connecting_target_to;
+				int to_slot = connecting_target_index;
 
-			if (!connecting_out) {
-				SWAP(from, to);
-				SWAP(from_slot, to_slot);
-			}
-			emit_signal("connection_request", from, from_slot, to, to_slot);
+				if (!connecting_out) {
+					SWAP(from, to);
+					SWAP(from_slot, to_slot);
+				}
+				emit_signal("connection_request", from, from_slot, to, to_slot);
 
-		} else if (!just_disconnected) {
-			String from = connecting_from;
-			int from_slot = connecting_index;
-			Vector2 ofs = Vector2(mb->get_position().x, mb->get_position().y);
+			} else if (!just_disconnected) {
+				String from = connecting_from;
+				int from_slot = connecting_index;
+				Vector2 ofs = Vector2(mb->get_position().x, mb->get_position().y);
 
-			if (!connecting_out) {
-				emit_signal("connection_from_empty", from, from_slot, ofs);
-			} else {
-				emit_signal("connection_to_empty", from, from_slot, ofs);
+				if (!connecting_out) {
+					emit_signal("connection_from_empty", from, from_slot, ofs);
+				} else {
+					emit_signal("connection_to_empty", from, from_slot, ofs);
+				}
 			}
 		}
 
@@ -805,9 +812,20 @@ void GraphEdit::_gui_input(const Ref<InputEvent> &p_ev) {
 			bool in_box = r.intersects(box_selecting_rect);
 
 			if (in_box) {
+				if (!gn->is_selected() && box_selection_mode_additive) {
+					emit_signal("node_selected", gn);
+				} else if (gn->is_selected() && !box_selection_mode_additive) {
+					emit_signal("node_unselected", gn);
+				}
 				gn->set_selected(box_selection_mode_additive);
 			} else {
-				gn->set_selected(previus_selected.find(gn) != nullptr);
+				bool select = (previus_selected.find(gn) != nullptr);
+				if (gn->is_selected() && !select) {
+					emit_signal("node_unselected", gn);
+				} else if (!gn->is_selected() && select) {
+					emit_signal("node_selected", gn);
+				}
+				gn->set_selected(select);
 			}
 		}
 
@@ -825,7 +843,13 @@ void GraphEdit::_gui_input(const Ref<InputEvent> &p_ev) {
 						continue;
 					}
 
-					gn->set_selected(previus_selected.find(gn) != nullptr);
+					bool select = (previus_selected.find(gn) != nullptr);
+					if (gn->is_selected() && !select) {
+						emit_signal("node_unselected", gn);
+					} else if (!gn->is_selected() && select) {
+						emit_signal("node_selected", gn);
+					}
+					gn->set_selected(select);
 				}
 				top_layer->update();
 			} else {
@@ -848,6 +872,7 @@ void GraphEdit::_gui_input(const Ref<InputEvent> &p_ev) {
 						Rect2 r = gn->get_rect();
 						r.size *= zoom;
 						if (r.has_point(b->get_position())) {
+							emit_signal("node_unselected", gn);
 							gn->set_selected(false);
 						}
 					}
@@ -1310,25 +1335,29 @@ GraphEdit::GraphEdit() {
 	top_layer->add_child(zoom_hb);
 	zoom_hb->set_position(Vector2(10, 10));
 
-	zoom_minus = memnew(ToolButton);
+	zoom_minus = memnew(Button);
+	zoom_minus->set_flat(true);
 	zoom_hb->add_child(zoom_minus);
 	zoom_minus->set_tooltip(RTR("Zoom Out"));
 	zoom_minus->connect("pressed", callable_mp(this, &GraphEdit::_zoom_minus));
 	zoom_minus->set_focus_mode(FOCUS_NONE);
 
-	zoom_reset = memnew(ToolButton);
+	zoom_reset = memnew(Button);
+	zoom_reset->set_flat(true);
 	zoom_hb->add_child(zoom_reset);
 	zoom_reset->set_tooltip(RTR("Zoom Reset"));
 	zoom_reset->connect("pressed", callable_mp(this, &GraphEdit::_zoom_reset));
 	zoom_reset->set_focus_mode(FOCUS_NONE);
 
-	zoom_plus = memnew(ToolButton);
+	zoom_plus = memnew(Button);
+	zoom_plus->set_flat(true);
 	zoom_hb->add_child(zoom_plus);
 	zoom_plus->set_tooltip(RTR("Zoom In"));
 	zoom_plus->connect("pressed", callable_mp(this, &GraphEdit::_zoom_plus));
 	zoom_plus->set_focus_mode(FOCUS_NONE);
 
-	snap_button = memnew(ToolButton);
+	snap_button = memnew(Button);
+	snap_button->set_flat(true);
 	snap_button->set_toggle_mode(true);
 	snap_button->set_tooltip(RTR("Enable snap and show grid."));
 	snap_button->connect("pressed", callable_mp(this, &GraphEdit::_snap_toggled));

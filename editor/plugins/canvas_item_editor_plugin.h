@@ -228,9 +228,9 @@ private:
 	VScrollBar *v_scroll;
 	HBoxContainer *hb;
 
-	ToolButton *zoom_minus;
-	ToolButton *zoom_reset;
-	ToolButton *zoom_plus;
+	Button *zoom_minus;
+	Button *zoom_reset;
+	Button *zoom_plus;
 
 	Map<Control *, Timer *> popup_temporarily_timers;
 
@@ -336,31 +336,31 @@ private:
 	};
 	List<PoseClipboard> pose_clipboard;
 
-	ToolButton *select_button;
+	Button *select_button;
 
-	ToolButton *move_button;
-	ToolButton *scale_button;
-	ToolButton *rotate_button;
+	Button *move_button;
+	Button *scale_button;
+	Button *rotate_button;
 
-	ToolButton *list_select_button;
-	ToolButton *pivot_button;
-	ToolButton *pan_button;
+	Button *list_select_button;
+	Button *pivot_button;
+	Button *pan_button;
 
-	ToolButton *ruler_button;
+	Button *ruler_button;
 
-	ToolButton *smart_snap_button;
-	ToolButton *grid_snap_button;
+	Button *smart_snap_button;
+	Button *grid_snap_button;
 	MenuButton *snap_config_menu;
 	PopupMenu *smartsnap_config_popup;
 
-	ToolButton *lock_button;
-	ToolButton *unlock_button;
+	Button *lock_button;
+	Button *unlock_button;
 
-	ToolButton *group_button;
-	ToolButton *ungroup_button;
+	Button *group_button;
+	Button *ungroup_button;
 
 	MenuButton *skeleton_menu;
-	ToolButton *override_camera_button;
+	Button *override_camera_button;
 	MenuButton *view_menu;
 	HBoxContainer *animation_hb;
 	MenuButton *animation_menu;
@@ -369,7 +369,7 @@ private:
 	PopupMenu *anchors_and_margins_popup;
 	PopupMenu *anchors_popup;
 
-	ToolButton *anchor_mode_button;
+	Button *anchor_mode_button;
 
 	Button *key_loc_button;
 	Button *key_rot_button;
@@ -528,6 +528,7 @@ private:
 
 	VBoxContainer *controls_vb;
 	HBoxContainer *zoom_hb;
+	float _get_next_zoom_value(int p_increment_count) const;
 	void _zoom_on_position(float p_zoom, Point2 p_position = Point2());
 	void _update_zoom_label();
 	void _button_zoom_minus();
@@ -648,13 +649,13 @@ class CanvasItemEditorPlugin : public EditorPlugin {
 	EditorNode *editor;
 
 public:
-	virtual String get_name() const { return "2D"; }
-	bool has_main_screen() const { return true; }
-	virtual void edit(Object *p_object);
-	virtual bool handles(Object *p_object) const;
-	virtual void make_visible(bool p_visible);
-	virtual Dictionary get_state() const;
-	virtual void set_state(const Dictionary &p_state);
+	virtual String get_name() const override { return "2D"; }
+	bool has_main_screen() const override { return true; }
+	virtual void edit(Object *p_object) override;
+	virtual bool handles(Object *p_object) const override;
+	virtual void make_visible(bool p_visible) override;
+	virtual Dictionary get_state() const override;
+	virtual void set_state(const Dictionary &p_state) override;
 
 	CanvasItemEditor *get_canvas_item_editor() { return canvas_item_editor; }
 
@@ -705,8 +706,8 @@ protected:
 	void _notification(int p_what);
 
 public:
-	virtual bool can_drop_data(const Point2 &p_point, const Variant &p_data) const;
-	virtual void drop_data(const Point2 &p_point, const Variant &p_data);
+	virtual bool can_drop_data(const Point2 &p_point, const Variant &p_data) const override;
+	virtual void drop_data(const Point2 &p_point, const Variant &p_data) override;
 
 	CanvasItemEditorViewport(EditorNode *p_node, CanvasItemEditor *p_canvas_item_editor);
 	~CanvasItemEditorViewport();

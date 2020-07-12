@@ -93,7 +93,7 @@ private:
 	Vector3 spOv_gravityVec = Vector3(0, -1, 0);
 	real_t spOv_gravityMag = 10;
 	real_t spOv_linearDump = 0.1;
-	real_t spOv_angularDump = 1;
+	real_t spOv_angularDump = 0.1;
 	int spOv_priority = 0;
 
 	bool isScratched = false;
@@ -140,7 +140,7 @@ public:
 	_FORCE_INLINE_ int get_spOv_priority() { return spOv_priority; }
 
 	virtual void main_shape_changed();
-	virtual void reload_body();
+	virtual void do_reload_body();
 	virtual void set_space(SpaceBullet *p_space);
 
 	virtual void dispatch_callbacks();

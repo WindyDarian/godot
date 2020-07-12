@@ -32,6 +32,7 @@
 #define EDITOR_SCENE_IMPORTER_GLTF_H
 
 #include "editor/import/resource_importer_scene.h"
+#include "scene/3d/light_3d.h"
 #include "scene/3d/node_3d.h"
 #include "scene/3d/skeleton_3d.h"
 
@@ -50,6 +51,7 @@ class EditorSceneImporterGLTF : public EditorSceneImporter {
 	typedef int GLTFImageIndex;
 	typedef int GLTFMaterialIndex;
 	typedef int GLTFMeshIndex;
+	typedef int GLTFLightIndex;
 	typedef int GLTFNodeIndex;
 	typedef int GLTFSkeletonIndex;
 	typedef int GLTFSkinIndex;
@@ -112,6 +114,8 @@ class EditorSceneImporterGLTF : public EditorSceneImporter {
 		Vector<int> children;
 
 		GLTFNodeIndex fake_joint_parent = -1;
+
+		GLTFLightIndex light = -1;
 
 		GLTFNode() {}
 	};
@@ -218,6 +222,17 @@ class EditorSceneImporterGLTF : public EditorSceneImporter {
 		GLTFCamera() {}
 	};
 
+	struct GLTFLight {
+		Color color = Color(1.0f, 1.0f, 1.0f);
+		float intensity = 1.0f;
+		String type = "";
+		float range = Math_INF;
+		float inner_cone_angle = 0.0f;
+		float outer_cone_angle = Math_PI / 4.0;
+
+		GLTFLight() {}
+	};
+
 	struct GLTFAnimation {
 		bool loop = false;
 
@@ -271,6 +286,7 @@ class EditorSceneImporterGLTF : public EditorSceneImporter {
 
 		Vector<GLTFSkin> skins;
 		Vector<GLTFCamera> cameras;
+		Vector<GLTFLight> lights;
 
 		Set<String> unique_names;
 
@@ -278,6 +294,9 @@ class EditorSceneImporterGLTF : public EditorSceneImporter {
 		Vector<GLTFAnimation> animations;
 
 		Map<GLTFNodeIndex, Node *> scene_nodes;
+
+		// EditorSceneImporter::ImportFlags
+		uint32_t import_flags;
 
 		~GLTFState() {
 			for (int i = 0; i < nodes.size(); i++) {
@@ -346,12 +365,13 @@ class EditorSceneImporterGLTF : public EditorSceneImporter {
 	void _remove_duplicate_skins(GLTFState &state);
 
 	Error _parse_cameras(GLTFState &state);
-
+	Error _parse_lights(GLTFState &state);
 	Error _parse_animations(GLTFState &state);
 
 	BoneAttachment3D *_generate_bone_attachment(GLTFState &state, Skeleton3D *skeleton, const GLTFNodeIndex node_index);
 	MeshInstance3D *_generate_mesh_instance(GLTFState &state, Node *scene_parent, const GLTFNodeIndex node_index);
 	Camera3D *_generate_camera(GLTFState &state, Node *scene_parent, const GLTFNodeIndex node_index);
+	Light3D *_generate_light(GLTFState &state, Node *scene_parent, const GLTFNodeIndex node_index);
 	Node3D *_generate_spatial(GLTFState &state, Node *scene_parent, const GLTFNodeIndex node_index);
 
 	void _generate_scene_node(GLTFState &state, Node *scene_parent, Node3D *scene_root, const GLTFNodeIndex node_index);
@@ -367,10 +387,10 @@ class EditorSceneImporterGLTF : public EditorSceneImporter {
 	void _import_animation(GLTFState &state, AnimationPlayer *ap, const GLTFAnimationIndex index, const int bake_fps);
 
 public:
-	virtual uint32_t get_import_flags() const;
-	virtual void get_extensions(List<String> *r_extensions) const;
-	virtual Node *import_scene(const String &p_path, uint32_t p_flags, int p_bake_fps, List<String> *r_missing_deps = nullptr, Error *r_err = nullptr);
-	virtual Ref<Animation> import_animation(const String &p_path, uint32_t p_flags, int p_bake_fps);
+	virtual uint32_t get_import_flags() const override;
+	virtual void get_extensions(List<String> *r_extensions) const override;
+	virtual Node *import_scene(const String &p_path, uint32_t p_flags, int p_bake_fps, List<String> *r_missing_deps = nullptr, Error *r_err = nullptr) override;
+	virtual Ref<Animation> import_animation(const String &p_path, uint32_t p_flags, int p_bake_fps) override;
 
 	EditorSceneImporterGLTF();
 };

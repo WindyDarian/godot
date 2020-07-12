@@ -78,7 +78,7 @@ void ScriptCreateDialog::_notification(int p_what) {
 
 void ScriptCreateDialog::_path_hbox_sorted() {
 	if (is_visible()) {
-		int filename_start_pos = initial_bp.find_last("/") + 1;
+		int filename_start_pos = initial_bp.rfind("/") + 1;
 		int filename_end_pos = initial_bp.length();
 
 		if (!is_built_in) {
@@ -553,7 +553,7 @@ void ScriptCreateDialog::_file_selected(const String &p_file) {
 		_path_changed(p);
 
 		String filename = p.get_file().get_basename();
-		int select_start = p.find_last(filename);
+		int select_start = p.rfind(filename);
 		file_path->select(select_start, select_start + filename.length());
 		file_path->set_cursor_position(select_start + filename.length());
 		file_path->grab_focus();
@@ -783,7 +783,7 @@ ScriptCreateDialog::ScriptCreateDialog() {
 	gc->add_child(memnew(Label(TTR("Language:"))));
 	gc->add_child(language_menu);
 
-	default_language = 0;
+	default_language = -1;
 	for (int i = 0; i < ScriptServer::get_language_count(); i++) {
 		String lang = ScriptServer::get_language(i)->get_name();
 		language_menu->add_item(lang);
@@ -791,8 +791,9 @@ ScriptCreateDialog::ScriptCreateDialog() {
 			default_language = i;
 		}
 	}
-
-	language_menu->select(default_language);
+	if (default_language >= 0) {
+		language_menu->select(default_language);
+	}
 	current_language = default_language;
 
 	language_menu->connect("item_selected", callable_mp(this, &ScriptCreateDialog::_lang_changed));

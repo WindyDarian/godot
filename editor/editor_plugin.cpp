@@ -176,6 +176,30 @@ void EditorInterface::reload_scene_from_path(const String &scene_path) {
 	EditorNode::get_singleton()->reload_scene(scene_path);
 }
 
+void EditorInterface::play_main_scene() {
+	EditorNode::get_singleton()->run_play();
+}
+
+void EditorInterface::play_current_scene() {
+	EditorNode::get_singleton()->run_play_current();
+}
+
+void EditorInterface::play_custom_scene(const String &scene_path) {
+	EditorNode::get_singleton()->run_play_custom(scene_path);
+}
+
+void EditorInterface::stop_playing_scene() {
+	EditorNode::get_singleton()->run_stop();
+}
+
+bool EditorInterface::is_playing_scene() const {
+	return EditorNode::get_singleton()->is_run_playing();
+}
+
+String EditorInterface::get_playing_scene() const {
+	return EditorNode::get_singleton()->get_run_playing_scene();
+}
+
 Node *EditorInterface::get_edited_scene_root() {
 	return EditorNode::get_singleton()->get_edited_scene();
 }
@@ -270,6 +294,10 @@ void EditorInterface::set_distraction_free_mode(bool p_enter) {
 	EditorNode::get_singleton()->set_distraction_free_mode(p_enter);
 }
 
+bool EditorInterface::is_distraction_free_mode_enabled() const {
+	return EditorNode::get_singleton()->is_distraction_free_mode_enabled();
+}
+
 EditorInterface *EditorInterface::singleton = nullptr;
 
 void EditorInterface::_bind_methods() {
@@ -281,6 +309,12 @@ void EditorInterface::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("edit_resource", "resource"), &EditorInterface::edit_resource);
 	ClassDB::bind_method(D_METHOD("open_scene_from_path", "scene_filepath"), &EditorInterface::open_scene_from_path);
 	ClassDB::bind_method(D_METHOD("reload_scene_from_path", "scene_filepath"), &EditorInterface::reload_scene_from_path);
+	ClassDB::bind_method(D_METHOD("play_main_scene"), &EditorInterface::play_main_scene);
+	ClassDB::bind_method(D_METHOD("play_current_scene"), &EditorInterface::play_current_scene);
+	ClassDB::bind_method(D_METHOD("play_custom_scene", "scene_filepath"), &EditorInterface::play_custom_scene);
+	ClassDB::bind_method(D_METHOD("stop_playing_scene"), &EditorInterface::stop_playing_scene);
+	ClassDB::bind_method(D_METHOD("is_playing_scene"), &EditorInterface::is_playing_scene);
+	ClassDB::bind_method(D_METHOD("get_playing_scene"), &EditorInterface::get_playing_scene);
 	ClassDB::bind_method(D_METHOD("get_open_scenes"), &EditorInterface::get_open_scenes);
 	ClassDB::bind_method(D_METHOD("get_edited_scene_root"), &EditorInterface::get_edited_scene_root);
 	ClassDB::bind_method(D_METHOD("get_resource_previewer"), &EditorInterface::get_resource_previewer);
@@ -302,6 +336,9 @@ void EditorInterface::_bind_methods() {
 
 	ClassDB::bind_method(D_METHOD("set_main_screen_editor", "name"), &EditorInterface::set_main_screen_editor);
 	ClassDB::bind_method(D_METHOD("set_distraction_free_mode", "enter"), &EditorInterface::set_distraction_free_mode);
+	ClassDB::bind_method(D_METHOD("is_distraction_free_mode_enabled"), &EditorInterface::is_distraction_free_mode_enabled);
+
+	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "distraction_free_mode"), "set_distraction_free_mode", "is_distraction_free_mode_enabled");
 }
 
 EditorInterface::EditorInterface() {
@@ -325,7 +362,7 @@ void EditorPlugin::remove_autoload_singleton(const String &p_name) {
 	EditorNode::get_singleton()->get_project_settings()->get_autoload_settings()->autoload_remove(p_name);
 }
 
-ToolButton *EditorPlugin::add_control_to_bottom_panel(Control *p_control, const String &p_title) {
+Button *EditorPlugin::add_control_to_bottom_panel(Control *p_control, const String &p_title) {
 	ERR_FAIL_NULL_V(p_control, nullptr);
 	return EditorNode::get_singleton()->add_bottom_panel_item(p_title, p_control);
 }
@@ -656,6 +693,14 @@ bool EditorPlugin::get_remove_list(List<Node *> *p_list) {
 void EditorPlugin::restore_global_state() {}
 void EditorPlugin::save_global_state() {}
 
+void EditorPlugin::add_translation_parser_plugin(const Ref<EditorTranslationParserPlugin> &p_parser) {
+	EditorTranslationParser::get_singleton()->add_parser(p_parser, EditorTranslationParser::CUSTOM);
+}
+
+void EditorPlugin::remove_translation_parser_plugin(const Ref<EditorTranslationParserPlugin> &p_parser) {
+	EditorTranslationParser::get_singleton()->remove_parser(p_parser, EditorTranslationParser::CUSTOM);
+}
+
 void EditorPlugin::add_import_plugin(const Ref<EditorImportPlugin> &p_importer) {
 	ResourceFormatImporter::get_singleton()->add_importer(p_importer);
 	EditorFileSystem::get_singleton()->call_deferred("scan");
@@ -789,6 +834,8 @@ void EditorPlugin::_bind_methods() {
 
 	ClassDB::bind_method(D_METHOD("get_undo_redo"), &EditorPlugin::_get_undo_redo);
 	ClassDB::bind_method(D_METHOD("queue_save_layout"), &EditorPlugin::queue_save_layout);
+	ClassDB::bind_method(D_METHOD("add_translation_parser_plugin", "parser"), &EditorPlugin::add_translation_parser_plugin);
+	ClassDB::bind_method(D_METHOD("remove_translation_parser_plugin", "parser"), &EditorPlugin::remove_translation_parser_plugin);
 	ClassDB::bind_method(D_METHOD("add_import_plugin", "importer"), &EditorPlugin::add_import_plugin);
 	ClassDB::bind_method(D_METHOD("remove_import_plugin", "importer"), &EditorPlugin::remove_import_plugin);
 	ClassDB::bind_method(D_METHOD("add_scene_import_plugin", "scene_importer"), &EditorPlugin::add_scene_import_plugin);

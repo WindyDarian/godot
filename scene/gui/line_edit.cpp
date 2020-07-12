@@ -51,7 +51,7 @@ void LineEdit::_gui_input(Ref<InputEvent> p_event) {
 
 	if (b.is_valid()) {
 		if (b->is_pressed() && b->get_button_index() == BUTTON_RIGHT && context_menu_enabled) {
-			menu->set_position(get_global_transform().xform(get_local_mouse_position()));
+			menu->set_position(get_screen_transform().xform(get_local_mouse_position()));
 			menu->set_size(Vector2(1, 1));
 			//menu->set_scale(get_global_transform().get_scale());
 			menu->popup();
@@ -273,6 +273,22 @@ void LineEdit::_gui_input(Ref<InputEvent> p_event) {
 					shift_selection_check_pre(k->get_shift());
 					set_cursor_position(text.length());
 					shift_selection_check_post(k->get_shift());
+				} break;
+				case (KEY_BACKSPACE): {
+					if (!editable)
+						break;
+
+					// If selected, delete the selection
+					if (selection.enabled) {
+						selection_delete();
+						break;
+					}
+
+					// Otherwise delete from cursor to beginning of text edit
+					int current_pos = get_cursor_position();
+					if (current_pos != 0) {
+						delete_text(0, current_pos);
+					}
 				} break;
 #endif
 				default: {
@@ -672,12 +688,12 @@ void LineEdit::_notification(int p_what) {
 			update_placeholder_width();
 			update();
 		} break;
-		case NOTIFICATION_WM_FOCUS_IN: {
+		case NOTIFICATION_WM_WINDOW_FOCUS_IN: {
 			window_has_focus = true;
 			draw_caret = true;
 			update();
 		} break;
-		case NOTIFICATION_WM_FOCUS_OUT: {
+		case NOTIFICATION_WM_WINDOW_FOCUS_OUT: {
 			window_has_focus = false;
 			draw_caret = false;
 			update();
@@ -1211,6 +1227,8 @@ void LineEdit::delete_char() {
 }
 
 void LineEdit::delete_text(int p_from_column, int p_to_column) {
+	ERR_FAIL_COND_MSG(p_from_column < 0 || p_from_column > p_to_column || p_to_column > text.length(),
+			vformat("Positional parameters (from: %d, to: %d) are inverted or outside the text length (%d).", p_from_column, p_to_column, text.length()));
 	if (text.size() > 0) {
 		Ref<Font> font = get_theme_font("font");
 		if (font != nullptr) {
@@ -1783,6 +1801,8 @@ void LineEdit::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_max_length", "chars"), &LineEdit::set_max_length);
 	ClassDB::bind_method(D_METHOD("get_max_length"), &LineEdit::get_max_length);
 	ClassDB::bind_method(D_METHOD("append_at_cursor", "text"), &LineEdit::append_at_cursor);
+	ClassDB::bind_method(D_METHOD("delete_char_at_cursor"), &LineEdit::delete_char);
+	ClassDB::bind_method(D_METHOD("delete_text", "from_column", "to_column"), &LineEdit::delete_text);
 	ClassDB::bind_method(D_METHOD("set_editable", "enabled"), &LineEdit::set_editable);
 	ClassDB::bind_method(D_METHOD("is_editable"), &LineEdit::is_editable);
 	ClassDB::bind_method(D_METHOD("set_secret", "enabled"), &LineEdit::set_secret);

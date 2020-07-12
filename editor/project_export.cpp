@@ -163,6 +163,7 @@ void ProjectExportDialog::_update_presets() {
 		if (preset->is_runnable()) {
 			name += " (" + TTR("Runnable") + ")";
 		}
+		preset->update_files_to_export();
 		presets->add_item(name, preset->get_platform()->get_logo());
 	}
 
@@ -1063,10 +1064,12 @@ ProjectExportDialog::ProjectExportDialog() {
 	//presets->set_drag_forwarding(this);
 	mc->add_child(presets);
 	presets->connect("item_selected", callable_mp(this, &ProjectExportDialog::_edit_preset));
-	duplicate_preset = memnew(ToolButton);
+	duplicate_preset = memnew(Button);
+	duplicate_preset->set_flat(true);
 	preset_hb->add_child(duplicate_preset);
 	duplicate_preset->connect("pressed", callable_mp(this, &ProjectExportDialog::_duplicate_preset));
-	delete_preset = memnew(ToolButton);
+	delete_preset = memnew(Button);
+	delete_preset->set_flat(true);
 	preset_hb->add_child(delete_preset);
 	delete_preset->connect("pressed", callable_mp(this, &ProjectExportDialog::_delete_preset));
 

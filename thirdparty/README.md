@@ -304,10 +304,10 @@ changes are marked with `// -- GODOT --` comments.
 ## mbedtls
 
 - Upstream: https://tls.mbed.org/
-- Version: 2.16.6 (2020)
+- Version: 2.16.7 (2020)
 - License: Apache 2.0
 
-File extracted from upstream release tarball (`-apache.tgz` variant):
+File extracted from upstream release tarball:
 
 - All `*.h` from `include/mbedtls/` to `thirdparty/mbedtls/include/mbedtls/`
 - All `*.c` from `library/` to `thirdparty/mbedtls/library/`
@@ -446,12 +446,32 @@ Files extracted from the upstream source:
 ## oidn
 
 - Upstream: https://github.com/OpenImageDenoise/oidn
-- Version: TBD
+- Version: 1.1.0 (c58c5216db05ceef4cde5a096862f2eeffd14c06, 2019)
 - License: Apache 2.0
 
 Files extracted from upstream source:
 
-- TBD
+common/* (except tasking.* and CMakeLists.txt)
+core/*
+include/OpenImageDenoise/* (except version.h.in)
+LICENSE.txt
+mkl-dnn/include/*
+mkl-dnn/src/* (except CMakeLists.txt)
+weights/rtlightmap_hdr.tza
+scripts/resource_to_cpp.py
+
+Modified files:
+Modifications are marked with `// -- GODOT start --` and `// -- GODOT end --`.
+Patch files are provided in `oidn/patches/`.
+
+core/autoencoder.cpp
+core/autoencoder.h
+core/common.h
+core/device.cpp
+core/device.h
+core/transfer_function.cpp
+
+scripts/resource_to_cpp.py (used in modules/denoise/resource_to_cpp.py)
 
 
 ## opus
@@ -603,7 +623,7 @@ Patches in the `patches` directory should be re-applied after updates.
 ## wslay
 
 - Upstream: https://github.com/tatsuhiro-t/wslay
-- Version: 1.1.0 (2018)
+- Version: 1.1.1 (2020)
 - License: MIT
 
 File extracted from upstream release tarball:

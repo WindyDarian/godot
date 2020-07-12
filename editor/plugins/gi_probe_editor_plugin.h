@@ -43,7 +43,7 @@ class GIProbeEditorPlugin : public EditorPlugin {
 
 	HBoxContainer *bake_hb;
 	Label *bake_info;
-	ToolButton *bake;
+	Button *bake;
 	EditorNode *editor;
 
 	EditorFileDialog *probe_file;
@@ -61,11 +61,11 @@ protected:
 	void _notification(int p_what);
 
 public:
-	virtual String get_name() const { return "GIProbe"; }
-	bool has_main_screen() const { return false; }
-	virtual void edit(Object *p_object);
-	virtual bool handles(Object *p_object) const;
-	virtual void make_visible(bool p_visible);
+	virtual String get_name() const override { return "GIProbe"; }
+	bool has_main_screen() const override { return false; }
+	virtual void edit(Object *p_object) override;
+	virtual bool handles(Object *p_object) const override;
+	virtual void make_visible(bool p_visible) override;
 
 	GIProbeEditorPlugin(EditorNode *p_node);
 	~GIProbeEditorPlugin();
