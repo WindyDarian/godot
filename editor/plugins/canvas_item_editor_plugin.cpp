@@ -2045,10 +2045,10 @@ bool CanvasItemEditor::_gui_input_move(const Ref<InputEvent> &p_event) {
 			if ((b->get_alt() && !b->get_control()) || tool == TOOL_MOVE) {
 				List<CanvasItem *> selection = _get_edited_canvas_items();
 
-				// Remove not movable nodes
+				drag_selection.clear();
 				for (int i = 0; i < selection.size(); i++) {
-					if (!_is_node_movable(selection[i], true)) {
-						selection.erase(selection[i]);
+					if (_is_node_movable(selection[i], true)) {
+						drag_selection.push_back(selection[i]);
 					}
 				}
 
@@ -2073,7 +2073,6 @@ bool CanvasItemEditor::_gui_input_move(const Ref<InputEvent> &p_event) {
 					}
 
 					drag_from = transform.affine_inverse().xform(b->get_position());
-					drag_selection = selection;
 					_save_canvas_item_state(drag_selection);
 				}
 				return true;
@@ -2395,16 +2394,15 @@ bool CanvasItemEditor::_gui_input_select(const Ref<InputEvent> &p_event) {
 					// Drag the node(s) if requested
 					List<CanvasItem *> selection2 = _get_edited_canvas_items();
 
-					// Remove not movable nodes
+					drag_selection.clear();
 					for (int i = 0; i < selection2.size(); i++) {
-						if (!_is_node_movable(selection2[i], true)) {
-							selection2.erase(selection2[i]);
+						if (_is_node_movable(selection2[i], true)) {
+							drag_selection.push_back(selection2[i]);
 						}
 					}
 
 					if (selection2.size() > 0) {
 						drag_type = DRAG_MOVE;
-						drag_selection = selection2;
 						drag_from = click;
 						_save_canvas_item_state(drag_selection);
 					}
@@ -2591,7 +2589,21 @@ void CanvasItemEditor::_gui_input_viewport(const Ref<InputEvent> &p_event) {
 	_gui_input_hover(p_event);
 
 	// Change the cursor
+	_update_cursor();
+
+	// Grab focus
+	if (!viewport->has_focus() && (!get_focus_owner() || !get_focus_owner()->is_text_field())) {
+		viewport->call_deferred("grab_focus");
+	}
+}
+
+void CanvasItemEditor::_update_cursor() {
 	CursorShape c = CURSOR_ARROW;
+	bool should_switch = false;
+	if (drag_selection.size() != 0) {
+		float angle = drag_selection[0]->_edit_get_rotation();
+		should_switch = abs(Math::cos(angle)) < Math_SQRT12;
+	}
 	switch (drag_type) {
 		case DRAG_NONE:
 			switch (tool) {
@@ -2614,21 +2626,37 @@ void CanvasItemEditor::_gui_input_viewport(const Ref<InputEvent> &p_event) {
 		case DRAG_LEFT:
 		case DRAG_RIGHT:
 		case DRAG_V_GUIDE:
-			c = CURSOR_HSIZE;
+			if (should_switch) {
+				c = CURSOR_VSIZE;
+			} else {
+				c = CURSOR_HSIZE;
+			}
 			break;
 		case DRAG_TOP:
 		case DRAG_BOTTOM:
 		case DRAG_H_GUIDE:
-			c = CURSOR_VSIZE;
+			if (should_switch) {
+				c = CURSOR_HSIZE;
+			} else {
+				c = CURSOR_VSIZE;
+			}
 			break;
 		case DRAG_TOP_LEFT:
 		case DRAG_BOTTOM_RIGHT:
 		case DRAG_DOUBLE_GUIDE:
-			c = CURSOR_FDIAGSIZE;
+			if (should_switch) {
+				c = CURSOR_BDIAGSIZE;
+			} else {
+				c = CURSOR_FDIAGSIZE;
+			}
 			break;
 		case DRAG_TOP_RIGHT:
 		case DRAG_BOTTOM_LEFT:
-			c = CURSOR_BDIAGSIZE;
+			if (should_switch) {
+				c = CURSOR_FDIAGSIZE;
+			} else {
+				c = CURSOR_BDIAGSIZE;
+			}
 			break;
 		case DRAG_MOVE:
 			c = CURSOR_MOVE;
@@ -2644,11 +2672,6 @@ void CanvasItemEditor::_gui_input_viewport(const Ref<InputEvent> &p_event) {
 	}
 
 	viewport->set_default_cursor_shape(c);
-
-	// Grab focus
-	if (!viewport->has_focus() && (!get_focus_owner() || !get_focus_owner()->is_text_field())) {
-		viewport->call_deferred("grab_focus");
-	}
 }
 
 void CanvasItemEditor::_draw_text_at_position(Point2 p_position, String p_string, Margin p_side) {
@@ -4466,7 +4489,13 @@ void CanvasItemEditor::_button_tool_select(int p_index) {
 	}
 
 	tool = (Tool)p_index;
+
 	viewport->update();
+	_update_cursor();
+
+	// Request immediate refresh of cursor when using hot-keys to switch between tools
+	DisplayServer::CursorShape ds_cursor_shape = (DisplayServer::CursorShape)viewport->get_default_cursor_shape();
+	DisplayServer::get_singleton()->cursor_set_shape(ds_cursor_shape);
 }
 
 void CanvasItemEditor::_insert_animation_keys(bool p_location, bool p_rotation, bool p_scale, bool p_on_existing) {

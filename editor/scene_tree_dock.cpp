@@ -1100,6 +1100,7 @@ void SceneTreeDock::_notification(int p_what) {
 			node_shortcuts_toggle->set_name("NodeShortcutsToggle");
 			node_shortcuts_toggle->set_icon(get_theme_icon("Favorites", "EditorIcons"));
 			node_shortcuts_toggle->set_toggle_mode(true);
+			node_shortcuts_toggle->set_tooltip(TTR("Switch to Favorite Nodes"));
 			node_shortcuts_toggle->set_pressed(EDITOR_GET("_use_favorites_root_selection"));
 			node_shortcuts_toggle->set_anchors_and_margins_preset(Control::PRESET_CENTER_RIGHT);
 			node_shortcuts_toggle->connect("pressed", callable_mp(this, &SceneTreeDock::_update_create_root_dialog));
@@ -1217,7 +1218,6 @@ void SceneTreeDock::_node_selected() {
 	Node *node = scene_tree->get_selected();
 
 	if (!node) {
-		editor->push_item(nullptr);
 		return;
 	}
 
@@ -1902,11 +1902,10 @@ void SceneTreeDock::_selection_changed() {
 	if (selection_size > 1) {
 		//automatically turn on multi-edit
 		_tool_selected(TOOL_MULTI_EDIT);
-	} else if (selection_size == 1) {
-		editor->push_item(EditorNode::get_singleton()->get_editor_selection()->get_selected_node_list()[0]);
-	} else {
+	} else if (selection_size == 0) {
 		editor->push_item(nullptr);
 	}
+
 	_update_script_button();
 }
 
@@ -2719,7 +2718,7 @@ void SceneTreeDock::_update_create_root_dialog() {
 				if (l != String()) {
 					Button *button = memnew(Button);
 					favorite_nodes->add_child(button);
-					button->set_text(TTR(l));
+					button->set_text(l);
 					String name = l.get_slicec(' ', 0);
 					if (ScriptServer::is_global_class(name)) {
 						name = ScriptServer::get_global_class_native_base(name);

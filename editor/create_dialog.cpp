@@ -674,7 +674,7 @@ CreateDialog::CreateDialog() {
 	favorites->connect("item_activated", callable_mp(this, &CreateDialog::_favorite_activated));
 	favorites->add_theme_constant_override("draw_guides", 1);
 #ifndef _MSC_VER
-#warning cant forward drag data to a non control, must be fixed
+#warning cannot forward drag data to a non control, must be fixed
 #endif
 	//favorites->set_drag_forwarding(this);
 	fav_vb->add_margin_child(TTR("Favorites:"), favorites, true);
@@ -707,6 +707,7 @@ CreateDialog::CreateDialog() {
 	favorite = memnew(Button);
 	favorite->set_flat(true);
 	favorite->set_toggle_mode(true);
+	favorite->set_tooltip(TTR("(Un)favorite selected item."));
 	favorite->connect("pressed", callable_mp(this, &CreateDialog::_favorite_toggled));
 	search_hb->add_child(favorite);
 	vbc->add_margin_child(TTR("Search:"), search_hb);

@@ -54,6 +54,13 @@
         ]
       },
       {
+        "name": "godot_aabb_abs",
+        "return_type": "godot_aabb",
+        "arguments": [
+          ["const godot_aabb *", "p_self"]
+        ]
+      },
+      {
         "name": "godot_aabb_get_area",
         "return_type": "godot_real",
         "arguments": [
@@ -2981,13 +2988,6 @@
         ]
       },
       {
-        "name": "godot_plane_get_any_point",
-        "return_type": "godot_vector3",
-        "arguments": [
-          ["const godot_plane *", "p_self"]
-        ]
-      },
-      {
         "name": "godot_plane_is_point_over",
         "return_type": "godot_bool",
         "arguments": [
@@ -4237,15 +4237,8 @@
         ]
       },
       {
-        "name": "godot_string_to_double",
-        "return_type": "double",
-        "arguments": [
-          ["const godot_string *", "p_self"]
-        ]
-      },
-      {
         "name": "godot_string_to_float",
-        "return_type": "godot_real",
+        "return_type": "double",
         "arguments": [
           ["const godot_string *", "p_self"]
         ]
@@ -4279,7 +4272,7 @@
         ]
       },
       {
-        "name": "godot_string_char_to_double",
+        "name": "godot_string_char_to_float",
         "return_type": "double",
         "arguments": [
           ["const char *", "p_what"]
@@ -4337,7 +4330,7 @@
         ]
       },
       {
-        "name": "godot_string_unicode_char_to_double",
+        "name": "godot_string_unicode_char_to_float",
         "return_type": "double",
         "arguments": [
           ["const wchar_t *", "p_str"],

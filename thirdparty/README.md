@@ -74,6 +74,17 @@ Files extracted from upstream source:
 - all .cpp, .h, and .txt files in ConvectionKernels/
 
 
+## doctest
+- Upstream: https://github.com/onqtam/doctest
+- Version: 1c8da00 (2.4.0)
+- License: MIT
+
+Extracted from .zip provided. Extracted license and header only.
+
+Important: Some files have Godot-made changes.
+They are marked with `// -- GODOT start --` and `// -- GODOT end --`
+comments.
+
 ## enet
 
 - Upstream: http://enet.bespin.org
@@ -148,17 +159,6 @@ Files extracted from upstream source:
 - the `src/` folder, stripped of the `Jamfile` files and the `tools` subfolder
 - the `include/` folder
 - `docs/{FTL.TXT,LICENSE.TXT}`
-
-
-## glad
-
-- Upstream: https://github.com/Dav1dde/glad
-- Version: 0.1.33 (2019)
-- License: MIT
-
-The files we package are automatically generated.
-See the header of glad.c for instructions on how to generate them for
-the GLES version Godot targets.
 
 
 ## glslang
@@ -426,9 +426,8 @@ Collection of single-file libraries used in Godot components.
   * License: zlib
 - `stb_vorbis.c`
   * Upstream: https://github.com/nothings/stb
-  * Version: 1.19
+  * Version: 1.20
   * License: Public Domain (Unlicense) or MIT
-  * Modifications: `f->temp_offset += (sz+3)&~3;` changed to `f->temp_offset += (sz+7)&~7;` (needed until fixed upstream)
 
 
 ## nanosvg

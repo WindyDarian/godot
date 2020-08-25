@@ -36,9 +36,6 @@
 #include "java_godot_wrapper.h"
 #include "os_android.h"
 
-#if defined(OPENGL_ENABLED)
-#include "drivers/gles2/rasterizer_gles2.h"
-#endif
 #if defined(VULKAN_ENABLED)
 #include "drivers/vulkan/rendering_device_vulkan.h"
 #include "platform/android/vulkan/vulkan_context_android.h"
@@ -155,12 +152,12 @@ bool DisplayServerAndroid::screen_is_touchscreen(int p_screen) const {
 	return true;
 }
 
-void DisplayServerAndroid::virtual_keyboard_show(const String &p_existing_text, const Rect2 &p_screen_rect, int p_max_length, int p_cursor_start, int p_cursor_end) {
+void DisplayServerAndroid::virtual_keyboard_show(const String &p_existing_text, const Rect2 &p_screen_rect, bool p_multiline, int p_max_length, int p_cursor_start, int p_cursor_end) {
 	GodotIOJavaWrapper *godot_io_java = OS_Android::get_singleton()->get_godot_io_java();
 	ERR_FAIL_COND(!godot_io_java);
 
 	if (godot_io_java->has_vk()) {
-		godot_io_java->show_vk(p_existing_text, p_max_length, p_cursor_start, p_cursor_end);
+		godot_io_java->show_vk(p_existing_text, p_multiline, p_max_length, p_cursor_start, p_cursor_end);
 	} else {
 		ERR_PRINT("Virtual keyboard not available");
 	}
@@ -486,16 +483,39 @@ void DisplayServerAndroid::process_joy_event(DisplayServerAndroid::JoypadEvent p
 	}
 }
 
+void DisplayServerAndroid::_set_key_modifier_state(Ref<InputEventWithModifiers> ev) {
+	ev->set_shift(shift_mem);
+	ev->set_alt(alt_mem);
+	ev->set_metakey(meta_mem);
+	ev->set_control(control_mem);
+}
+
 void DisplayServerAndroid::process_key_event(int p_keycode, int p_scancode, int p_unicode_char, bool p_pressed) {
 	Ref<InputEventKey> ev;
 	ev.instance();
 	int val = p_unicode_char;
 	int keycode = android_get_keysym(p_keycode);
 	int phy_keycode = android_get_keysym(p_scancode);
+
+	if (keycode == KEY_SHIFT) {
+		shift_mem = p_pressed;
+	}
+	if (keycode == KEY_ALT) {
+		alt_mem = p_pressed;
+	}
+	if (keycode == KEY_CONTROL) {
+		control_mem = p_pressed;
+	}
+	if (keycode == KEY_META) {
+		meta_mem = p_pressed;
+	}
+
 	ev->set_keycode(keycode);
 	ev->set_physical_keycode(phy_keycode);
 	ev->set_unicode(val);
 	ev->set_pressed(p_pressed);
+
+	_set_key_modifier_state(ev);
 
 	if (val == '\n') {
 		ev->set_keycode(KEY_ENTER);
@@ -629,6 +649,7 @@ void DisplayServerAndroid::process_hover(int p_type, Point2 p_pos) {
 		case 10: { // hover exit
 			Ref<InputEventMouseMotion> ev;
 			ev.instance();
+			_set_key_modifier_state(ev);
 			ev->set_position(p_pos);
 			ev->set_global_position(p_pos);
 			ev->set_relative(p_pos - hover_prev_pos);
@@ -641,6 +662,7 @@ void DisplayServerAndroid::process_hover(int p_type, Point2 p_pos) {
 void DisplayServerAndroid::process_double_tap(Point2 p_pos) {
 	Ref<InputEventMouseButton> ev;
 	ev.instance();
+	_set_key_modifier_state(ev);
 	ev->set_position(p_pos);
 	ev->set_global_position(p_pos);
 	ev->set_pressed(false);
@@ -651,6 +673,7 @@ void DisplayServerAndroid::process_double_tap(Point2 p_pos) {
 void DisplayServerAndroid::process_scroll(Point2 p_pos) {
 	Ref<InputEventPanGesture> ev;
 	ev.instance();
+	_set_key_modifier_state(ev);
 	ev->set_position(p_pos);
 	ev->set_delta(p_pos - scroll_prev_pos);
 	Input::get_singleton()->parse_input_event(ev);

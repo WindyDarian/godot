@@ -82,6 +82,10 @@ Dictionary GDScriptSyntaxHighlighter::_get_line_syntax_highlighting(int p_line) 
 	const String &str = text_edit->get_line(p_line);
 	const int line_length = str.length();
 	Color prev_color;
+
+	if (in_region != -1 && str.length() == 0) {
+		color_region_cache[p_line] = in_region;
+	}
 	for (int j = 0; j < str.length(); j++) {
 		Dictionary highlighter_info;
 
@@ -288,7 +292,7 @@ Dictionary GDScriptSyntaxHighlighter::_get_line_syntax_highlighting(int p_line) 
 
 			if (str[k] == '(') {
 				in_function_name = true;
-			} else if (previous_text == GDScriptTokenizer::get_token_name(GDScriptTokenizer::TK_PR_VAR)) {
+			} else if (previous_text == GDScriptTokenizer::get_token_name(GDScriptTokenizer::Token::VAR)) {
 				in_variable_declaration = true;
 			}
 		}
@@ -357,7 +361,7 @@ Dictionary GDScriptSyntaxHighlighter::_get_line_syntax_highlighting(int p_line) 
 		} else if (in_function_name) {
 			next_type = FUNCTION;
 
-			if (previous_text == GDScriptTokenizer::get_token_name(GDScriptTokenizer::TK_PR_FUNCTION)) {
+			if (previous_text == GDScriptTokenizer::get_token_name(GDScriptTokenizer::Token::FUNC)) {
 				color = function_definition_color;
 			} else {
 				color = function_color;

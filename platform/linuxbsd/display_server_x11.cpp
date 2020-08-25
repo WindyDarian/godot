@@ -39,10 +39,6 @@
 #include "main/main.h"
 #include "scene/resources/texture.h"
 
-#if defined(OPENGL_ENABLED)
-#include "drivers/gles2/rasterizer_gles2.h"
-#endif
-
 #if defined(VULKAN_ENABLED)
 #include "servers/rendering/rasterizer_rd/rasterizer_rd.h"
 #endif
@@ -873,6 +869,46 @@ void DisplayServerX11::window_set_transient(WindowID p_window, WindowID p_parent
 	}
 }
 
+// Helper method. Assumes that the window id has already been checked and exists.
+void DisplayServerX11::_update_size_hints(WindowID p_window) {
+	WindowData &wd = windows[p_window];
+	WindowMode window_mode = window_get_mode(p_window);
+	XSizeHints *xsh = XAllocSizeHints();
+
+	// Always set the position and size hints - they should be synchronized with the actual values after the window is mapped anyway
+	xsh->flags |= PPosition | PSize;
+	xsh->x = wd.position.x;
+	xsh->y = wd.position.y;
+	xsh->width = wd.size.width;
+	xsh->height = wd.size.height;
+
+	if (window_mode == WINDOW_MODE_FULLSCREEN) {
+		// Do not set any other hints to prevent the window manager from ignoring the fullscreen flags
+	} else if (window_get_flag(WINDOW_FLAG_RESIZE_DISABLED, p_window)) {
+		// If resizing is disabled, use the forced size
+		xsh->flags |= PMinSize | PMaxSize;
+		xsh->min_width = wd.size.x;
+		xsh->max_width = wd.size.x;
+		xsh->min_height = wd.size.y;
+		xsh->max_height = wd.size.y;
+	} else {
+		// Otherwise, just respect min_size and max_size
+		if (wd.min_size != Size2i()) {
+			xsh->flags |= PMinSize;
+			xsh->min_width = wd.min_size.x;
+			xsh->min_height = wd.min_size.y;
+		}
+		if (wd.max_size != Size2i()) {
+			xsh->flags |= PMaxSize;
+			xsh->max_width = wd.max_size.x;
+			xsh->max_height = wd.max_size.y;
+		}
+	}
+
+	XSetWMNormalHints(x11_display, wd.x11_window, xsh);
+	XFree(xsh);
+}
+
 Point2i DisplayServerX11::window_get_position(WindowID p_window) const {
 	_THREAD_SAFE_METHOD_
 
@@ -926,25 +962,8 @@ void DisplayServerX11::window_set_max_size(const Size2i p_size, WindowID p_windo
 	}
 	wd.max_size = p_size;
 
-	if (!window_get_flag(WINDOW_FLAG_RESIZE_DISABLED, p_window)) {
-		XSizeHints *xsh;
-		xsh = XAllocSizeHints();
-		xsh->flags = 0L;
-		if (wd.min_size != Size2i()) {
-			xsh->flags |= PMinSize;
-			xsh->min_width = wd.min_size.x;
-			xsh->min_height = wd.min_size.y;
-		}
-		if (wd.max_size != Size2i()) {
-			xsh->flags |= PMaxSize;
-			xsh->max_width = wd.max_size.x;
-			xsh->max_height = wd.max_size.y;
-		}
-		XSetWMNormalHints(x11_display, wd.x11_window, xsh);
-		XFree(xsh);
-
-		XFlush(x11_display);
-	}
+	_update_size_hints(p_window);
+	XFlush(x11_display);
 }
 
 Size2i DisplayServerX11::window_get_max_size(WindowID p_window) const {
@@ -968,25 +987,8 @@ void DisplayServerX11::window_set_min_size(const Size2i p_size, WindowID p_windo
 	}
 	wd.min_size = p_size;
 
-	if (!window_get_flag(WINDOW_FLAG_RESIZE_DISABLED, p_window)) {
-		XSizeHints *xsh;
-		xsh = XAllocSizeHints();
-		xsh->flags = 0L;
-		if (wd.min_size != Size2i()) {
-			xsh->flags |= PMinSize;
-			xsh->min_width = wd.min_size.x;
-			xsh->min_height = wd.min_size.y;
-		}
-		if (wd.max_size != Size2i()) {
-			xsh->flags |= PMaxSize;
-			xsh->max_width = wd.max_size.x;
-			xsh->max_height = wd.max_size.y;
-		}
-		XSetWMNormalHints(x11_display, wd.x11_window, xsh);
-		XFree(xsh);
-
-		XFlush(x11_display);
-	}
+	_update_size_hints(p_window);
+	XFlush(x11_display);
 }
 
 Size2i DisplayServerX11::window_get_min_size(WindowID p_window) const {
@@ -1019,36 +1021,14 @@ void DisplayServerX11::window_set_size(const Size2i p_size, WindowID p_window) {
 	int old_w = xwa.width;
 	int old_h = xwa.height;
 
-	// If window resizable is disabled we need to update the attributes first
-	XSizeHints *xsh;
-	xsh = XAllocSizeHints();
-	if (!window_get_flag(WINDOW_FLAG_RESIZE_DISABLED, p_window)) {
-		xsh->flags = PMinSize | PMaxSize;
-		xsh->min_width = size.x;
-		xsh->max_width = size.x;
-		xsh->min_height = size.y;
-		xsh->max_height = size.y;
-	} else {
-		xsh->flags = 0L;
-		if (wd.min_size != Size2i()) {
-			xsh->flags |= PMinSize;
-			xsh->min_width = wd.min_size.x;
-			xsh->min_height = wd.min_size.y;
-		}
-		if (wd.max_size != Size2i()) {
-			xsh->flags |= PMaxSize;
-			xsh->max_width = wd.max_size.x;
-			xsh->max_height = wd.max_size.y;
-		}
-	}
-	XSetWMNormalHints(x11_display, wd.x11_window, xsh);
-	XFree(xsh);
+	// Update our videomode width and height
+	wd.size = size;
+
+	// Update the size hints first to make sure the window size can be set
+	_update_size_hints(p_window);
 
 	// Resize the window
 	XResizeWindow(x11_display, wd.x11_window, size.x, size.y);
-
-	// Update our videomode width and height
-	wd.size = size;
 
 	for (int timeout = 0; timeout < 50; ++timeout) {
 		XSync(x11_display, False);
@@ -1205,14 +1185,9 @@ void DisplayServerX11::_set_wm_fullscreen(WindowID p_window, bool p_enabled) {
 		XChangeProperty(x11_display, wd.x11_window, property, property, 32, PropModeReplace, (unsigned char *)&hints, 5);
 	}
 
-	if (p_enabled && window_get_flag(WINDOW_FLAG_RESIZE_DISABLED, p_window)) {
+	if (p_enabled) {
 		// Set the window as resizable to prevent window managers to ignore the fullscreen state flag.
-		XSizeHints *xsh;
-
-		xsh = XAllocSizeHints();
-		xsh->flags = 0L;
-		XSetWMNormalHints(x11_display, wd.x11_window, xsh);
-		XFree(xsh);
+		_update_size_hints(p_window);
 	}
 
 	// Using EWMH -- Extended Window Manager Hints
@@ -1240,30 +1215,7 @@ void DisplayServerX11::_set_wm_fullscreen(WindowID p_window, bool p_enabled) {
 
 	if (!p_enabled) {
 		// Reset the non-resizable flags if we un-set these before.
-		Size2i size = window_get_size(p_window);
-		XSizeHints *xsh;
-		xsh = XAllocSizeHints();
-		if (window_get_flag(WINDOW_FLAG_RESIZE_DISABLED, p_window)) {
-			xsh->flags = PMinSize | PMaxSize;
-			xsh->min_width = size.x;
-			xsh->max_width = size.x;
-			xsh->min_height = size.y;
-			xsh->max_height = size.y;
-		} else {
-			xsh->flags = 0L;
-			if (wd.min_size != Size2i()) {
-				xsh->flags |= PMinSize;
-				xsh->min_width = wd.min_size.x;
-				xsh->min_height = wd.min_size.y;
-			}
-			if (wd.max_size != Size2i()) {
-				xsh->flags |= PMaxSize;
-				xsh->max_width = wd.max_size.x;
-				xsh->max_height = wd.max_size.y;
-			}
-		}
-		XSetWMNormalHints(x11_display, wd.x11_window, xsh);
-		XFree(xsh);
+		_update_size_hints(p_window);
 
 		// put back or remove decorations according to the last set borderless state
 		Hints hints;
@@ -1321,12 +1273,12 @@ void DisplayServerX11::window_set_mode(WindowMode p_mode, WindowID p_window) {
 		} break;
 		case WINDOW_MODE_FULLSCREEN: {
 			//Remove full-screen
+			wd.fullscreen = false;
+
 			_set_wm_fullscreen(p_window, false);
 
 			//un-maximize required for always on top
 			bool on_top = window_get_flag(WINDOW_FLAG_ALWAYS_ON_TOP, p_window);
-
-			wd.fullscreen = false;
 
 			window_set_position(wd.last_position_before_fs, p_window);
 
@@ -1373,15 +1325,16 @@ void DisplayServerX11::window_set_mode(WindowMode p_mode, WindowID p_window) {
 		} break;
 		case WINDOW_MODE_FULLSCREEN: {
 			wd.last_position_before_fs = wd.position;
+
 			if (window_get_flag(WINDOW_FLAG_ALWAYS_ON_TOP, p_window)) {
 				_set_wm_maximized(p_window, true);
 			}
-			_set_wm_fullscreen(p_window, true);
+
 			wd.fullscreen = true;
+			_set_wm_fullscreen(p_window, true);
 		} break;
 		case WINDOW_MODE_MAXIMIZED: {
 			_set_wm_maximized(p_window, true);
-
 		} break;
 	}
 }
@@ -1448,37 +1401,11 @@ void DisplayServerX11::window_set_flag(WindowFlags p_flag, bool p_enabled, Windo
 
 	switch (p_flag) {
 		case WINDOW_FLAG_RESIZE_DISABLED: {
-			XSizeHints *xsh;
-			xsh = XAllocSizeHints();
-			if (p_enabled) {
-				Size2i size = window_get_size(p_window);
-
-				xsh->flags = PMinSize | PMaxSize;
-				xsh->min_width = size.x;
-				xsh->max_width = size.x;
-				xsh->min_height = size.y;
-				xsh->max_height = size.y;
-			} else {
-				xsh->flags = 0L;
-				if (wd.min_size != Size2i()) {
-					xsh->flags |= PMinSize;
-					xsh->min_width = wd.min_size.x;
-					xsh->min_height = wd.min_size.y;
-				}
-				if (wd.max_size != Size2i()) {
-					xsh->flags |= PMaxSize;
-					xsh->max_width = wd.max_size.x;
-					xsh->max_height = wd.max_size.y;
-				}
-			}
-
-			XSetWMNormalHints(x11_display, wd.x11_window, xsh);
-			XFree(xsh);
-
 			wd.resize_disabled = p_enabled;
 
-			XFlush(x11_display);
+			_update_size_hints(p_window);
 
+			XFlush(x11_display);
 		} break;
 		case WINDOW_FLAG_BORDERLESS: {
 			Hints hints;
@@ -2372,7 +2299,7 @@ void DisplayServerX11::process_events() {
 			uint64_t delta = OS::get_singleton()->get_ticks_msec() - time_since_no_focus;
 
 			if (delta > 250) {
-				//X11 can go between windows and have no focus for a while, when creating them or something else. Use this as safety to avoid unnecesary focus in/outs.
+				//X11 can go between windows and have no focus for a while, when creating them or something else. Use this as safety to avoid unnecessary focus in/outs.
 				if (OS::get_singleton()->get_main_loop()) {
 					OS::get_singleton()->get_main_loop()->notification(MainLoop::NOTIFICATION_APPLICATION_FOCUS_OUT);
 				}
@@ -3299,20 +3226,6 @@ DisplayServerX11::WindowID DisplayServerX11::_create_window(WindowMode p_mode, u
 		windows[id] = wd;
 
 		{
-			if (p_flags & WINDOW_FLAG_RESIZE_DISABLED_BIT) {
-				XSizeHints *xsh;
-				xsh = XAllocSizeHints();
-
-				xsh->flags = PMinSize | PMaxSize;
-				xsh->min_width = p_rect.size.width;
-				xsh->max_width = p_rect.size.width;
-				xsh->min_height = p_rect.size.height;
-				xsh->max_height = p_rect.size.height;
-
-				XSetWMNormalHints(x11_display, wd.x11_window, xsh);
-				XFree(xsh);
-			}
-
 			bool make_utility = false;
 
 			if (p_flags & WINDOW_FLAG_BORDERLESS_BIT) {
@@ -3332,7 +3245,7 @@ DisplayServerX11::WindowID DisplayServerX11::_create_window(WindowMode p_mode, u
 			if (make_utility) {
 				//this one seems to disable the fade animations for regular windows
 				//but has the drawback that will not get focus by default, so
-				//we need fo force it, unless no focus requested
+				//we need to force it, unless no focus requested
 
 				Atom type_atom = XInternAtom(x11_display, "_NET_WM_WINDOW_TYPE_UTILITY", False);
 				Atom wt_atom = XInternAtom(x11_display, "_NET_WM_WINDOW_TYPE", False);
@@ -3362,18 +3275,7 @@ DisplayServerX11::WindowID DisplayServerX11::_create_window(WindowMode p_mode, u
 			}
 		}
 
-		if (id != MAIN_WINDOW_ID) {
-			XSizeHints my_hints = XSizeHints();
-
-			my_hints.flags = PPosition | PSize; /* I want to specify position and size */
-			my_hints.x = p_rect.position.x; /* The origin and size coords I want */
-			my_hints.y = p_rect.position.y;
-			my_hints.width = p_rect.size.width;
-			my_hints.height = p_rect.size.height;
-
-			XSetNormalHints(x11_display, wd.x11_window, &my_hints);
-			XMoveWindow(x11_display, wd.x11_window, p_rect.position.x, p_rect.position.y);
-		}
+		_update_size_hints(id);
 
 #if defined(VULKAN_ENABLED)
 		if (context_vulkan) {

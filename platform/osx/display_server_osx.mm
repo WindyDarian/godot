@@ -45,7 +45,6 @@
 #include <IOKit/hid/IOHIDLib.h>
 
 #if defined(OPENGL_ENABLED)
-#include "drivers/gles2/rasterizer_gles2.h"
 //TODO - reimplement OpenGLES
 
 #import <AppKit/NSOpenGLView.h>
@@ -1944,8 +1943,12 @@ void DisplayServerOSX::alert(const String &p_alert, const String &p_title) {
 	[window setInformativeText:ns_alert];
 	[window setAlertStyle:NSAlertStyleWarning];
 
+	id key_window = [[NSApplication sharedApplication] keyWindow];
 	[window runModal];
 	[window release];
+	if (key_window) {
+		[key_window makeKeyAndOrderFront:nil];
+	}
 }
 
 Error DisplayServerOSX::dialog_show(String p_title, String p_description, Vector<String> p_buttons, const Callable &p_callback) {
@@ -2366,7 +2369,11 @@ void DisplayServerOSX::_update_window(WindowData p_wd) {
 		[p_wd.window_object setHidesOnDeactivate:YES];
 	} else {
 		// Reset these when our window is not a borderless window that covers up the screen
-		[p_wd.window_object setLevel:NSNormalWindowLevel];
+		if (p_wd.on_top) {
+			[p_wd.window_object setLevel:NSFloatingWindowLevel];
+		} else {
+			[p_wd.window_object setLevel:NSNormalWindowLevel];
+		}
 		[p_wd.window_object setHidesOnDeactivate:NO];
 	}
 }
@@ -2782,7 +2789,7 @@ void DisplayServerOSX::window_set_flag(WindowFlags p_flag, bool p_enabled, Windo
 	switch (p_flag) {
 		case WINDOW_FLAG_RESIZE_DISABLED: {
 			wd.resize_disabled = p_enabled;
-			if (wd.fullscreen) { //fullscreen window should be resizable, style will be applyed on exiting fs
+			if (wd.fullscreen) { //fullscreen window should be resizable, style will be applied on exiting fs
 				return;
 			}
 			if (p_enabled) {
@@ -2793,7 +2800,9 @@ void DisplayServerOSX::window_set_flag(WindowFlags p_flag, bool p_enabled, Windo
 		} break;
 		case WINDOW_FLAG_BORDERLESS: {
 			// OrderOut prevents a lose focus bug with the window
-			[wd.window_object orderOut:nil];
+			if ([wd.window_object isVisible]) {
+				[wd.window_object orderOut:nil];
+			}
 			wd.borderless = p_enabled;
 			if (p_enabled) {
 				[wd.window_object setStyleMask:NSWindowStyleMaskBorderless];
@@ -2807,7 +2816,13 @@ void DisplayServerOSX::window_set_flag(WindowFlags p_flag, bool p_enabled, Windo
 				[wd.window_object setFrame:frameRect display:NO];
 			}
 			_update_window(wd);
-			[wd.window_object makeKeyAndOrderFront:nil];
+			if ([wd.window_object isVisible]) {
+				if (wd.no_focus) {
+					[wd.window_object orderFront:nil];
+				} else {
+					[wd.window_object makeKeyAndOrderFront:nil];
+				}
+			}
 		} break;
 		case WINDOW_FLAG_ALWAYS_ON_TOP: {
 			wd.on_top = p_enabled;
@@ -2875,7 +2890,11 @@ void DisplayServerOSX::window_move_to_foreground(WindowID p_window) {
 	const WindowData &wd = windows[p_window];
 
 	[[NSApplication sharedApplication] activateIgnoringOtherApps:YES];
-	[wd.window_object makeKeyAndOrderFront:nil];
+	if (wd.no_focus) {
+		[wd.window_object orderFront:nil];
+	} else {
+		[wd.window_object makeKeyAndOrderFront:nil];
+	}
 }
 
 bool DisplayServerOSX::window_can_draw(WindowID p_window) const {
@@ -3492,9 +3511,7 @@ DisplayServerOSX::WindowID DisplayServerOSX::_create_window(WindowMode p_mode, c
 		wd.window_view = [[GodotContentView alloc] init];
 		ERR_FAIL_COND_V_MSG(wd.window_view == nil, INVALID_WINDOW_ID, "Can't create a window view");
 		[wd.window_view setWindowID:window_id_counter];
-		if (NSAppKitVersionNumber >= NSAppKitVersionNumber10_14) {
-			[wd.window_view setWantsLayer:TRUE];
-		}
+		[wd.window_view setWantsLayer:TRUE];
 
 		[wd.window_object setCollectionBehavior:NSWindowCollectionBehaviorFullScreenPrimary];
 		[wd.window_object setContentView:wd.window_view];

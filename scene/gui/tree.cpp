@@ -1971,7 +1971,7 @@ void Tree::_text_editor_enter(String p_text) {
 			//popup_edited_item->edited_signal.call( popup_edited_item_col );
 		} break;
 		case TreeItem::CELL_MODE_RANGE: {
-			c.val = p_text.to_double();
+			c.val = p_text.to_float();
 			if (c.step > 0) {
 				c.val = Math::stepify(c.val, c.step);
 			}
@@ -3419,6 +3419,8 @@ void Tree::scroll_to_item(TreeItem *p_item) {
 
 TreeItem *Tree::_search_item_text(TreeItem *p_at, const String &p_find, int *r_col, bool p_selectable, bool p_backwards) {
 	TreeItem *from = p_at;
+	TreeItem *loop = nullptr; // Safe-guard against infinite loop.
+
 	while (p_at) {
 		for (int i = 0; i < columns.size(); i++) {
 			if (p_at->get_text(i).findn(p_find) == 0 && (!p_selectable || p_at->is_selectable(i))) {
@@ -3436,6 +3438,12 @@ TreeItem *Tree::_search_item_text(TreeItem *p_at, const String &p_find, int *r_c
 		}
 
 		if ((p_at) == from) {
+			break;
+		}
+
+		if (!loop) {
+			loop = p_at;
+		} else if (loop == p_at) {
 			break;
 		}
 	}

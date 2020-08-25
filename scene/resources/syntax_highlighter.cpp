@@ -158,6 +158,10 @@ Dictionary CodeHighlighter::_get_line_syntax_highlighting(int p_line) {
 	const String &str = text_edit->get_line(p_line);
 	const int line_length = str.length();
 	Color prev_color;
+
+	if (in_region != -1 && str.length() == 0) {
+		color_region_cache[p_line] = in_region;
+	}
 	for (int j = 0; j < line_length; j++) {
 		Dictionary highlighter_info;
 
@@ -488,7 +492,7 @@ void CodeHighlighter::add_color_region(const String &p_start_key, const String &
 	color_region.color = p_color;
 	color_region.start_key = p_start_key;
 	color_region.end_key = p_end_key;
-	color_region.line_only = p_line_only;
+	color_region.line_only = p_line_only || p_end_key == "";
 	color_regions.push_back(color_region);
 	clear_highlighting_cache();
 }

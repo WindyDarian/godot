@@ -455,7 +455,6 @@ struct _VariantCall {
 
 	VCALL_LOCALMEM0R(Plane, normalized);
 	VCALL_LOCALMEM0R(Plane, center);
-	VCALL_LOCALMEM0R(Plane, get_any_point);
 	VCALL_LOCALMEM1R(Plane, is_equal_approx);
 	VCALL_LOCALMEM1R(Plane, is_point_over);
 	VCALL_LOCALMEM1R(Plane, distance_to);
@@ -843,6 +842,7 @@ struct _VariantCall {
 #define VCALL_PTR5R(m_type, m_method) \
 	static void _call_##m_type##_##m_method(Variant &r_ret, Variant &p_self, const Variant **p_args) { r_ret = reinterpret_cast<m_type *>(p_self._data._ptr)->m_method(*p_args[0], *p_args[1], *p_args[2], *p_args[3], *p_args[4]); }
 
+	VCALL_PTR0R(AABB, abs);
 	VCALL_PTR0R(AABB, get_area);
 	VCALL_PTR0R(AABB, has_no_area);
 	VCALL_PTR0R(AABB, has_no_surface);
@@ -1405,7 +1405,7 @@ Variant Variant::construct(const Variant::Type p_type, const Variant **p_args, i
 				return (int64_t(*p_args[0]));
 			}
 			case FLOAT: {
-				return real_t(*p_args[0]);
+				return double(*p_args[0]);
 			}
 			case STRING: {
 				return String(*p_args[0]);
@@ -1980,7 +1980,6 @@ void register_variant_methods() {
 
 	ADDFUNC0R(PLANE, PLANE, Plane, normalized, varray());
 	ADDFUNC0R(PLANE, VECTOR3, Plane, center, varray());
-	ADDFUNC0R(PLANE, VECTOR3, Plane, get_any_point, varray());
 	ADDFUNC1R(PLANE, BOOL, Plane, is_equal_approx, PLANE, "plane", varray());
 	ADDFUNC1R(PLANE, BOOL, Plane, is_point_over, VECTOR3, "point", varray());
 	ADDFUNC1R(PLANE, FLOAT, Plane, distance_to, VECTOR3, "point", varray());
@@ -2220,6 +2219,7 @@ void register_variant_methods() {
 
 	//pointerbased
 
+	ADDFUNC0R(AABB, AABB, AABB, abs, varray());
 	ADDFUNC0R(AABB, FLOAT, AABB, get_area, varray());
 	ADDFUNC0R(AABB, BOOL, AABB, has_no_area, varray());
 	ADDFUNC0R(AABB, BOOL, AABB, has_no_surface, varray());
@@ -2350,9 +2350,9 @@ void register_variant_methods() {
 	_VariantCall::add_variant_constant(Variant::VECTOR3, "FORWARD", Vector3(0, 0, -1));
 	_VariantCall::add_variant_constant(Variant::VECTOR3, "BACK", Vector3(0, 0, 1));
 
-	_VariantCall::add_constant(Variant::VECTOR3I, "AXIS_X", Vector3::AXIS_X);
-	_VariantCall::add_constant(Variant::VECTOR3I, "AXIS_Y", Vector3::AXIS_Y);
-	_VariantCall::add_constant(Variant::VECTOR3I, "AXIS_Z", Vector3::AXIS_Z);
+	_VariantCall::add_constant(Variant::VECTOR3I, "AXIS_X", Vector3i::AXIS_X);
+	_VariantCall::add_constant(Variant::VECTOR3I, "AXIS_Y", Vector3i::AXIS_Y);
+	_VariantCall::add_constant(Variant::VECTOR3I, "AXIS_Z", Vector3i::AXIS_Z);
 
 	_VariantCall::add_variant_constant(Variant::VECTOR3I, "ZERO", Vector3i(0, 0, 0));
 	_VariantCall::add_variant_constant(Variant::VECTOR3I, "ONE", Vector3i(1, 1, 1));
@@ -2366,8 +2366,8 @@ void register_variant_methods() {
 	_VariantCall::add_constant(Variant::VECTOR2, "AXIS_X", Vector2::AXIS_X);
 	_VariantCall::add_constant(Variant::VECTOR2, "AXIS_Y", Vector2::AXIS_Y);
 
-	_VariantCall::add_constant(Variant::VECTOR2I, "AXIS_X", Vector2::AXIS_X);
-	_VariantCall::add_constant(Variant::VECTOR2I, "AXIS_Y", Vector2::AXIS_Y);
+	_VariantCall::add_constant(Variant::VECTOR2I, "AXIS_X", Vector2i::AXIS_X);
+	_VariantCall::add_constant(Variant::VECTOR2I, "AXIS_Y", Vector2i::AXIS_Y);
 
 	_VariantCall::add_variant_constant(Variant::VECTOR2, "ZERO", Vector2(0, 0));
 	_VariantCall::add_variant_constant(Variant::VECTOR2, "ONE", Vector2(1, 1));

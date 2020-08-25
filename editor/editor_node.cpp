@@ -498,6 +498,10 @@ void EditorNode::_notification(int p_what) {
 				RS::get_singleton()->environment_set_sdfgi_ray_count(ray_count);
 				RS::GIProbeQuality gi_probe_quality = RS::GIProbeQuality(int(GLOBAL_GET("rendering/quality/gi_probes/quality")));
 				RS::get_singleton()->gi_probe_set_quality(gi_probe_quality);
+				RS::get_singleton()->environment_set_volumetric_fog_volume_size(GLOBAL_GET("rendering/volumetric_fog/volume_size"), GLOBAL_GET("rendering/volumetric_fog/volume_depth"));
+				RS::get_singleton()->environment_set_volumetric_fog_filter_active(bool(GLOBAL_GET("rendering/volumetric_fog/use_filter")));
+				RS::get_singleton()->environment_set_volumetric_fog_directional_shadow_shrink_size(GLOBAL_GET("rendering/volumetric_fog/directional_shadow_shrink"));
+				RS::get_singleton()->environment_set_volumetric_fog_positional_shadow_shrink_size(GLOBAL_GET("rendering/volumetric_fog/positional_shadow_shrink"));
 			}
 
 			ResourceImporterTexture::get_singleton()->update_imports();
@@ -1236,7 +1240,10 @@ void EditorNode::_save_scene_with_preview(String p_file, int p_idx) {
 			img.instance();
 			img->create(1, 1, 0, Image::FORMAT_RGB8);
 		} else if (c3d < c2d) {
-			img = scene_root->get_texture()->get_data();
+			Ref<ViewportTexture> viewport_texture = scene_root->get_texture();
+			if (viewport_texture->get_width() > 0 && viewport_texture->get_height() > 0) {
+				img = viewport_texture->get_data();
+			}
 		} else {
 			// The 3D editor may be disabled as a feature, but scenes can still be opened.
 			// This check prevents the preview from regenerating in case those scenes are then saved.
@@ -1246,7 +1253,7 @@ void EditorNode::_save_scene_with_preview(String p_file, int p_idx) {
 			}
 		}
 
-		if (img.is_valid()) {
+		if (img.is_valid() && img->get_width() > 0 && img->get_height() > 0) {
 			img = img->duplicate();
 
 			save.step(TTR("Creating Thumbnail"), 2);
@@ -2052,7 +2059,7 @@ void EditorNode::_run(bool p_current, const String &p_custom) {
 	String args;
 	bool skip_breakpoints;
 
-	if (p_current || (editor_data.get_edited_scene_root() && p_custom == editor_data.get_edited_scene_root()->get_filename())) {
+	if (p_current || (editor_data.get_edited_scene_root() && p_custom != String() && p_custom == editor_data.get_edited_scene_root()->get_filename())) {
 		Node *scene = editor_data.get_edited_scene_root();
 
 		if (!scene) {
@@ -2082,13 +2089,7 @@ void EditorNode::_run(bool p_current, const String &p_custom) {
 		if (unsaved_cache) {
 			Node *scene = editor_data.get_edited_scene_root();
 
-			if (scene) { //only autosave if there is a scene obviously
-
-				if (scene->get_filename() == "") {
-					show_accept(TTR("Current scene was never saved, please save it prior to running."), TTR("OK"));
-					return;
-				}
-
+			if (scene && scene->get_filename() != "") { // Only autosave if there is a scene and if it has a path.
 				_save_scene_with_preview(scene->get_filename());
 			}
 		}
@@ -2623,7 +2624,6 @@ void EditorNode::_menu_option_confirm(int p_option, bool p_confirmed) {
 		case SETTINGS_TOGGLE_CONSOLE: {
 			bool was_visible = DisplayServer::get_singleton()->is_console_visible();
 			DisplayServer::get_singleton()->console_set_visible(!was_visible);
-			EditorSettings::get_singleton()->set_setting("interface/editor/hide_console_window", was_visible);
 		} break;
 		case EDITOR_SCREENSHOT: {
 			screenshot_timer->start();
@@ -6321,7 +6321,7 @@ EditorNode::EditorNode() {
 	right_menu_hb->add_child(video_driver);
 
 #ifndef _MSC_VER
-#warning neeeds to be reimplemented
+#warning needs to be reimplemented
 #endif
 #if 0
 	String video_drivers = ProjectSettings::get_singleton()->get_custom_property_info()["rendering/quality/driver/driver_name"].hint_string;
@@ -6802,6 +6802,7 @@ EditorNode::EditorNode() {
 
 EditorNode::~EditorNode() {
 	EditorInspector::cleanup_plugins();
+	EditorTranslationParser::get_singleton()->clean_parsers();
 
 	remove_print_handler(&print_handler);
 	memdelete(EditorHelp::get_doc_data());

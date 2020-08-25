@@ -1456,8 +1456,6 @@ void CodeTextEditor::set_edit_state(const Variant &p_state) {
 			text_editor->set_line_as_bookmark(bookmarks[i], true);
 		}
 	}
-
-	text_editor->grab_focus();
 }
 
 void CodeTextEditor::set_error(const String &p_error) {
@@ -1778,6 +1776,7 @@ CodeTextEditor::CodeTextEditor() {
 	cs.push_back("(");
 	cs.push_back("=");
 	cs.push_back("$");
+	cs.push_back("@");
 	text_editor->set_completion(true, cs);
 	idle->connect("timeout", callable_mp(this, &CodeTextEditor::_text_changed_idle_timeout));
 

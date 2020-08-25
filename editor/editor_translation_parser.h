@@ -41,7 +41,7 @@ protected:
 	static void _bind_methods();
 
 public:
-	virtual Error parse_file(const String &p_path, Vector<String> *r_extracted_strings);
+	virtual Error parse_file(const String &p_path, Vector<String> *r_ids, Vector<Vector<String>> *r_ids_ctx_plural);
 	virtual void get_recognized_extensions(List<String> *r_extensions) const;
 };
 
@@ -64,6 +64,7 @@ public:
 	Ref<EditorTranslationParserPlugin> get_parser(const String &p_extension) const;
 	void add_parser(const Ref<EditorTranslationParserPlugin> &p_parser, ParserType p_type);
 	void remove_parser(const Ref<EditorTranslationParserPlugin> &p_parser, ParserType p_type);
+	void clean_parsers();
 
 	EditorTranslationParser();
 	~EditorTranslationParser();

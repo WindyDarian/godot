@@ -946,20 +946,27 @@ void EditorPropertyEasing::_drag_easing(const Ref<InputEvent> &p_ev) {
 		}
 
 		float val = get_edited_object()->get(get_edited_property());
-		if (val == 0) {
-			return;
-		}
 		bool sg = val < 0;
 		val = Math::absf(val);
 
 		val = Math::log(val) / Math::log((float)2.0);
-		//logspace
+		// Logarithmic space.
 		val += rel * 0.05;
 
 		val = Math::pow(2.0f, val);
 		if (sg) {
 			val = -val;
 		}
+
+		// 0 is a singularity, but both positive and negative values
+		// are otherwise allowed. Enforce 0+ as workaround.
+		if (Math::is_zero_approx(val)) {
+			val = 0.00001;
+		}
+
+		// Limit to a reasonable value to prevent the curve going into infinity,
+		// which can cause crashes and other issues.
+		val = CLAMP(val, -1'000'000, 1'000'000);
 
 		emit_changed(get_edited_property(), val);
 		easing_draw->update();
@@ -1003,7 +1010,18 @@ void EditorPropertyEasing::_draw_easing() {
 	}
 
 	easing_draw->draw_multiline(lines, line_color, 1.0);
-	f->draw(ci, Point2(10, 10 + f->get_ascent()), String::num(exp, 2), font_color);
+	// Draw more decimals for small numbers since higher precision is usually required for fine adjustments.
+	int decimals;
+	if (Math::abs(exp) < 0.1 - CMP_EPSILON) {
+		decimals = 4;
+	} else if (Math::abs(exp) < 1 - CMP_EPSILON) {
+		decimals = 3;
+	} else if (Math::abs(exp) < 10 - CMP_EPSILON) {
+		decimals = 2;
+	} else {
+		decimals = 1;
+	}
+	f->draw(ci, Point2(10, 10 + f->get_ascent()), rtos(exp).pad_decimals(decimals), font_color);
 }
 
 void EditorPropertyEasing::update_property() {
@@ -1035,6 +1053,11 @@ void EditorPropertyEasing::_spin_value_changed(double p_value) {
 	if (Math::is_zero_approx(p_value)) {
 		p_value = 0.00001;
 	}
+
+	// Limit to a reasonable value to prevent the curve going into infinity,
+	// which can cause crashes and other issues.
+	p_value = CLAMP(p_value, -1'000'000, 1'000'000);
+
 	emit_changed(get_edited_property(), p_value);
 	_spin_focus_exited();
 }
@@ -2108,6 +2131,11 @@ EditorPropertyTransform::EditorPropertyTransform() {
 ////////////// COLOR PICKER //////////////////////
 
 void EditorPropertyColor::_color_changed(const Color &p_color) {
+	// Cancel the color change if the current color is identical to the new one.
+	if (get_edited_object()->get(get_edited_property()) == p_color) {
+		return;
+	}
+
 	emit_changed(get_edited_property(), p_color, "", true);
 }
 
@@ -2919,11 +2947,9 @@ void EditorPropertyResource::_notification(int p_what) {
 	}
 
 	if (p_what == NOTIFICATION_DRAG_BEGIN) {
-		if (is_visible_in_tree()) {
-			if (_is_drop_valid(get_viewport()->gui_get_drag_data())) {
-				dropping = true;
-				assign->update();
-			}
+		if (_is_drop_valid(get_viewport()->gui_get_drag_data())) {
+			dropping = true;
+			assign->update();
 		}
 	}
 
@@ -2980,7 +3006,16 @@ Variant EditorPropertyResource::get_drag_data_fw(const Point2 &p_point, Control 
 }
 
 bool EditorPropertyResource::_is_drop_valid(const Dictionary &p_drag_data) const {
-	String allowed_type = base_type;
+	Vector<String> allowed_types = base_type.split(",");
+	int size = allowed_types.size();
+	for (int i = 0; i < size; i++) {
+		String at = allowed_types[i].strip_edges();
+		if (at == "StandardMaterial3D") {
+			allowed_types.append("Texture2D");
+		} else if (at == "ShaderMaterial") {
+			allowed_types.append("Shader");
+		}
+	}
 
 	Dictionary drag_data = p_drag_data;
 
@@ -2993,9 +3028,9 @@ bool EditorPropertyResource::_is_drop_valid(const Dictionary &p_drag_data) const
 	}
 
 	if (res.is_valid()) {
-		for (int i = 0; i < allowed_type.get_slice_count(","); i++) {
-			String at = allowed_type.get_slice(",", i).strip_edges();
-			if (res.is_valid() && ClassDB::is_parent_class(res->get_class(), at)) {
+		for (int i = 0; i < allowed_types.size(); i++) {
+			String at = allowed_types[i].strip_edges();
+			if (ClassDB::is_parent_class(res->get_class(), at)) {
 				return true;
 			}
 		}
@@ -3009,8 +3044,8 @@ bool EditorPropertyResource::_is_drop_valid(const Dictionary &p_drag_data) const
 			String ftype = EditorFileSystem::get_singleton()->get_file_type(file);
 
 			if (ftype != "") {
-				for (int i = 0; i < allowed_type.get_slice_count(","); i++) {
-					String at = allowed_type.get_slice(",", i).strip_edges();
+				for (int i = 0; i < allowed_types.size(); i++) {
+					String at = allowed_types[i].strip_edges();
 					if (ClassDB::is_parent_class(ftype, at)) {
 						return true;
 					}
@@ -3039,24 +3074,49 @@ void EditorPropertyResource::drop_data_fw(const Point2 &p_point, const Variant &
 		res = drag_data["resource"];
 	}
 
-	if (res.is_valid()) {
-		emit_changed(get_edited_property(), res);
-		update_property();
-		return;
-	}
-
-	if (drag_data.has("type") && String(drag_data["type"]) == "files") {
+	if (!res.is_valid() && drag_data.has("type") && String(drag_data["type"]) == "files") {
 		Vector<String> files = drag_data["files"];
 
 		if (files.size() == 1) {
 			String file = files[0];
-			RES file_res = ResourceLoader::load(file);
-			if (file_res.is_valid()) {
-				emit_changed(get_edited_property(), file_res);
-				update_property();
-				return;
+			res = ResourceLoader::load(file);
+		}
+	}
+
+	if (res.is_valid()) {
+		bool need_convert = true;
+
+		Vector<String> allowed_types = base_type.split(",");
+		for (int i = 0; i < allowed_types.size(); i++) {
+			String at = allowed_types[i].strip_edges();
+			if (ClassDB::is_parent_class(res->get_class(), at)) {
+				need_convert = false;
+				break;
 			}
 		}
+
+		if (need_convert) {
+			for (int i = 0; i < allowed_types.size(); i++) {
+				String at = allowed_types[i].strip_edges();
+				if (at == "StandardMaterial3D" && ClassDB::is_parent_class(res->get_class(), "Texture2D")) {
+					Ref<StandardMaterial3D> mat = memnew(StandardMaterial3D);
+					mat->set_texture(StandardMaterial3D::TextureParam::TEXTURE_ALBEDO, res);
+					res = mat;
+					break;
+				}
+
+				if (at == "ShaderMaterial" && ClassDB::is_parent_class(res->get_class(), "Shader")) {
+					Ref<ShaderMaterial> mat = memnew(ShaderMaterial);
+					mat->set_shader(res);
+					res = mat;
+					break;
+				}
+			}
+		}
+
+		emit_changed(get_edited_property(), res);
+		update_property();
+		return;
 	}
 }
 
@@ -3241,10 +3301,10 @@ bool EditorInspectorDefaultPlugin::parse_property(Object *p_object, Variant::Typ
 				if ((p_hint == PROPERTY_HINT_RANGE || p_hint == PROPERTY_HINT_EXP_RANGE) && p_hint_text.get_slice_count(",") >= 2) {
 					greater = false; //if using ranged, assume false by default
 					lesser = false;
-					min = p_hint_text.get_slice(",", 0).to_double();
-					max = p_hint_text.get_slice(",", 1).to_double();
+					min = p_hint_text.get_slice(",", 0).to_float();
+					max = p_hint_text.get_slice(",", 1).to_float();
 					if (p_hint_text.get_slice_count(",") >= 3) {
-						step = p_hint_text.get_slice(",", 2).to_double();
+						step = p_hint_text.get_slice(",", 2).to_float();
 					}
 					hide_slider = false;
 					exp_range = p_hint == PROPERTY_HINT_EXP_RANGE;
@@ -3344,10 +3404,10 @@ bool EditorInspectorDefaultPlugin::parse_property(Object *p_object, Variant::Typ
 			bool hide_slider = true;
 
 			if (p_hint == PROPERTY_HINT_RANGE && p_hint_text.get_slice_count(",") >= 2) {
-				min = p_hint_text.get_slice(",", 0).to_double();
-				max = p_hint_text.get_slice(",", 1).to_double();
+				min = p_hint_text.get_slice(",", 0).to_float();
+				max = p_hint_text.get_slice(",", 1).to_float();
 				if (p_hint_text.get_slice_count(",") >= 3) {
-					step = p_hint_text.get_slice(",", 2).to_double();
+					step = p_hint_text.get_slice(",", 2).to_float();
 				}
 				hide_slider = false;
 			}
@@ -3362,8 +3422,8 @@ bool EditorInspectorDefaultPlugin::parse_property(Object *p_object, Variant::Typ
 			bool hide_slider = true;
 
 			if (p_hint == PROPERTY_HINT_RANGE && p_hint_text.get_slice_count(",") >= 2) {
-				min = p_hint_text.get_slice(",", 0).to_double();
-				max = p_hint_text.get_slice(",", 1).to_double();
+				min = p_hint_text.get_slice(",", 0).to_float();
+				max = p_hint_text.get_slice(",", 1).to_float();
 				hide_slider = false;
 			}
 
@@ -3377,10 +3437,10 @@ bool EditorInspectorDefaultPlugin::parse_property(Object *p_object, Variant::Typ
 			bool hide_slider = true;
 
 			if (p_hint == PROPERTY_HINT_RANGE && p_hint_text.get_slice_count(",") >= 2) {
-				min = p_hint_text.get_slice(",", 0).to_double();
-				max = p_hint_text.get_slice(",", 1).to_double();
+				min = p_hint_text.get_slice(",", 0).to_float();
+				max = p_hint_text.get_slice(",", 1).to_float();
 				if (p_hint_text.get_slice_count(",") >= 3) {
-					step = p_hint_text.get_slice(",", 2).to_double();
+					step = p_hint_text.get_slice(",", 2).to_float();
 				}
 				hide_slider = false;
 			}
@@ -3394,8 +3454,8 @@ bool EditorInspectorDefaultPlugin::parse_property(Object *p_object, Variant::Typ
 			bool hide_slider = true;
 
 			if (p_hint == PROPERTY_HINT_RANGE && p_hint_text.get_slice_count(",") >= 2) {
-				min = p_hint_text.get_slice(",", 0).to_double();
-				max = p_hint_text.get_slice(",", 1).to_double();
+				min = p_hint_text.get_slice(",", 0).to_float();
+				max = p_hint_text.get_slice(",", 1).to_float();
 				hide_slider = false;
 			}
 
@@ -3408,10 +3468,10 @@ bool EditorInspectorDefaultPlugin::parse_property(Object *p_object, Variant::Typ
 			bool hide_slider = true;
 
 			if (p_hint == PROPERTY_HINT_RANGE && p_hint_text.get_slice_count(",") >= 2) {
-				min = p_hint_text.get_slice(",", 0).to_double();
-				max = p_hint_text.get_slice(",", 1).to_double();
+				min = p_hint_text.get_slice(",", 0).to_float();
+				max = p_hint_text.get_slice(",", 1).to_float();
 				if (p_hint_text.get_slice_count(",") >= 3) {
-					step = p_hint_text.get_slice(",", 2).to_double();
+					step = p_hint_text.get_slice(",", 2).to_float();
 				}
 				hide_slider = false;
 			}
@@ -3426,8 +3486,8 @@ bool EditorInspectorDefaultPlugin::parse_property(Object *p_object, Variant::Typ
 			bool hide_slider = true;
 
 			if (p_hint == PROPERTY_HINT_RANGE && p_hint_text.get_slice_count(",") >= 2) {
-				min = p_hint_text.get_slice(",", 0).to_double();
-				max = p_hint_text.get_slice(",", 1).to_double();
+				min = p_hint_text.get_slice(",", 0).to_float();
+				max = p_hint_text.get_slice(",", 1).to_float();
 
 				hide_slider = false;
 			}
@@ -3442,10 +3502,10 @@ bool EditorInspectorDefaultPlugin::parse_property(Object *p_object, Variant::Typ
 			bool hide_slider = true;
 
 			if (p_hint == PROPERTY_HINT_RANGE && p_hint_text.get_slice_count(",") >= 2) {
-				min = p_hint_text.get_slice(",", 0).to_double();
-				max = p_hint_text.get_slice(",", 1).to_double();
+				min = p_hint_text.get_slice(",", 0).to_float();
+				max = p_hint_text.get_slice(",", 1).to_float();
 				if (p_hint_text.get_slice_count(",") >= 3) {
-					step = p_hint_text.get_slice(",", 2).to_double();
+					step = p_hint_text.get_slice(",", 2).to_float();
 				}
 				hide_slider = false;
 			}
@@ -3460,10 +3520,10 @@ bool EditorInspectorDefaultPlugin::parse_property(Object *p_object, Variant::Typ
 			bool hide_slider = true;
 
 			if (p_hint == PROPERTY_HINT_RANGE && p_hint_text.get_slice_count(",") >= 2) {
-				min = p_hint_text.get_slice(",", 0).to_double();
-				max = p_hint_text.get_slice(",", 1).to_double();
+				min = p_hint_text.get_slice(",", 0).to_float();
+				max = p_hint_text.get_slice(",", 1).to_float();
 				if (p_hint_text.get_slice_count(",") >= 3) {
-					step = p_hint_text.get_slice(",", 2).to_double();
+					step = p_hint_text.get_slice(",", 2).to_float();
 				}
 				hide_slider = false;
 			}
@@ -3477,10 +3537,10 @@ bool EditorInspectorDefaultPlugin::parse_property(Object *p_object, Variant::Typ
 			bool hide_slider = true;
 
 			if (p_hint == PROPERTY_HINT_RANGE && p_hint_text.get_slice_count(",") >= 2) {
-				min = p_hint_text.get_slice(",", 0).to_double();
-				max = p_hint_text.get_slice(",", 1).to_double();
+				min = p_hint_text.get_slice(",", 0).to_float();
+				max = p_hint_text.get_slice(",", 1).to_float();
 				if (p_hint_text.get_slice_count(",") >= 3) {
-					step = p_hint_text.get_slice(",", 2).to_double();
+					step = p_hint_text.get_slice(",", 2).to_float();
 				}
 				hide_slider = false;
 			}
@@ -3494,10 +3554,10 @@ bool EditorInspectorDefaultPlugin::parse_property(Object *p_object, Variant::Typ
 			bool hide_slider = true;
 
 			if (p_hint == PROPERTY_HINT_RANGE && p_hint_text.get_slice_count(",") >= 2) {
-				min = p_hint_text.get_slice(",", 0).to_double();
-				max = p_hint_text.get_slice(",", 1).to_double();
+				min = p_hint_text.get_slice(",", 0).to_float();
+				max = p_hint_text.get_slice(",", 1).to_float();
 				if (p_hint_text.get_slice_count(",") >= 3) {
-					step = p_hint_text.get_slice(",", 2).to_double();
+					step = p_hint_text.get_slice(",", 2).to_float();
 				}
 				hide_slider = false;
 			}
@@ -3511,10 +3571,10 @@ bool EditorInspectorDefaultPlugin::parse_property(Object *p_object, Variant::Typ
 			bool hide_slider = true;
 
 			if (p_hint == PROPERTY_HINT_RANGE && p_hint_text.get_slice_count(",") >= 2) {
-				min = p_hint_text.get_slice(",", 0).to_double();
-				max = p_hint_text.get_slice(",", 1).to_double();
+				min = p_hint_text.get_slice(",", 0).to_float();
+				max = p_hint_text.get_slice(",", 1).to_float();
 				if (p_hint_text.get_slice_count(",") >= 3) {
-					step = p_hint_text.get_slice(",", 2).to_double();
+					step = p_hint_text.get_slice(",", 2).to_float();
 				}
 				hide_slider = false;
 			}
@@ -3528,10 +3588,10 @@ bool EditorInspectorDefaultPlugin::parse_property(Object *p_object, Variant::Typ
 			bool hide_slider = true;
 
 			if (p_hint == PROPERTY_HINT_RANGE && p_hint_text.get_slice_count(",") >= 2) {
-				min = p_hint_text.get_slice(",", 0).to_double();
-				max = p_hint_text.get_slice(",", 1).to_double();
+				min = p_hint_text.get_slice(",", 0).to_float();
+				max = p_hint_text.get_slice(",", 1).to_float();
 				if (p_hint_text.get_slice_count(",") >= 3) {
-					step = p_hint_text.get_slice(",", 2).to_double();
+					step = p_hint_text.get_slice(",", 2).to_float();
 				}
 				hide_slider = false;
 			}

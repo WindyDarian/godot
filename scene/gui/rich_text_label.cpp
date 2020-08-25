@@ -188,7 +188,7 @@ int RichTextLabel::_process_line(ItemFrame *p_frame, const Vector2 &p_ofs, int &
 		wofs += line_ofs;
 	}
 
-	int begin = wofs;
+	int begin = margin;
 
 	Ref<Font> cfont = _find_font(it);
 	if (cfont.is_null()) {
@@ -1020,7 +1020,8 @@ void RichTextLabel::_notification(int p_what) {
 
 			visible_line_count = 0;
 			while (y < size.height && from_line < main->lines.size()) {
-				visible_line_count += _process_line(main, text_rect.get_position(), y, text_rect.get_size().width - scroll_w, from_line, PROCESS_DRAW, base_font, base_color, font_color_shadow, use_outline, shadow_ofs, Point2i(), nullptr, nullptr, nullptr, total_chars);
+				visible_line_count++;
+				_process_line(main, text_rect.get_position(), y, text_rect.get_size().width - scroll_w, from_line, PROCESS_DRAW, base_font, base_color, font_color_shadow, use_outline, shadow_ofs, Point2i(), nullptr, nullptr, nullptr, total_chars);
 				total_chars += main->lines[from_line].char_count;
 
 				from_line++;
@@ -2897,7 +2898,7 @@ Dictionary RichTextLabel::parse_expressions_for_values(Vector<String> p_expressi
 					a.append(false);
 				}
 			} else if (!decimal.search(values[j]).is_null()) {
-				a.append(values[j].to_double());
+				a.append(values[j].to_float());
 			} else if (!numerical.search(values[j]).is_null()) {
 				a.append(values[j].to_int());
 			} else {

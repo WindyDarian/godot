@@ -170,7 +170,7 @@ void DisplayServerWindows::clipboard_set(const String &p_text) {
 
 	// Convert LF line endings to CRLF in clipboard content
 	// Otherwise, line endings won't be visible when pasted in other software
-	String text = p_text.replace("\n", "\r\n");
+	String text = p_text.replace("\r\n", "\n").replace("\n", "\r\n"); // avoid \r\r\n
 
 	if (!OpenClipboard(windows[last_focused_window].hWnd)) {
 		ERR_FAIL_MSG("Unable to open clipboard.");
@@ -1131,10 +1131,17 @@ void DisplayServerWindows::window_set_ime_position(const Point2i &p_pos, WindowI
 void DisplayServerWindows::console_set_visible(bool p_enabled) {
 	_THREAD_SAFE_METHOD_
 
-	if (console_visible == p_enabled)
+	if (console_visible == p_enabled) {
 		return;
-	ShowWindow(GetConsoleWindow(), p_enabled ? SW_SHOW : SW_HIDE);
-	console_visible = p_enabled;
+	}
+	if (p_enabled && GetConsoleWindow() == nullptr) { // Open new console if not attached.
+		own_console = true;
+		AllocConsole();
+	}
+	if (own_console) { // Note: Do not hide parent console.
+		ShowWindow(GetConsoleWindow(), p_enabled ? SW_SHOW : SW_HIDE);
+		console_visible = p_enabled;
+	}
 }
 
 bool DisplayServerWindows::is_console_visible() const {
@@ -2026,8 +2033,8 @@ LRESULT DisplayServerWindows::WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARA
 					Ref<InputEventMouseMotion> mm;
 					mm.instance();
 					mm->set_window_id(window_id);
-					mm->set_control(GetKeyState(VK_CONTROL) != 0);
-					mm->set_shift(GetKeyState(VK_SHIFT) != 0);
+					mm->set_control(GetKeyState(VK_CONTROL) < 0);
+					mm->set_shift(GetKeyState(VK_SHIFT) < 0);
 					mm->set_alt(alt_mem);
 
 					mm->set_pressure(windows[window_id].last_pressure);
@@ -2169,8 +2176,8 @@ LRESULT DisplayServerWindows::WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARA
 				mm->set_tilt(Vector2((float)pen_info.tiltX / 90, (float)pen_info.tiltY / 90));
 			}
 
-			mm->set_control((wParam & MK_CONTROL) != 0);
-			mm->set_shift((wParam & MK_SHIFT) != 0);
+			mm->set_control(GetKeyState(VK_CONTROL) < 0);
+			mm->set_shift(GetKeyState(VK_SHIFT) < 0);
 			mm->set_alt(alt_mem);
 
 			mm->set_button_mask(last_button_state);
@@ -3015,7 +3022,18 @@ DisplayServerWindows::DisplayServerWindows(const String &p_rendering_driver, Win
 	shift_mem = false;
 	control_mem = false;
 	meta_mem = false;
-	console_visible = IsWindowVisible(GetConsoleWindow());
+
+	if (AttachConsole(ATTACH_PARENT_PROCESS)) {
+		FILE *_file = nullptr;
+		freopen_s(&_file, "CONOUT$", "w", stdout);
+		freopen_s(&_file, "CONOUT$", "w", stderr);
+		freopen_s(&_file, "CONIN$", "r", stdin);
+
+		printf("\n");
+		console_visible = true;
+	} else {
+		console_visible = false;
+	}
 	hInstance = ((OS_Windows *)OS::get_singleton())->get_hinstance();
 
 	pressrc = 0;

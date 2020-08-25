@@ -781,6 +781,7 @@ void _OS::_bind_methods() {
 
 	// Those default values need to be specified for the docs generator,
 	// to avoid using values from the documentation writer's own OS instance.
+	ADD_PROPERTY_DEFAULT("tablet_driver", "");
 	ADD_PROPERTY_DEFAULT("exit_code", 0);
 	ADD_PROPERTY_DEFAULT("low_processor_usage_mode", false);
 	ADD_PROPERTY_DEFAULT("low_processor_usage_mode_sleep_usec", 6900);
@@ -1690,7 +1691,7 @@ String _Directory::get_current_dir() {
 }
 
 Error _Directory::make_dir(String p_dir) {
-	ERR_FAIL_COND_V_MSG(!is_open(), ERR_UNCONFIGURED, "Directory must be opened before use.");
+	ERR_FAIL_COND_V_MSG(!d, ERR_UNCONFIGURED, "Directory is not configured properly.");
 	if (!p_dir.is_rel_path()) {
 		DirAccess *d = DirAccess::create_for_path(p_dir);
 		Error err = d->make_dir(p_dir);
@@ -1701,7 +1702,7 @@ Error _Directory::make_dir(String p_dir) {
 }
 
 Error _Directory::make_dir_recursive(String p_dir) {
-	ERR_FAIL_COND_V_MSG(!is_open(), ERR_UNCONFIGURED, "Directory must be opened before use.");
+	ERR_FAIL_COND_V_MSG(!d, ERR_UNCONFIGURED, "Directory is not configured properly.");
 	if (!p_dir.is_rel_path()) {
 		DirAccess *d = DirAccess::create_for_path(p_dir);
 		Error err = d->make_dir_recursive(p_dir);

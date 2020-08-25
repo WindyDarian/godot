@@ -158,10 +158,6 @@ bool BulletPhysicsDirectSpaceState::cast_motion(const RID &p_shape, const Transf
 	btVector3 bt_motion;
 	G_TO_B(p_motion, bt_motion);
 
-	if (bt_motion.fuzzyZero()) {
-		return false;
-	}
-
 	ShapeBullet *shape = space->get_physics_server()->get_shape_owner()->getornull(p_shape);
 	ERR_FAIL_COND_V(!shape, false);
 
@@ -179,6 +175,11 @@ bool BulletPhysicsDirectSpaceState::cast_motion(const RID &p_shape, const Transf
 
 	btTransform bt_xform_to(bt_xform_from);
 	bt_xform_to.getOrigin() += bt_motion;
+
+	if ((bt_xform_to.getOrigin() - bt_xform_from.getOrigin()).fuzzyZero()) {
+		shape->destroy_bt_shape(btShape);
+		return false;
+	}
 
 	GodotClosestConvexResultCallback btResult(bt_xform_from.getOrigin(), bt_xform_to.getOrigin(), &p_exclude, p_collide_with_bodies, p_collide_with_areas);
 	btResult.m_collisionFilterGroup = 0;
@@ -348,16 +349,46 @@ SpaceBullet::~SpaceBullet() {
 	destroy_world();
 }
 
-void SpaceBullet::flush_queries() {
-	const int size = collision_objects.size();
-	CollisionObjectBullet **objects = collision_objects.ptrw();
-	for (int i = 0; i < size; i += 1) {
-		objects[i]->prepare_object_for_dispatch();
-		objects[i]->dispatch_callbacks();
+void SpaceBullet::add_to_pre_flush_queue(CollisionObjectBullet *p_co) {
+	if (p_co->is_in_flush_queue == false) {
+		p_co->is_in_flush_queue = true;
+		queue_pre_flush.push_back(p_co);
 	}
 }
 
+void SpaceBullet::add_to_flush_queue(CollisionObjectBullet *p_co) {
+	if (p_co->is_in_flush_queue == false) {
+		p_co->is_in_flush_queue = true;
+		queue_flush.push_back(p_co);
+	}
+}
+
+void SpaceBullet::remove_from_any_queue(CollisionObjectBullet *p_co) {
+	if (p_co->is_in_flush_queue) {
+		p_co->is_in_flush_queue = false;
+		queue_pre_flush.erase(p_co);
+		queue_flush.erase(p_co);
+	}
+}
+
+void SpaceBullet::flush_queries() {
+	for (uint32_t i = 0; i < queue_pre_flush.size(); i += 1) {
+		queue_pre_flush[i]->dispatch_callbacks();
+		queue_pre_flush[i]->is_in_flush_queue = false;
+	}
+	for (uint32_t i = 0; i < queue_flush.size(); i += 1) {
+		queue_flush[i]->dispatch_callbacks();
+		queue_flush[i]->is_in_flush_queue = false;
+	}
+	queue_pre_flush.clear();
+	queue_flush.clear();
+}
+
 void SpaceBullet::step(real_t p_delta_time) {
+	for (uint32_t i = 0; i < collision_objects.size(); i += 1) {
+		collision_objects[i]->pre_process();
+	}
+
 	delta_time = p_delta_time;
 	dynamicsWorld->stepSimulation(p_delta_time, 0, 0);
 }
@@ -488,6 +519,7 @@ void SpaceBullet::register_collision_object(CollisionObjectBullet *p_object) {
 }
 
 void SpaceBullet::unregister_collision_object(CollisionObjectBullet *p_object) {
+	remove_from_any_queue(p_object);
 	collision_objects.erase(p_object);
 }
 
@@ -702,7 +734,7 @@ void SpaceBullet::check_ghost_overlaps() {
 
 		/// 1. Reset all states
 		for (i = area->overlappingObjects.size() - 1; 0 <= i; --i) {
-			AreaBullet::OverlappingObjectData &otherObj = area->overlappingObjects.write[i];
+			AreaBullet::OverlappingObjectData &otherObj = area->overlappingObjects[i];
 			// This check prevent the overwrite of ENTER state
 			// if this function is called more times before dispatchCallbacks
 			if (otherObj.state != AreaBullet::OVERLAP_STATE_ENTER) {
@@ -982,7 +1014,7 @@ bool SpaceBullet::test_body_motion(RigidBodyBullet *p_body, const Transform &p_f
 		motionVec->end();
 #endif
 
-		for (int shIndex = 0; shIndex < shape_count && !motion.fuzzyZero(); ++shIndex) {
+		for (int shIndex = 0; shIndex < shape_count; ++shIndex) {
 			if (p_body->is_shape_disabled(shIndex)) {
 				continue;
 			}
@@ -1003,6 +1035,11 @@ bool SpaceBullet::test_body_motion(RigidBodyBullet *p_body, const Transform &p_f
 
 			btTransform shape_world_to(shape_world_from);
 			shape_world_to.getOrigin() += motion;
+
+			if ((shape_world_to.getOrigin() - shape_world_from.getOrigin()).fuzzyZero()) {
+				motion = btVector3(0, 0, 0);
+				break;
+			}
 
 			GodotKinClosestConvexResultCallback btResult(shape_world_from.getOrigin(), shape_world_to.getOrigin(), p_body, p_infinite_inertia);
 			btResult.m_collisionFilterGroup = p_body->get_collision_layer();

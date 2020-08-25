@@ -851,7 +851,7 @@ Vector<float> String::split_floats(const String &p_splitter, bool p_allow_empty)
 			end = len;
 		}
 		if (p_allow_empty || (end > from)) {
-			ret.push_back(String::to_double(&c_str()[from]));
+			ret.push_back(String::to_float(&c_str()[from]));
 		}
 
 		if (end == len) {
@@ -880,7 +880,7 @@ Vector<float> String::split_floats_mk(const Vector<String> &p_splitters, bool p_
 		}
 
 		if (p_allow_empty || (end > from)) {
-			ret.push_back(String::to_double(&c_str()[from]));
+			ret.push_back(String::to_float(&c_str()[from]));
 		}
 
 		if (end == len) {
@@ -1025,6 +1025,9 @@ String String::chr(CharType p_char) {
 }
 
 String String::num(double p_num, int p_decimals) {
+	if (Math::is_nan(p_num)) {
+		return "nan";
+	}
 #ifndef NO_USE_STDLIB
 
 	if (p_decimals > 16) {
@@ -1313,6 +1316,9 @@ String String::num_real(double p_num) {
 }
 
 String String::num_scientific(double p_num) {
+	if (Math::is_nan(p_num)) {
+		return "nan";
+	}
 #ifndef NO_USE_STDLIB
 
 	char buf[256];
@@ -2000,7 +2006,7 @@ done:
 #define READING_EXP 3
 #define READING_DONE 4
 
-double String::to_double(const char *p_str) {
+double String::to_float(const char *p_str) {
 #ifndef NO_USE_STDLIB
 	return built_in_strtod<char>(p_str);
 //return atof(p_str); DOES NOT WORK ON ANDROID(??)
@@ -2009,11 +2015,7 @@ double String::to_double(const char *p_str) {
 #endif
 }
 
-float String::to_float() const {
-	return to_double();
-}
-
-double String::to_double(const CharType *p_str, const CharType **r_end) {
+double String::to_float(const CharType *p_str, const CharType **r_end) {
 	return built_in_strtod<CharType>(p_str, (CharType **)r_end);
 }
 
@@ -2081,7 +2083,7 @@ int64_t String::to_int(const CharType *p_str, int p_len, bool p_clamp) {
 	return sign * integer;
 }
 
-double String::to_double() const {
+double String::to_float() const {
 	if (empty()) {
 		return 0;
 	}
@@ -4267,35 +4269,79 @@ String String::unquote() const {
 }
 
 #ifdef TOOLS_ENABLED
-String TTR(const String &p_text) {
+String TTR(const String &p_text, const String &p_context) {
 	if (TranslationServer::get_singleton()) {
-		return TranslationServer::get_singleton()->tool_translate(p_text);
+		return TranslationServer::get_singleton()->tool_translate(p_text, p_context);
 	}
 
 	return p_text;
 }
 
-String DTR(const String &p_text) {
+String TTRN(const String &p_text, const String &p_text_plural, int p_n, const String &p_context) {
+	if (TranslationServer::get_singleton()) {
+		return TranslationServer::get_singleton()->tool_translate_plural(p_text, p_text_plural, p_n, p_context);
+	}
+
+	// Return message based on English plural rule if translation is not possible.
+	if (p_n == 1) {
+		return p_text;
+	}
+	return p_text_plural;
+}
+
+String DTR(const String &p_text, const String &p_context) {
 	// Comes straight from the XML, so remove indentation and any trailing whitespace.
 	const String text = p_text.dedent().strip_edges();
 
 	if (TranslationServer::get_singleton()) {
-		return TranslationServer::get_singleton()->doc_translate(text);
+		return TranslationServer::get_singleton()->doc_translate(text, p_context);
 	}
 
 	return text;
 }
+
+String DTRN(const String &p_text, const String &p_text_plural, int p_n, const String &p_context) {
+	const String text = p_text.dedent().strip_edges();
+	const String text_plural = p_text_plural.dedent().strip_edges();
+
+	if (TranslationServer::get_singleton()) {
+		return TranslationServer::get_singleton()->doc_translate_plural(text, text_plural, p_n, p_context);
+	}
+
+	// Return message based on English plural rule if translation is not possible.
+	if (p_n == 1) {
+		return text;
+	}
+	return text_plural;
+}
 #endif
 
-String RTR(const String &p_text) {
+String RTR(const String &p_text, const String &p_context) {
 	if (TranslationServer::get_singleton()) {
-		String rtr = TranslationServer::get_singleton()->tool_translate(p_text);
+		String rtr = TranslationServer::get_singleton()->tool_translate(p_text, p_context);
 		if (rtr == String() || rtr == p_text) {
-			return TranslationServer::get_singleton()->translate(p_text);
+			return TranslationServer::get_singleton()->translate(p_text, p_context);
 		} else {
 			return rtr;
 		}
 	}
 
 	return p_text;
+}
+
+String RTRN(const String &p_text, const String &p_text_plural, int p_n, const String &p_context) {
+	if (TranslationServer::get_singleton()) {
+		String rtr = TranslationServer::get_singleton()->tool_translate_plural(p_text, p_text_plural, p_n, p_context);
+		if (rtr == String() || rtr == p_text || rtr == p_text_plural) {
+			return TranslationServer::get_singleton()->translate_plural(p_text, p_text_plural, p_n, p_context);
+		} else {
+			return rtr;
+		}
+	}
+
+	// Return message based on English plural rule if translation is not possible.
+	if (p_n == 1) {
+		return p_text;
+	}
+	return p_text_plural;
 }
