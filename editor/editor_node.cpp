@@ -123,6 +123,7 @@
 #include "editor/plugins/cpu_particles_3d_editor_plugin.h"
 #include "editor/plugins/curve_editor_plugin.h"
 #include "editor/plugins/debugger_editor_plugin.h"
+#include "editor/plugins/editor_debugger_plugin.h"
 #include "editor/plugins/editor_preview_plugins.h"
 #include "editor/plugins/gi_probe_editor_plugin.h"
 #include "editor/plugins/gpu_particles_2d_editor_plugin.h"
@@ -455,8 +456,6 @@ void EditorNode::_notification(int p_what) {
 			}
 
 			editor_selection->update();
-
-			//scene_root->set_size_override(true, Size2(ProjectSettings::get_singleton()->get("display/window/size/width"), ProjectSettings::get_singleton()->get("display/window/size/height")));
 
 			{ //TODO should only happen on settings changed
 				int current_filter = GLOBAL_GET("rendering/canvas_textures/default_texture_filter");
@@ -3622,6 +3621,7 @@ void EditorNode::register_editor_types() {
 	// FIXME: Is this stuff obsolete, or should it be ported to new APIs?
 	ClassDB::register_class<EditorScenePostImport>();
 	//ClassDB::register_type<EditorImportExport>();
+	ClassDB::register_class<EditorDebuggerPlugin>();
 }
 
 void EditorNode::unregister_editor_types() {
