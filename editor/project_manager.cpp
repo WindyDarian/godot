@@ -412,7 +412,7 @@ private:
 		_test_path();
 
 		if (p_text == "") {
-			set_message(TTR("It would be a good idea to name your project."), MESSAGE_WARNING);
+			set_message(TTR("It would be a good idea to name your project."), MESSAGE_ERROR);
 		}
 	}
 
@@ -2093,7 +2093,8 @@ void ProjectManager::_run_project_confirm() {
 		const String &selected = selected_list[i].project_key;
 		String path = EditorSettings::get_singleton()->get("projects/" + selected);
 
-		if (!DirAccess::exists(path + "/.import")) {
+		// `.right(6)` on `IMPORTED_FILES_PATH` strips away the leading "res://".
+		if (!DirAccess::exists(path.plus_file(ProjectSettings::IMPORTED_FILES_PATH.right(6)))) {
 			run_error_diag->set_text(TTR("Can't run project: Assets need to be imported.\nPlease edit the project to trigger the initial import."));
 			run_error_diag->popup_centered();
 			return;
@@ -2388,6 +2389,7 @@ ProjectManager::ProjectManager() {
 
 	String cp;
 	cp += 0xA9;
+	// TRANSLATORS: This refers to the application where users manage their Godot projects.
 	DisplayServer::get_singleton()->window_set_title(VERSION_NAME + String(" - ") + TTR("Project Manager") + " - " + cp + " 2007-2020 Juan Linietsky, Ariel Manzur & Godot Contributors");
 
 	FileDialog::set_default_show_hidden_files(EditorSettings::get_singleton()->get("filesystem/file_dialog/show_hidden_files"));

@@ -39,7 +39,7 @@
 
 class VisualShaderNodeFloatConstant : public VisualShaderNode {
 	GDCLASS(VisualShaderNodeFloatConstant, VisualShaderNode);
-	float constant;
+	float constant = 0.0f;
 
 protected:
 	static void _bind_methods();
@@ -69,7 +69,7 @@ public:
 
 class VisualShaderNodeIntConstant : public VisualShaderNode {
 	GDCLASS(VisualShaderNodeIntConstant, VisualShaderNode);
-	int constant;
+	int constant = 0;
 
 protected:
 	static void _bind_methods();
@@ -99,7 +99,7 @@ public:
 
 class VisualShaderNodeBooleanConstant : public VisualShaderNode {
 	GDCLASS(VisualShaderNodeBooleanConstant, VisualShaderNode);
-	bool constant;
+	bool constant = false;
 
 protected:
 	static void _bind_methods();
@@ -129,7 +129,7 @@ public:
 
 class VisualShaderNodeColorConstant : public VisualShaderNode {
 	GDCLASS(VisualShaderNodeColorConstant, VisualShaderNode);
-	Color constant;
+	Color constant = Color(1, 1, 1, 1);
 
 protected:
 	static void _bind_methods();
@@ -240,8 +240,8 @@ public:
 	};
 
 private:
-	Source source;
-	TextureType texture_type;
+	Source source = SOURCE_TEXTURE;
+	TextureType texture_type = TYPE_DATA;
 
 protected:
 	static void _bind_methods();
@@ -294,7 +294,7 @@ public:
 	};
 
 protected:
-	Source source;
+	Source source = SOURCE_TEXTURE;
 
 	static void _bind_methods();
 
@@ -343,6 +343,29 @@ public:
 	VisualShaderNodeTexture2DArray();
 };
 
+class VisualShaderNodeTexture3D : public VisualShaderNodeSample3D {
+	GDCLASS(VisualShaderNodeTexture3D, VisualShaderNodeSample3D);
+	Ref<Texture3D> texture;
+
+protected:
+	static void _bind_methods();
+
+public:
+	virtual String get_caption() const override;
+
+	virtual String get_input_port_name(int p_port) const override;
+
+	virtual Vector<VisualShader::DefaultTextureParam> get_default_texture_parameters(VisualShader::Type p_type, int p_id) const override;
+	virtual String generate_global(Shader::Mode p_mode, VisualShader::Type p_type, int p_id) const override;
+
+	void set_texture(Ref<Texture3D> p_value);
+	Ref<Texture3D> get_texture() const;
+
+	virtual Vector<StringName> get_editable_properties() const override;
+
+	VisualShaderNodeTexture3D();
+};
+
 class VisualShaderNodeCubemap : public VisualShaderNode {
 	GDCLASS(VisualShaderNodeCubemap, VisualShaderNode);
 	Ref<Cubemap> cube_map;
@@ -360,8 +383,8 @@ public:
 	};
 
 private:
-	Source source;
-	TextureType texture_type;
+	Source source = SOURCE_TEXTURE;
+	TextureType texture_type = TYPE_DATA;
 
 protected:
 	static void _bind_methods();
@@ -421,7 +444,7 @@ public:
 	};
 
 protected:
-	Operator op;
+	Operator op = OP_ADD;
 
 	static void _bind_methods();
 
@@ -463,7 +486,7 @@ public:
 	};
 
 protected:
-	Operator op;
+	Operator op = OP_ADD;
 
 	static void _bind_methods();
 
@@ -510,7 +533,7 @@ public:
 	};
 
 protected:
-	Operator op;
+	Operator op = OP_ADD;
 
 	static void _bind_methods();
 
@@ -556,7 +579,7 @@ public:
 	};
 
 protected:
-	Operator op;
+	Operator op = OP_SCREEN;
 
 	static void _bind_methods();
 
@@ -599,7 +622,7 @@ public:
 	};
 
 protected:
-	Operator op;
+	Operator op = OP_AxB;
 
 	static void _bind_methods();
 
@@ -642,7 +665,7 @@ public:
 	};
 
 protected:
-	Operator op;
+	Operator op = OP_AxB;
 
 	static void _bind_methods();
 
@@ -713,7 +736,7 @@ public:
 	};
 
 protected:
-	Function func;
+	Function func = FUNC_SIGN;
 
 	static void _bind_methods();
 
@@ -756,7 +779,7 @@ public:
 	};
 
 protected:
-	Function func;
+	Function func = FUNC_SIGN;
 
 	static void _bind_methods();
 
@@ -830,7 +853,7 @@ public:
 	};
 
 protected:
-	Function func;
+	Function func = FUNC_NORMALIZE;
 
 	static void _bind_methods();
 
@@ -871,7 +894,7 @@ public:
 	};
 
 protected:
-	Function func;
+	Function func = FUNC_GRAYSCALE;
 
 	static void _bind_methods();
 
@@ -912,7 +935,7 @@ public:
 	};
 
 protected:
-	Function func;
+	Function func = FUNC_INVERSE;
 
 	static void _bind_methods();
 
@@ -1067,7 +1090,7 @@ public:
 	};
 
 protected:
-	Function func;
+	Function func = FUNC_SUM;
 
 	static void _bind_methods();
 
@@ -1107,7 +1130,7 @@ public:
 	};
 
 protected:
-	Function func;
+	Function func = FUNC_SUM;
 
 	static void _bind_methods();
 
@@ -1482,12 +1505,12 @@ public:
 	};
 
 private:
-	Hint hint;
-	float hint_range_min;
-	float hint_range_max;
-	float hint_range_step;
-	bool default_value_enabled;
-	float default_value;
+	Hint hint = HINT_NONE;
+	float hint_range_min = 0.0f;
+	float hint_range_max = 1.0f;
+	float hint_range_step = 0.1f;
+	bool default_value_enabled = false;
+	float default_value = 0.0f;
 
 protected:
 	static void _bind_methods();
@@ -1505,6 +1528,9 @@ public:
 
 	virtual String generate_global(Shader::Mode p_mode, VisualShader::Type p_type, int p_id) const override;
 	virtual String generate_code(Shader::Mode p_mode, VisualShader::Type p_type, int p_id, const String *p_input_vars, const String *p_output_vars, bool p_for_preview = false) const override; //if no output is connected, the output var passed will be empty. if no input is connected and input is NIL, the input var passed will be empty
+
+	virtual bool is_show_prop_names() const override;
+	virtual bool is_use_prop_slots() const override;
 
 	void set_hint(Hint p_hint);
 	Hint get_hint() const;
@@ -1544,12 +1570,12 @@ public:
 	};
 
 private:
-	Hint hint;
-	int hint_range_min;
-	int hint_range_max;
-	int hint_range_step;
-	bool default_value_enabled;
-	int default_value;
+	Hint hint = HINT_NONE;
+	int hint_range_min = 0;
+	int hint_range_max = 100;
+	int hint_range_step = 1;
+	bool default_value_enabled = false;
+	int default_value = 0;
 
 protected:
 	static void _bind_methods();
@@ -1567,6 +1593,9 @@ public:
 
 	virtual String generate_global(Shader::Mode p_mode, VisualShader::Type p_type, int p_id) const override;
 	virtual String generate_code(Shader::Mode p_mode, VisualShader::Type p_type, int p_id, const String *p_input_vars, const String *p_output_vars, bool p_for_preview = false) const override; //if no output is connected, the output var passed will be empty. if no input is connected and input is NIL, the input var passed will be empty
+
+	virtual bool is_show_prop_names() const override;
+	virtual bool is_use_prop_slots() const override;
 
 	void set_hint(Hint p_hint);
 	Hint get_hint() const;
@@ -1601,8 +1630,8 @@ class VisualShaderNodeBooleanUniform : public VisualShaderNodeUniform {
 	GDCLASS(VisualShaderNodeBooleanUniform, VisualShaderNodeUniform);
 
 private:
-	bool default_value_enabled;
-	bool default_value;
+	bool default_value_enabled = false;
+	bool default_value = false;
 
 protected:
 	static void _bind_methods();
@@ -1620,6 +1649,9 @@ public:
 
 	virtual String generate_global(Shader::Mode p_mode, VisualShader::Type p_type, int p_id) const override;
 	virtual String generate_code(Shader::Mode p_mode, VisualShader::Type p_type, int p_id, const String *p_input_vars, const String *p_output_vars, bool p_for_preview = false) const override; //if no output is connected, the output var passed will be empty. if no input is connected and input is NIL, the input var passed will be empty
+
+	virtual bool is_show_prop_names() const override;
+	virtual bool is_use_prop_slots() const override;
 
 	void set_default_value_enabled(bool p_enabled);
 	bool is_default_value_enabled() const;
@@ -1640,8 +1672,8 @@ class VisualShaderNodeColorUniform : public VisualShaderNodeUniform {
 	GDCLASS(VisualShaderNodeColorUniform, VisualShaderNodeUniform);
 
 private:
-	bool default_value_enabled;
-	Color default_value;
+	bool default_value_enabled = false;
+	Color default_value = Color(1.0, 1.0, 1.0, 1.0);
 
 protected:
 	static void _bind_methods();
@@ -1659,6 +1691,8 @@ public:
 
 	virtual String generate_global(Shader::Mode p_mode, VisualShader::Type p_type, int p_id) const override;
 	virtual String generate_code(Shader::Mode p_mode, VisualShader::Type p_type, int p_id, const String *p_input_vars, const String *p_output_vars, bool p_for_preview = false) const override; //if no output is connected, the output var passed will be empty. if no input is connected and input is NIL, the input var passed will be empty
+
+	virtual bool is_show_prop_names() const override;
 
 	void set_default_value_enabled(bool p_enabled);
 	bool is_default_value_enabled() const;
@@ -1679,7 +1713,7 @@ class VisualShaderNodeVec3Uniform : public VisualShaderNodeUniform {
 	GDCLASS(VisualShaderNodeVec3Uniform, VisualShaderNodeUniform);
 
 private:
-	bool default_value_enabled;
+	bool default_value_enabled = false;
 	Vector3 default_value;
 
 protected:
@@ -1698,6 +1732,9 @@ public:
 
 	virtual String generate_global(Shader::Mode p_mode, VisualShader::Type p_type, int p_id) const override;
 	virtual String generate_code(Shader::Mode p_mode, VisualShader::Type p_type, int p_id, const String *p_input_vars, const String *p_output_vars, bool p_for_preview = false) const override; //if no output is connected, the output var passed will be empty. if no input is connected and input is NIL, the input var passed will be empty
+
+	virtual bool is_show_prop_names() const override;
+	virtual bool is_use_prop_slots() const override;
 
 	void set_default_value_enabled(bool p_enabled);
 	bool is_default_value_enabled() const;
@@ -1718,8 +1755,8 @@ class VisualShaderNodeTransformUniform : public VisualShaderNodeUniform {
 	GDCLASS(VisualShaderNodeTransformUniform, VisualShaderNodeUniform);
 
 private:
-	bool default_value_enabled;
-	Transform default_value;
+	bool default_value_enabled = false;
+	Transform default_value = Transform(1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0);
 
 protected:
 	static void _bind_methods();
@@ -1737,6 +1774,9 @@ public:
 
 	virtual String generate_global(Shader::Mode p_mode, VisualShader::Type p_type, int p_id) const override;
 	virtual String generate_code(Shader::Mode p_mode, VisualShader::Type p_type, int p_id, const String *p_input_vars, const String *p_output_vars, bool p_for_preview = false) const override; //if no output is connected, the output var passed will be empty. if no input is connected and input is NIL, the input var passed will be empty
+
+	virtual bool is_show_prop_names() const override;
+	virtual bool is_use_prop_slots() const override;
 
 	void set_default_value_enabled(bool p_enabled);
 	bool is_default_value_enabled() const;
@@ -1770,8 +1810,8 @@ public:
 	};
 
 protected:
-	TextureType texture_type;
-	ColorDefault color_default;
+	TextureType texture_type = TYPE_DATA;
+	ColorDefault color_default = COLOR_DEFAULT_WHITE;
 
 protected:
 	static void _bind_methods();
@@ -1851,6 +1891,29 @@ public:
 	virtual String generate_code(Shader::Mode p_mode, VisualShader::Type p_type, int p_id, const String *p_input_vars, const String *p_output_vars, bool p_for_preview = false) const override; //if no output is connected, the output var passed will be empty. if no input is connected and input is NIL, the input var passed will be empty
 
 	VisualShaderNodeTexture2DArrayUniform();
+};
+
+///////////////////////////////////////
+
+class VisualShaderNodeTexture3DUniform : public VisualShaderNodeTextureUniform {
+	GDCLASS(VisualShaderNodeTexture3DUniform, VisualShaderNodeTextureUniform);
+
+public:
+	virtual String get_caption() const override;
+
+	virtual int get_input_port_count() const override;
+	virtual PortType get_input_port_type(int p_port) const override;
+	virtual String get_input_port_name(int p_port) const override;
+
+	virtual int get_output_port_count() const override;
+	virtual PortType get_output_port_type(int p_port) const override;
+	virtual String get_output_port_name(int p_port) const override;
+
+	virtual String get_input_port_default_hint(int p_port) const override;
+	virtual String generate_global(Shader::Mode p_mode, VisualShader::Type p_type, int p_id) const override;
+	virtual String generate_code(Shader::Mode p_mode, VisualShader::Type p_type, int p_id, const String *p_input_vars, const String *p_output_vars, bool p_for_preview = false) const override; //if no output is connected, the output var passed will be empty. if no input is connected and input is NIL, the input var passed will be empty
+
+	VisualShaderNodeTexture3DUniform();
 };
 
 ///////////////////////////////////////
@@ -1973,7 +2036,7 @@ public:
 	};
 
 protected:
-	Function func;
+	Function func = FUNC_IS_INF;
 
 protected:
 	static void _bind_methods();
@@ -2032,9 +2095,9 @@ public:
 	};
 
 protected:
-	ComparisonType ctype;
-	Function func;
-	Condition condition;
+	ComparisonType ctype = CTYPE_SCALAR;
+	Function func = FUNC_EQUAL;
+	Condition condition = COND_ALL;
 
 protected:
 	static void _bind_methods();
@@ -2075,14 +2138,14 @@ class VisualShaderNodeMultiplyAdd : public VisualShaderNode {
 	GDCLASS(VisualShaderNodeMultiplyAdd, VisualShaderNode);
 
 public:
-	enum Type {
-		TYPE_SCALAR,
-		TYPE_VECTOR,
-		TYPE_MAX,
+	enum OpType {
+		OP_TYPE_SCALAR,
+		OP_TYPE_VECTOR,
+		OP_TYPE_MAX,
 	};
 
 protected:
-	Type type;
+	OpType op_type = OP_TYPE_SCALAR;
 
 protected:
 	static void _bind_methods();
@@ -2100,14 +2163,14 @@ public:
 
 	virtual String generate_code(Shader::Mode p_mode, VisualShader::Type p_type, int p_id, const String *p_input_vars, const String *p_output_vars, bool p_for_preview = false) const override; //if no output is connected, the output var passed will be empty. if no input is connected and input is NIL, the input var passed will be empty
 
-	void set_type(Type p_type);
-	Type get_type() const;
+	void set_op_type(OpType p_type);
+	OpType get_op_type() const;
 
 	virtual Vector<StringName> get_editable_properties() const override;
 
 	VisualShaderNodeMultiplyAdd();
 };
 
-VARIANT_ENUM_CAST(VisualShaderNodeMultiplyAdd::Type)
+VARIANT_ENUM_CAST(VisualShaderNodeMultiplyAdd::OpType)
 
 #endif // VISUAL_SHADER_NODES_H

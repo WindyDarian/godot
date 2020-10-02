@@ -33,6 +33,7 @@
 #include "os_osx.h"
 
 #include "core/io/marshalls.h"
+#include "core/math/geometry_2d.h"
 #include "core/os/keyboard.h"
 #include "main/main.h"
 #include "scene/resources/texture.h"
@@ -2040,6 +2041,12 @@ void DisplayServerOSX::mouse_set_mode(MouseMode p_mode) {
 			CGDisplayHideCursor(kCGDirectMainDisplay);
 		}
 		CGAssociateMouseAndMouseCursorPosition(false);
+		WindowData &wd = windows[MAIN_WINDOW_ID];
+		const NSRect contentRect = [wd.window_view frame];
+		NSRect pointInWindowRect = NSMakeRect(contentRect.size.width / 2, contentRect.size.height / 2, 0, 0);
+		NSPoint pointOnScreen = [[wd.window_view window] convertRectToScreen:pointInWindowRect].origin;
+		CGPoint lMouseWarpPos = { pointOnScreen.x, CGDisplayBounds(CGMainDisplayID()).size.height - pointOnScreen.y };
+		CGWarpMouseCursorPosition(lMouseWarpPos);
 	} else if (p_mode == MOUSE_MODE_HIDDEN) {
 		if (mouse_mode == MOUSE_MODE_VISIBLE || mouse_mode == MOUSE_MODE_CONFINED) {
 			CGDisplayHideCursor(kCGDirectMainDisplay);
@@ -2239,11 +2246,18 @@ int DisplayServerOSX::screen_get_dpi(int p_screen) const {
 	NSArray *screenArray = [NSScreen screens];
 	if ((NSUInteger)p_screen < [screenArray count]) {
 		NSDictionary *description = [[screenArray objectAtIndex:p_screen] deviceDescription];
-		NSSize displayDPI = [[description objectForKey:NSDeviceResolution] sizeValue];
-		return (displayDPI.width + displayDPI.height) / 2;
+
+		const NSSize displayPixelSize = [[description objectForKey:NSDeviceSize] sizeValue];
+		const CGSize displayPhysicalSize = CGDisplayScreenSize([[description objectForKey:@"NSScreenNumber"] unsignedIntValue]);
+		float scale = [[screenArray objectAtIndex:p_screen] backingScaleFactor];
+
+		float den2 = (displayPhysicalSize.width / 25.4f) * (displayPhysicalSize.width / 25.4f) + (displayPhysicalSize.height / 25.4f) * (displayPhysicalSize.height / 25.4f);
+		if (den2 > 0.0f) {
+			return ceil(sqrt(displayPixelSize.width * displayPixelSize.width + displayPixelSize.height * displayPixelSize.height) / sqrt(den2) * scale);
+		}
 	}
 
-	return 96;
+	return 72;
 }
 
 float DisplayServerOSX::screen_get_scale(int p_screen) const {
@@ -2314,18 +2328,23 @@ DisplayServer::WindowID DisplayServerOSX::create_sub_window(WindowMode p_mode, u
 	_THREAD_SAFE_METHOD_
 
 	WindowID id = _create_window(p_mode, p_rect);
-	WindowData &wd = windows[id];
 	for (int i = 0; i < WINDOW_FLAG_MAX; i++) {
 		if (p_flags & (1 << i)) {
 			window_set_flag(WindowFlags(i), true, id);
 		}
 	}
+
+	return id;
+}
+
+void DisplayServerOSX::show_window(WindowID p_id) {
+	WindowData &wd = windows[p_id];
+
 	if (wd.no_focus) {
 		[wd.window_object orderFront:nil];
 	} else {
 		[wd.window_object makeKeyAndOrderFront:nil];
 	}
-	return id;
 }
 
 void DisplayServerOSX::_send_window_event(const WindowData &wd, WindowEvent p_event) {
@@ -2397,6 +2416,15 @@ void DisplayServerOSX::window_set_title(const String &p_title, WindowID p_window
 	WindowData &wd = windows[p_window];
 
 	[wd.window_object setTitle:[NSString stringWithUTF8String:p_title.utf8().get_data()]];
+}
+
+void DisplayServerOSX::window_set_mouse_passthrough(const Vector<Vector2> &p_region, WindowID p_window) {
+	_THREAD_SAFE_METHOD_
+
+	ERR_FAIL_COND(!windows.has(p_window));
+	WindowData &wd = windows[p_window];
+
+	wd.mpath = p_region;
 }
 
 void DisplayServerOSX::window_set_rect_changed_callback(const Callable &p_callable, WindowID p_window) {
@@ -3351,6 +3379,26 @@ void DisplayServerOSX::process_events() {
 		Input::get_singleton()->flush_accumulated_events();
 	}
 
+	for (Map<WindowID, WindowData>::Element *E = windows.front(); E; E = E->next()) {
+		WindowData &wd = E->get();
+		if (wd.mpath.size() > 0) {
+			const Vector2 mpos = _get_mouse_pos(wd, [wd.window_object mouseLocationOutsideOfEventStream]);
+			if (Geometry2D::is_point_in_polygon(mpos, wd.mpath)) {
+				if ([wd.window_object ignoresMouseEvents]) {
+					[wd.window_object setIgnoresMouseEvents:NO];
+				}
+			} else {
+				if (![wd.window_object ignoresMouseEvents]) {
+					[wd.window_object setIgnoresMouseEvents:YES];
+				}
+			}
+		} else {
+			if ([wd.window_object ignoresMouseEvents]) {
+				[wd.window_object setIgnoresMouseEvents:NO];
+			}
+		}
+	}
+
 	[autoreleasePool drain];
 	autoreleasePool = [[NSAutoreleasePool alloc] init];
 }
@@ -3774,7 +3822,7 @@ DisplayServerOSX::DisplayServerOSX(const String &p_rendering_driver, WindowMode 
 			window_set_flag(WindowFlags(i), true, main_window);
 		}
 	}
-	[windows[main_window].window_object makeKeyAndOrderFront:nil];
+	show_window(MAIN_WINDOW_ID);
 
 #if defined(OPENGL_ENABLED)
 	if (rendering_driver == "opengl_es") {

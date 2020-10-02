@@ -1274,9 +1274,13 @@ Error Main::setup(const char *execpath, int argc, char *argv[], bool p_second_ph
 	}
 
 	if (rtm >= 0 && rtm < 3) {
+#ifdef NO_THREADS
+		rtm = OS::RENDER_THREAD_UNSAFE; // No threads available on this platform.
+#else
 		if (editor) {
 			rtm = OS::RENDER_THREAD_SAFE;
 		}
+#endif
 		OS::get_singleton()->_render_thread_mode = OS::RenderThreadMode(rtm);
 	}
 
@@ -1365,6 +1369,7 @@ Error Main::setup(const char *execpath, int argc, char *argv[], bool p_second_ph
 					"0,33200,1,or_greater")); // No negative numbers
 
 	GLOBAL_DEF("display/window/ios/hide_home_indicator", true);
+	GLOBAL_DEF("input_devices/pointing/ios/touch_delay", 0.150);
 
 	Engine::get_singleton()->set_frame_delay(frame_delay);
 
@@ -1565,7 +1570,6 @@ Error Main::setup2(Thread::ID p_main_tid_override) {
 
 		Color boot_bg_color = GLOBAL_DEF("application/boot_splash/bg_color", boot_splash_bg_color);
 		if (boot_logo.is_valid()) {
-			OS::get_singleton()->_msec_splash = OS::get_singleton()->get_ticks_msec();
 			RenderingServer::get_singleton()->set_boot_image(boot_logo, boot_bg_color, boot_logo_scale,
 					boot_logo_filter);
 
@@ -1805,7 +1809,6 @@ bool Main::start() {
 		}
 	}
 
-	String main_loop_type;
 #ifdef TOOLS_ENABLED
 	if (doc_tool != "") {
 		Engine::get_singleton()->set_editor_hint(
@@ -1900,6 +1903,7 @@ bool Main::start() {
 	if (editor) {
 		main_loop = memnew(SceneTree);
 	};
+	String main_loop_type = GLOBAL_DEF("application/run/main_loop_type", "SceneTree");
 
 	if (script != "") {
 		Ref<Script> script_res = ResourceLoader::load(script);
@@ -1930,9 +1934,23 @@ bool Main::start() {
 		} else {
 			return false;
 		}
-
-	} else {
-		main_loop_type = GLOBAL_DEF("application/run/main_loop_type", "");
+	} else { // Not based on script path.
+		if (!editor && !ClassDB::class_exists(main_loop_type) && ScriptServer::is_global_class(main_loop_type)) {
+			String script_path = ScriptServer::get_global_class_path(main_loop_type);
+			Ref<Script> script_res = ResourceLoader::load(script_path);
+			StringName script_base = ScriptServer::get_global_class_native_base(main_loop_type);
+			Object *obj = ClassDB::instance(script_base);
+			MainLoop *script_loop = Object::cast_to<MainLoop>(obj);
+			if (!script_loop) {
+				if (obj) {
+					memdelete(obj);
+				}
+				DisplayServer::get_singleton()->alert("Error: Invalid MainLoop script base type: " + script_base);
+				ERR_FAIL_V_MSG(false, vformat("The global class %s does not inherit from SceneTree or MainLoop.", main_loop_type));
+			}
+			script_loop->set_init_script(script_res);
+			main_loop = script_loop;
+		}
 	}
 
 	if (!main_loop && main_loop_type == "") {
@@ -2278,6 +2296,13 @@ bool Main::start() {
 		}
 
 		if (project_manager || editor) {
+			if (DisplayServer::get_singleton()->has_feature(DisplayServer::FEATURE_CONSOLE_WINDOW)) {
+				// Hide console window if requested (Windows-only).
+				bool hide_console = EditorSettings::get_singleton()->get_setting(
+						"interface/editor/hide_console_window");
+				DisplayServer::get_singleton()->console_set_visible(!hide_console);
+			}
+
 			// Load SSL Certificates from Editor Settings (or builtin)
 			Crypto::load_default_certificates(EditorSettings::get_singleton()->get_setting(
 																					 "network/ssl/editor_ssl_certificates")

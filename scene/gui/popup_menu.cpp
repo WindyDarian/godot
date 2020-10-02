@@ -101,9 +101,11 @@ Size2 PopupMenu::_get_contents_minimum_size() const {
 		minsize.width += check_w;
 	}
 
-	int height_limit = get_usable_parent_rect().size.height;
-	if (minsize.height > height_limit) {
-		minsize.height = height_limit;
+	if (is_inside_tree()) {
+		int height_limit = get_usable_parent_rect().size.height;
+		if (minsize.height > height_limit) {
+			minsize.height = height_limit;
+		}
 	}
 
 	return minsize;
@@ -282,14 +284,15 @@ void PopupMenu::_gui_input(const Ref<InputEvent> &p_event) {
 	}
 
 	// Make an area which does not include v scrollbar, so that items are not activated when dragging scrollbar.
-	Rect2 item_clickable_area = control->get_global_rect();
-	float scroll_width = scroll_container->get_v_scrollbar()->is_visible_in_tree() ? scroll_container->get_v_scrollbar()->get_size().width : 0;
-	item_clickable_area.set_size(Size2(item_clickable_area.size.width - scroll_width, item_clickable_area.size.height));
+	Rect2 item_clickable_area = scroll_container->get_rect();
+	if (scroll_container->get_v_scrollbar()->is_visible_in_tree()) {
+		item_clickable_area.size.width -= scroll_container->get_v_scrollbar()->get_size().width;
+	}
 
 	Ref<InputEventMouseButton> b = p_event;
 
 	if (b.is_valid()) {
-		if (!item_clickable_area.has_point(b->get_global_position())) {
+		if (!item_clickable_area.has_point(b->get_position())) {
 			return;
 		}
 
@@ -302,12 +305,14 @@ void PopupMenu::_gui_input(const Ref<InputEvent> &p_event) {
 				during_grabbed_click = false;
 				initial_button_mask = 0;
 
-				int over = _get_mouse_over(b->get_position());
-
-				if (invalidated_click) {
-					invalidated_click = false;
+				// Disable clicks under a time threshold to avoid selection right when opening the popup.
+				uint64_t now = OS::get_singleton()->get_ticks_msec();
+				uint64_t diff = now - popup_time_msec;
+				if (diff < 100) {
 					return;
 				}
+
+				int over = _get_mouse_over(b->get_position());
 				if (over < 0) {
 					if (!was_during_grabbed_click) {
 						hide();
@@ -331,15 +336,8 @@ void PopupMenu::_gui_input(const Ref<InputEvent> &p_event) {
 	Ref<InputEventMouseMotion> m = p_event;
 
 	if (m.is_valid()) {
-		if (!item_clickable_area.has_point(m->get_global_position())) {
+		if (!item_clickable_area.has_point(m->get_position())) {
 			return;
-		}
-
-		if (invalidated_click) {
-			moved += m->get_relative();
-			if (moved.length() > 4) {
-				invalidated_click = false;
-			}
 		}
 
 		for (List<Rect2>::Element *E = autohide_areas.front(); E; E = E->next()) {
@@ -714,7 +712,7 @@ void PopupMenu::add_multistate_item(const String &p_label, int p_max_states, int
 }
 
 #define ITEM_SETUP_WITH_SHORTCUT(p_shortcut, p_id, p_global)                           \
-	ERR_FAIL_COND_MSG(p_shortcut.is_null(), "Cannot add item with invalid ShortCut."); \
+	ERR_FAIL_COND_MSG(p_shortcut.is_null(), "Cannot add item with invalid Shortcut."); \
 	_ref_shortcut(p_shortcut);                                                         \
 	item.text = p_shortcut->get_name();                                                \
 	item.xl_text = tr(item.text);                                                      \
@@ -722,7 +720,7 @@ void PopupMenu::add_multistate_item(const String &p_label, int p_max_states, int
 	item.shortcut = p_shortcut;                                                        \
 	item.shortcut_is_global = p_global;
 
-void PopupMenu::add_shortcut(const Ref<ShortCut> &p_shortcut, int p_id, bool p_global) {
+void PopupMenu::add_shortcut(const Ref<Shortcut> &p_shortcut, int p_id, bool p_global) {
 	Item item;
 	ITEM_SETUP_WITH_SHORTCUT(p_shortcut, p_id, p_global);
 	items.push_back(item);
@@ -730,7 +728,7 @@ void PopupMenu::add_shortcut(const Ref<ShortCut> &p_shortcut, int p_id, bool p_g
 	child_controls_changed();
 }
 
-void PopupMenu::add_icon_shortcut(const Ref<Texture2D> &p_icon, const Ref<ShortCut> &p_shortcut, int p_id, bool p_global) {
+void PopupMenu::add_icon_shortcut(const Ref<Texture2D> &p_icon, const Ref<Shortcut> &p_shortcut, int p_id, bool p_global) {
 	Item item;
 	ITEM_SETUP_WITH_SHORTCUT(p_shortcut, p_id, p_global);
 	item.icon = p_icon;
@@ -739,7 +737,7 @@ void PopupMenu::add_icon_shortcut(const Ref<Texture2D> &p_icon, const Ref<ShortC
 	child_controls_changed();
 }
 
-void PopupMenu::add_check_shortcut(const Ref<ShortCut> &p_shortcut, int p_id, bool p_global) {
+void PopupMenu::add_check_shortcut(const Ref<Shortcut> &p_shortcut, int p_id, bool p_global) {
 	Item item;
 	ITEM_SETUP_WITH_SHORTCUT(p_shortcut, p_id, p_global);
 	item.checkable_type = Item::CHECKABLE_TYPE_CHECK_BOX;
@@ -748,7 +746,7 @@ void PopupMenu::add_check_shortcut(const Ref<ShortCut> &p_shortcut, int p_id, bo
 	child_controls_changed();
 }
 
-void PopupMenu::add_icon_check_shortcut(const Ref<Texture2D> &p_icon, const Ref<ShortCut> &p_shortcut, int p_id, bool p_global) {
+void PopupMenu::add_icon_check_shortcut(const Ref<Texture2D> &p_icon, const Ref<Shortcut> &p_shortcut, int p_id, bool p_global) {
 	Item item;
 	ITEM_SETUP_WITH_SHORTCUT(p_shortcut, p_id, p_global);
 	item.icon = p_icon;
@@ -758,7 +756,7 @@ void PopupMenu::add_icon_check_shortcut(const Ref<Texture2D> &p_icon, const Ref<
 	child_controls_changed();
 }
 
-void PopupMenu::add_radio_check_shortcut(const Ref<ShortCut> &p_shortcut, int p_id, bool p_global) {
+void PopupMenu::add_radio_check_shortcut(const Ref<Shortcut> &p_shortcut, int p_id, bool p_global) {
 	Item item;
 	ITEM_SETUP_WITH_SHORTCUT(p_shortcut, p_id, p_global);
 	item.checkable_type = Item::CHECKABLE_TYPE_RADIO_BUTTON;
@@ -767,7 +765,7 @@ void PopupMenu::add_radio_check_shortcut(const Ref<ShortCut> &p_shortcut, int p_
 	child_controls_changed();
 }
 
-void PopupMenu::add_icon_radio_check_shortcut(const Ref<Texture2D> &p_icon, const Ref<ShortCut> &p_shortcut, int p_id, bool p_global) {
+void PopupMenu::add_icon_radio_check_shortcut(const Ref<Texture2D> &p_icon, const Ref<Shortcut> &p_shortcut, int p_id, bool p_global) {
 	Item item;
 	ITEM_SETUP_WITH_SHORTCUT(p_shortcut, p_id, p_global);
 	item.icon = p_icon;
@@ -928,8 +926,8 @@ String PopupMenu::get_item_tooltip(int p_idx) const {
 	return items[p_idx].tooltip;
 }
 
-Ref<ShortCut> PopupMenu::get_item_shortcut(int p_idx) const {
-	ERR_FAIL_INDEX_V(p_idx, items.size(), Ref<ShortCut>());
+Ref<Shortcut> PopupMenu::get_item_shortcut(int p_idx) const {
+	ERR_FAIL_INDEX_V(p_idx, items.size(), Ref<Shortcut>());
 	return items[p_idx].shortcut;
 }
 
@@ -967,7 +965,7 @@ void PopupMenu::set_item_tooltip(int p_idx, const String &p_tooltip) {
 	control->update();
 }
 
-void PopupMenu::set_item_shortcut(int p_idx, const Ref<ShortCut> &p_shortcut, bool p_global) {
+void PopupMenu::set_item_shortcut(int p_idx, const Ref<Shortcut> &p_shortcut, bool p_global) {
 	ERR_FAIL_INDEX(p_idx, items.size());
 	if (items[p_idx].shortcut.is_valid()) {
 		_unref_shortcut(items[p_idx].shortcut);
@@ -1206,7 +1204,7 @@ Array PopupMenu::_get_items() const {
 	return items;
 }
 
-void PopupMenu::_ref_shortcut(Ref<ShortCut> p_sc) {
+void PopupMenu::_ref_shortcut(Ref<Shortcut> p_sc) {
 	if (!shortcut_refcount.has(p_sc)) {
 		shortcut_refcount[p_sc] = 1;
 		p_sc->connect("changed", callable_mp((CanvasItem *)this, &CanvasItem::update));
@@ -1215,7 +1213,7 @@ void PopupMenu::_ref_shortcut(Ref<ShortCut> p_sc) {
 	}
 }
 
-void PopupMenu::_unref_shortcut(Ref<ShortCut> p_sc) {
+void PopupMenu::_unref_shortcut(Ref<Shortcut> p_sc) {
 	ERR_FAIL_COND(!shortcut_refcount.has(p_sc));
 	shortcut_refcount[p_sc]--;
 	if (shortcut_refcount[p_sc] == 0) {
@@ -1440,7 +1438,7 @@ void PopupMenu::_bind_methods() {
 
 void PopupMenu::popup(const Rect2 &p_bounds) {
 	moved = Vector2();
-	invalidated_click = true;
+	popup_time_msec = OS::get_singleton()->get_ticks_msec();
 	set_as_minsize();
 	Popup::popup(p_bounds);
 }
@@ -1472,7 +1470,6 @@ PopupMenu::PopupMenu() {
 	submenu_over = -1;
 	initial_button_mask = 0;
 	during_grabbed_click = false;
-	invalidated_click = false;
 
 	allow_search = true;
 	search_time_msec = 0;

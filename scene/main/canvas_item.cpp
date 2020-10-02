@@ -499,7 +499,7 @@ void CanvasItem::_toplevel_raise_self() {
 }
 
 void CanvasItem::_enter_canvas() {
-	if ((!Object::cast_to<CanvasItem>(get_parent())) || toplevel) {
+	if ((!Object::cast_to<CanvasItem>(get_parent())) || top_level) {
 		Node *n = this;
 
 		canvas_layer = nullptr;
@@ -674,27 +674,27 @@ Color CanvasItem::get_modulate() const {
 	return modulate;
 }
 
-void CanvasItem::set_as_toplevel(bool p_toplevel) {
-	if (toplevel == p_toplevel) {
+void CanvasItem::set_as_top_level(bool p_toplevel) {
+	if (top_level == p_toplevel) {
 		return;
 	}
 
 	if (!is_inside_tree()) {
-		toplevel = p_toplevel;
+		top_level = p_toplevel;
 		return;
 	}
 
 	_exit_canvas();
-	toplevel = p_toplevel;
+	top_level = p_toplevel;
 	_enter_canvas();
 }
 
-bool CanvasItem::is_set_as_toplevel() const {
-	return toplevel;
+bool CanvasItem::is_set_as_top_level() const {
+	return top_level;
 }
 
 CanvasItem *CanvasItem::get_parent_item() const {
-	if (toplevel) {
+	if (top_level) {
 		return nullptr;
 	}
 
@@ -939,9 +939,9 @@ float CanvasItem::draw_char(const Ref<Font> &p_font, const Point2 &p_pos, const 
 	ERR_FAIL_COND_V(p_font.is_null(), 0);
 
 	if (p_font->has_outline()) {
-		p_font->draw_char(canvas_item, p_pos, p_char[0], p_next.c_str()[0], Color(1, 1, 1), true);
+		p_font->draw_char(canvas_item, p_pos, p_char[0], p_next.get_data()[0], Color(1, 1, 1), true);
 	}
-	return p_font->draw_char(canvas_item, p_pos, p_char[0], p_next.c_str()[0], p_modulate);
+	return p_font->draw_char(canvas_item, p_pos, p_char[0], p_next.get_data()[0], p_modulate);
 }
 
 void CanvasItem::_notify_transform(CanvasItem *p_node) {
@@ -967,7 +967,7 @@ void CanvasItem::_notify_transform(CanvasItem *p_node) {
 
 	for (List<CanvasItem *>::Element *E = p_node->children_items.front(); E; E = E->next()) {
 		CanvasItem *ci = E->get();
-		if (ci->toplevel) {
+		if (ci->top_level) {
 			continue;
 		}
 		_notify_transform(ci);
@@ -997,9 +997,9 @@ ObjectID CanvasItem::get_canvas_layer_instance_id() const {
 	}
 }
 
-CanvasItem *CanvasItem::get_toplevel() const {
+CanvasItem *CanvasItem::get_top_level() const {
 	CanvasItem *ci = const_cast<CanvasItem *>(this);
-	while (!ci->toplevel && Object::cast_to<CanvasItem>(ci->get_parent())) {
+	while (!ci->top_level && Object::cast_to<CanvasItem>(ci->get_parent())) {
 		ci = Object::cast_to<CanvasItem>(ci->get_parent());
 	}
 
@@ -1009,7 +1009,7 @@ CanvasItem *CanvasItem::get_toplevel() const {
 Ref<World2D> CanvasItem::get_world_2d() const {
 	ERR_FAIL_COND_V(!is_inside_tree(), Ref<World2D>());
 
-	CanvasItem *tl = get_toplevel();
+	CanvasItem *tl = get_top_level();
 
 	if (tl->get_viewport()) {
 		return tl->get_viewport()->find_world_2d();
@@ -1136,8 +1136,8 @@ void CanvasItem::_bind_methods() {
 
 	ClassDB::bind_method(D_METHOD("update"), &CanvasItem::update);
 
-	ClassDB::bind_method(D_METHOD("set_as_toplevel", "enable"), &CanvasItem::set_as_toplevel);
-	ClassDB::bind_method(D_METHOD("is_set_as_toplevel"), &CanvasItem::is_set_as_toplevel);
+	ClassDB::bind_method(D_METHOD("set_as_toplevel", "enable"), &CanvasItem::set_as_top_level);
+	ClassDB::bind_method(D_METHOD("is_set_as_toplevel"), &CanvasItem::is_set_as_top_level);
 
 	ClassDB::bind_method(D_METHOD("set_light_mask", "light_mask"), &CanvasItem::set_light_mask);
 	ClassDB::bind_method(D_METHOD("get_light_mask"), &CanvasItem::get_light_mask);
@@ -1218,6 +1218,7 @@ void CanvasItem::_bind_methods() {
 	ADD_PROPERTY(PropertyInfo(Variant::COLOR, "modulate"), "set_modulate", "get_modulate");
 	ADD_PROPERTY(PropertyInfo(Variant::COLOR, "self_modulate"), "set_self_modulate", "get_self_modulate");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "show_behind_parent"), "set_draw_behind_parent", "is_draw_behind_parent_enabled");
+	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "top_level"), "set_as_top_level", "is_set_as_top_level");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "show_on_top", PROPERTY_HINT_NONE, "", 0), "_set_on_top", "_is_on_top"); //compatibility
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "light_mask", PROPERTY_HINT_LAYERS_2D_RENDER), "set_light_mask", "get_light_mask");
 
@@ -1228,8 +1229,6 @@ void CanvasItem::_bind_methods() {
 	ADD_GROUP("Material", "");
 	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "material", PROPERTY_HINT_RESOURCE_TYPE, "ShaderMaterial,CanvasItemMaterial"), "set_material", "get_material");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "use_parent_material"), "set_use_parent_material", "get_use_parent_material");
-	//exporting these things doesn't really make much sense i think
-	// ADD_PROPERTY(PropertyInfo(Variant::BOOL, "toplevel", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NOEDITOR), "set_as_toplevel", "is_set_as_toplevel");
 	// ADD_PROPERTY(PropertyInfo(Variant::BOOL,"transform/notify"),"set_transform_notify","is_transform_notify_enabled");
 
 	ADD_SIGNAL(MethodInfo("draw"));
@@ -1355,7 +1354,7 @@ void CanvasItem::_update_texture_filter_changed(bool p_propagate) {
 
 	if (p_propagate) {
 		for (List<CanvasItem *>::Element *E = children_items.front(); E; E = E->next()) {
-			if (!E->get()->toplevel && E->get()->texture_filter == TEXTURE_FILTER_PARENT_NODE) {
+			if (!E->get()->top_level && E->get()->texture_filter == TEXTURE_FILTER_PARENT_NODE) {
 				E->get()->_update_texture_filter_changed(true);
 			}
 		}
@@ -1369,6 +1368,7 @@ void CanvasItem::set_texture_filter(TextureFilter p_texture_filter) {
 	}
 	texture_filter = p_texture_filter;
 	_update_texture_filter_changed(true);
+	_change_notify();
 }
 
 CanvasItem::TextureFilter CanvasItem::get_texture_filter() const {
@@ -1407,7 +1407,7 @@ void CanvasItem::_update_texture_repeat_changed(bool p_propagate) {
 	update();
 	if (p_propagate) {
 		for (List<CanvasItem *>::Element *E = children_items.front(); E; E = E->next()) {
-			if (!E->get()->toplevel && E->get()->texture_repeat == TEXTURE_REPEAT_PARENT_NODE) {
+			if (!E->get()->top_level && E->get()->texture_repeat == TEXTURE_REPEAT_PARENT_NODE) {
 				E->get()->_update_texture_repeat_changed(true);
 			}
 		}
@@ -1421,6 +1421,7 @@ void CanvasItem::set_texture_repeat(TextureRepeat p_texture_repeat) {
 	}
 	texture_repeat = p_texture_repeat;
 	_update_texture_repeat_changed(true);
+	_change_notify();
 }
 
 CanvasItem::TextureRepeat CanvasItem::get_texture_repeat() const {
@@ -1435,7 +1436,7 @@ CanvasItem::CanvasItem() :
 	pending_update = false;
 	modulate = Color(1, 1, 1, 1);
 	self_modulate = Color(1, 1, 1, 1);
-	toplevel = false;
+	top_level = false;
 	first_draw = false;
 	drawing = false;
 	behind = false;

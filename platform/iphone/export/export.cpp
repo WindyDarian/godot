@@ -115,7 +115,7 @@ class EditorExportPlatformIOS : public EditorExportPlatform {
 		}
 
 		for (int i = 0; i < pname.length(); i++) {
-			CharType c = pname[i];
+			char32_t c = pname[i];
 			if (!((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '-' || c == '.')) {
 				if (r_error) {
 					*r_error = vformat(TTR("The character '%s' is not allowed in Identifier."), String::chr(c));
@@ -160,9 +160,8 @@ public:
 
 void EditorExportPlatformIOS::get_preset_features(const Ref<EditorExportPreset> &p_preset, List<String> *r_features) {
 	String driver = ProjectSettings::get_singleton()->get("rendering/quality/driver/driver_name");
-	if (driver == "GLES2") {
-		r_features->push_back("etc");
-	} else if (driver == "Vulkan") {
+	r_features->push_back("pvrtc");
+	if (driver == "Vulkan") {
 		// FIXME: Review if this is correct.
 		r_features->push_back("etc2");
 	}
@@ -1649,7 +1648,7 @@ bool EditorExportPlatformIOS::can_export(const Ref<EditorExportPreset> &p_preset
 		}
 	}
 
-	String etc_error = test_etc2();
+	String etc_error = test_etc2_or_pvrtc();
 	if (etc_error != String()) {
 		valid = false;
 		err += etc_error;

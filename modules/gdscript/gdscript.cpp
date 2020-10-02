@@ -1044,8 +1044,10 @@ GDScript::~GDScript() {
 		MutexLock lock(GDScriptLanguage::get_singleton()->lock);
 
 		while (SelfList<GDScriptFunctionState> *E = pending_func_states.first()) {
-			E->self()->_clear_stack();
+			// Order matters since clearing the stack may already cause
+			// the GDSCriptFunctionState to be destroyed and thus removed from the list.
 			pending_func_states.remove(E);
+			E->self()->_clear_stack();
 		}
 	}
 
@@ -1053,7 +1055,9 @@ GDScript::~GDScript() {
 		memdelete(E->get());
 	}
 
-	GDScriptCache::remove_script(get_path());
+	if (GDScriptCache::singleton) { // Cache may have been already destroyed at engine shutdown.
+		GDScriptCache::remove_script(get_path());
+	}
 
 	_save_orphaned_subclasses();
 
@@ -1449,8 +1453,10 @@ GDScriptInstance::~GDScriptInstance() {
 	MutexLock lock(GDScriptLanguage::get_singleton()->lock);
 
 	while (SelfList<GDScriptFunctionState> *E = pending_func_states.first()) {
-		E->self()->_clear_stack();
+		// Order matters since clearing the stack may already cause
+		// the GDSCriptFunctionState to be destroyed and thus removed from the list.
 		pending_func_states.remove(E);
+		E->self()->_clear_stack();
 	}
 
 	if (script.is_valid() && owner) {
@@ -2035,7 +2041,33 @@ GDScriptLanguage::~GDScriptLanguage() {
 	if (_call_stack) {
 		memdelete_arr(_call_stack);
 	}
-	singleton = nullptr;
+
+	// Clear dependencies between scripts, to ensure cyclic references are broken (to avoid leaks at exit).
+	SelfList<GDScript> *s = script_list.first();
+	while (s) {
+		GDScript *script = s->self();
+		// This ensures the current script is not released before we can check what's the next one
+		// in the list (we can't get the next upfront because we don't know if the reference breaking
+		// will cause it -or any other after it, for that matter- to be released so the next one
+		// is not the same as before).
+		script->reference();
+
+		for (Map<StringName, GDScriptFunction *>::Element *E = script->member_functions.front(); E; E = E->next()) {
+			GDScriptFunction *func = E->get();
+			for (int i = 0; i < func->argument_types.size(); i++) {
+				func->argument_types.write[i].script_type_ref = Ref<Script>();
+			}
+			func->return_type.script_type_ref = Ref<Script>();
+		}
+		for (Map<StringName, GDScript::MemberInfo>::Element *E = script->member_indices.front(); E; E = E->next()) {
+			E->get().data_type.script_type_ref = Ref<Script>();
+		}
+
+		s = s->next();
+		script->unreference();
+	}
+
+	singleton = NULL;
 }
 
 void GDScriptLanguage::add_orphan_subclass(const String &p_qualified_name, const ObjectID &p_subclass) {

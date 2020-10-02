@@ -81,6 +81,7 @@ void _collect_ysort_children(RenderingServerCanvas::Item *p_canvas_item, Transfo
 				child_items[i]->ysort_xform = p_transform;
 				child_items[i]->ysort_pos = p_transform.xform(child_items[i]->xform.elements[2]);
 				child_items[i]->material_owner = child_items[i]->use_parent_material ? p_material_owner : nullptr;
+				child_items[i]->ysort_index = r_index;
 			}
 
 			r_index++;
@@ -900,13 +901,12 @@ void RenderingServerCanvas::canvas_item_attach_skeleton(RID p_item, RID p_skelet
 void RenderingServerCanvas::canvas_item_set_copy_to_backbuffer(RID p_item, bool p_enable, const Rect2 &p_rect) {
 	Item *canvas_item = canvas_item_owner.getornull(p_item);
 	ERR_FAIL_COND(!canvas_item);
-	if (bool(canvas_item->copy_back_buffer != nullptr) != p_enable) {
-		if (p_enable) {
-			canvas_item->copy_back_buffer = memnew(RasterizerCanvas::Item::CopyBackBuffer);
-		} else {
-			memdelete(canvas_item->copy_back_buffer);
-			canvas_item->copy_back_buffer = nullptr;
-		}
+	if (p_enable && (canvas_item->copy_back_buffer == nullptr)) {
+		canvas_item->copy_back_buffer = memnew(RasterizerCanvas::Item::CopyBackBuffer);
+	}
+	if (!p_enable && (canvas_item->copy_back_buffer != nullptr)) {
+		memdelete(canvas_item->copy_back_buffer);
+		canvas_item->copy_back_buffer = nullptr;
 	}
 
 	if (p_enable) {

@@ -41,6 +41,7 @@ class ProjectSettings : public Object {
 
 public:
 	typedef Map<String, Variant> CustomMap;
+	static const String IMPORTED_FILES_PATH;
 
 	enum {
 		//properties that are not for built in values begin from this value, so builtin ones are displayed first
@@ -107,7 +108,7 @@ protected:
 
 	void _convert_to_last_version(int p_from_version);
 
-	bool _load_resource_pack(const String &p_pack, bool p_replace_files = true);
+	bool _load_resource_pack(const String &p_pack, bool p_replace_files = true, int p_offset = 0);
 
 	void _add_property_info_bind(const Dictionary &p_info);
 

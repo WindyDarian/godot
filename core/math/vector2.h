@@ -114,10 +114,10 @@ struct Vector2 {
 	bool operator==(const Vector2 &p_vec2) const;
 	bool operator!=(const Vector2 &p_vec2) const;
 
-	bool operator<(const Vector2 &p_vec2) const { return Math::is_equal_approx(x, p_vec2.x) ? (y < p_vec2.y) : (x < p_vec2.x); }
-	bool operator>(const Vector2 &p_vec2) const { return Math::is_equal_approx(x, p_vec2.x) ? (y > p_vec2.y) : (x > p_vec2.x); }
-	bool operator<=(const Vector2 &p_vec2) const { return Math::is_equal_approx(x, p_vec2.x) ? (y <= p_vec2.y) : (x < p_vec2.x); }
-	bool operator>=(const Vector2 &p_vec2) const { return Math::is_equal_approx(x, p_vec2.x) ? (y >= p_vec2.y) : (x > p_vec2.x); }
+	bool operator<(const Vector2 &p_vec2) const { return x == p_vec2.x ? (y < p_vec2.y) : (x < p_vec2.x); }
+	bool operator>(const Vector2 &p_vec2) const { return x == p_vec2.x ? (y > p_vec2.y) : (x > p_vec2.x); }
+	bool operator<=(const Vector2 &p_vec2) const { return x == p_vec2.x ? (y <= p_vec2.y) : (x < p_vec2.x); }
+	bool operator>=(const Vector2 &p_vec2) const { return x == p_vec2.x ? (y >= p_vec2.y) : (x > p_vec2.x); }
 
 	real_t angle() const;
 
@@ -150,7 +150,19 @@ _FORCE_INLINE_ Vector2 Vector2::plane_project(real_t p_d, const Vector2 &p_vec) 
 	return p_vec - *this * (dot(p_vec) - p_d);
 }
 
-_FORCE_INLINE_ Vector2 operator*(real_t p_scalar, const Vector2 &p_vec) {
+_FORCE_INLINE_ Vector2 operator*(float p_scalar, const Vector2 &p_vec) {
+	return p_vec * p_scalar;
+}
+
+_FORCE_INLINE_ Vector2 operator*(double p_scalar, const Vector2 &p_vec) {
+	return p_vec * p_scalar;
+}
+
+_FORCE_INLINE_ Vector2 operator*(int32_t p_scalar, const Vector2 &p_vec) {
+	return p_vec * p_scalar;
+}
+
+_FORCE_INLINE_ Vector2 operator*(int64_t p_scalar, const Vector2 &p_vec) {
 	return p_vec * p_scalar;
 }
 
@@ -303,6 +315,22 @@ struct Vector2i {
 		y = p_y;
 	}
 };
+
+_FORCE_INLINE_ Vector2i operator*(const int32_t &p_scalar, const Vector2i &p_vector) {
+	return p_vector * p_scalar;
+}
+
+_FORCE_INLINE_ Vector2i operator*(const int64_t &p_scalar, const Vector2i &p_vector) {
+	return p_vector * p_scalar;
+}
+
+_FORCE_INLINE_ Vector2i operator*(const float &p_scalar, const Vector2i &p_vector) {
+	return p_vector * p_scalar;
+}
+
+_FORCE_INLINE_ Vector2i operator*(const double &p_scalar, const Vector2i &p_vector) {
+	return p_vector * p_scalar;
+}
 
 typedef Vector2i Size2i;
 typedef Vector2i Point2i;

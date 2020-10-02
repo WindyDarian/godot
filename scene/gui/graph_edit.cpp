@@ -262,6 +262,7 @@ void GraphEdit::remove_child_notify(Node *p_child) {
 	if (gn) {
 		gn->disconnect("offset_changed", callable_mp(this, &GraphEdit::_graph_node_moved));
 		gn->disconnect("raise_request", callable_mp(this, &GraphEdit::_graph_node_raised));
+		gn->disconnect("item_rect_changed", callable_mp((CanvasItem *)connections_layer, &CanvasItem::update));
 	}
 }
 
@@ -546,7 +547,7 @@ void GraphEdit::_top_layer_input(const Ref<InputEvent> &p_ev) {
 }
 
 bool GraphEdit::_check_clickable_control(Control *p_control, const Vector2 &pos) {
-	if (p_control->is_set_as_toplevel() || !p_control->is_visible()) {
+	if (p_control->is_set_as_top_level() || !p_control->is_visible()) {
 		return false;
 	}
 

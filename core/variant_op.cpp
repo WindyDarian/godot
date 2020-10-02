@@ -245,22 +245,22 @@ bool Variant::booleanize() const {
 		_RETURN(p_a._data.m_type);                              \
 	}
 
-#define DEFAULT_OP_NUM_VEC(m_prefix, m_op_name, m_name, m_op, m_type)                          \
-	CASE_TYPE(m_prefix, m_op_name, m_name) {                                                   \
-		if (p_b.type == INT)                                                                   \
-			_RETURN(p_a._data.m_type m_op p_b._data._int);                                     \
-		if (p_b.type == FLOAT)                                                                 \
-			_RETURN(p_a._data.m_type m_op p_b._data._float);                                   \
-		if (p_b.type == VECTOR2)                                                               \
-			_RETURN(p_a._data.m_type m_op *reinterpret_cast<const Vector2 *>(p_b._data._mem)); \
-		if (p_b.type == VECTOR3)                                                               \
-			_RETURN(p_a._data.m_type m_op *reinterpret_cast<const Vector3 *>(p_b._data._mem)); \
-		if (p_b.type == VECTOR2I)                                                              \
-			_RETURN(p_a._data.m_type m_op *reinterpret_cast<const Vector2 *>(p_b._data._mem)); \
-		if (p_b.type == VECTOR3I)                                                              \
-			_RETURN(p_a._data.m_type m_op *reinterpret_cast<const Vector3 *>(p_b._data._mem)); \
-                                                                                               \
-		_RETURN_FAIL                                                                           \
+#define DEFAULT_OP_NUM_VEC(m_prefix, m_op_name, m_name, m_op, m_type)                           \
+	CASE_TYPE(m_prefix, m_op_name, m_name) {                                                    \
+		if (p_b.type == INT)                                                                    \
+			_RETURN(p_a._data.m_type m_op p_b._data._int);                                      \
+		if (p_b.type == FLOAT)                                                                  \
+			_RETURN(p_a._data.m_type m_op p_b._data._float);                                    \
+		if (p_b.type == VECTOR2)                                                                \
+			_RETURN(p_a._data.m_type m_op *reinterpret_cast<const Vector2 *>(p_b._data._mem));  \
+		if (p_b.type == VECTOR3)                                                                \
+			_RETURN(p_a._data.m_type m_op *reinterpret_cast<const Vector3 *>(p_b._data._mem));  \
+		if (p_b.type == VECTOR2I)                                                               \
+			_RETURN(p_a._data.m_type m_op *reinterpret_cast<const Vector2i *>(p_b._data._mem)); \
+		if (p_b.type == VECTOR3I)                                                               \
+			_RETURN(p_a._data.m_type m_op *reinterpret_cast<const Vector3i *>(p_b._data._mem)); \
+                                                                                                \
+		_RETURN_FAIL                                                                            \
 	}
 
 #define DEFAULT_OP_STR_REV(m_prefix, m_op_name, m_name, m_op, m_type)                                                              \
@@ -1031,6 +1031,9 @@ void Variant::evaluate(const Operator &p_op, const Variant &p_a,
 					case FLOAT: {
 						_RETURN(*reinterpret_cast<const Quat *>(p_a._data._mem) * p_b._data._float);
 					}
+					case INT: {
+						_RETURN(*reinterpret_cast<const Quat *>(p_a._data._mem) * p_b._data._int);
+					}
 					default:
 						_RETURN_FAIL;
 				}
@@ -1062,8 +1065,64 @@ void Variant::evaluate(const Operator &p_op, const Variant &p_a,
 				}
 			}
 
-			DEFAULT_OP_NUM_VEC(math, OP_MULTIPLY, INT, *, _int);
-			DEFAULT_OP_NUM_VEC(math, OP_MULTIPLY, FLOAT, *, _float);
+			CASE_TYPE(math, OP_MULTIPLY, INT) {
+				if (p_b.type == INT) {
+					_RETURN(p_a._data._int * p_b._data._int);
+				}
+				if (p_b.type == FLOAT) {
+					_RETURN(p_a._data._int * p_b._data._float);
+				}
+				if (p_b.type == VECTOR2) {
+					_RETURN(p_a._data._int * *reinterpret_cast<const Vector2 *>(p_b._data._mem));
+				}
+				if (p_b.type == VECTOR3) {
+					_RETURN(p_a._data._int * *reinterpret_cast<const Vector3 *>(p_b._data._mem));
+				}
+				if (p_b.type == VECTOR2I) {
+					_RETURN(p_a._data._int * *reinterpret_cast<const Vector2i *>(p_b._data._mem));
+				}
+				if (p_b.type == VECTOR3I) {
+					_RETURN(p_a._data._int * *reinterpret_cast<const Vector3i *>(p_b._data._mem));
+				}
+				if (p_b.type == QUAT) {
+					_RETURN(p_a._data._int * *reinterpret_cast<const Quat *>(p_b._data._mem));
+				}
+				if (p_b.type == COLOR) {
+					_RETURN(p_a._data._int * *reinterpret_cast<const Color *>(p_b._data._mem));
+				}
+
+				_RETURN_FAIL
+			}
+
+			CASE_TYPE(math, OP_MULTIPLY, FLOAT) {
+				if (p_b.type == INT) {
+					_RETURN(p_a._data._float * p_b._data._int);
+				}
+				if (p_b.type == FLOAT) {
+					_RETURN(p_a._data._float * p_b._data._float);
+				}
+				if (p_b.type == VECTOR2) {
+					_RETURN(p_a._data._float * *reinterpret_cast<const Vector2 *>(p_b._data._mem));
+				}
+				if (p_b.type == VECTOR3) {
+					_RETURN(p_a._data._float * *reinterpret_cast<const Vector3 *>(p_b._data._mem));
+				}
+				if (p_b.type == VECTOR2I) {
+					_RETURN(p_a._data._float * *reinterpret_cast<const Vector2i *>(p_b._data._mem));
+				}
+				if (p_b.type == VECTOR3I) {
+					_RETURN(p_a._data._float * *reinterpret_cast<const Vector3i *>(p_b._data._mem));
+				}
+				if (p_b.type == QUAT) {
+					_RETURN(p_a._data._float * *reinterpret_cast<const Quat *>(p_b._data._mem));
+				}
+				if (p_b.type == COLOR) {
+					_RETURN(p_a._data._float * *reinterpret_cast<const Color *>(p_b._data._mem));
+				}
+
+				_RETURN_FAIL
+			}
+
 			DEFAULT_OP_LOCALMEM_NUM(math, OP_MULTIPLY, VECTOR2, *, Vector2);
 			DEFAULT_OP_LOCALMEM_NUM(math, OP_MULTIPLY, VECTOR2I, *, Vector2i);
 			DEFAULT_OP_LOCALMEM_NUM(math, OP_MULTIPLY, VECTOR3, *, Vector3);
@@ -4215,7 +4274,7 @@ void Variant::interpolate(const Variant &a, const Variant &b, float c, Variant &
 			int split = csize / 2;
 
 			for (int i = 0; i < csize; i++) {
-				CharType chr = ' ';
+				char32_t chr = ' ';
 
 				if (i < split) {
 					if (i < sa.length()) {

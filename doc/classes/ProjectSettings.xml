@@ -9,6 +9,9 @@
 		[b]Overriding:[/b] Any project setting can be overridden by creating a file named [code]override.cfg[/code] in the project's root directory. This can also be used in exported projects by placing this file in the same directory as the project binary.
 	</description>
 	<tutorials>
+		<link title="3D Physics Tests Demo">https://godotengine.org/asset-library/asset/675</link>
+		<link title="3D Platformer Demo">https://godotengine.org/asset-library/asset/125</link>
+		<link title="OS Test Demo">https://godotengine.org/asset-library/asset/677</link>
 	</tutorials>
 	<methods>
 		<method name="add_property_info">
@@ -92,9 +95,12 @@
 			</argument>
 			<argument index="1" name="replace_files" type="bool" default="true">
 			</argument>
+			<argument index="2" name="offset" type="int" default="0">
+			</argument>
 			<description>
 				Loads the contents of the .pck or .zip file specified by [code]pack[/code] into the resource filesystem ([code]res://[/code]). Returns [code]true[/code] on success.
 				[b]Note:[/b] If a file from [code]pack[/code] shares the same path as a file already in the resource filesystem, any attempts to load that file will use the file from [code]pack[/code] unless [code]replace_files[/code] is set to [code]false[/code].
+				[b]Note:[/b] The optional [code]offset[/code] parameter can be used to specify the offset in bytes to the start of the resource pack. This is only supported for .pck files.
 			</description>
 		</method>
 		<method name="localize_path" qualifiers="const">
@@ -552,6 +558,9 @@
 		<member name="input_devices/pointing/emulate_touch_from_mouse" type="bool" setter="" getter="" default="false">
 			If [code]true[/code], sends touch input events when clicking or dragging the mouse.
 		</member>
+		<member name="input_devices/pointing/ios/touch_delay" type="float" setter="" getter="" default="0.150">
+			Default delay for touch events. This only affects iOS devices.
+		</member>
 		<member name="layer_names/2d_physics/layer_1" type="String" setter="" getter="" default="&quot;&quot;">
 			Optional name for the 2D physics layer 1.
 		</member>
@@ -870,7 +879,7 @@
 			Size of the hash table used for the broad-phase 2D hash grid algorithm.
 		</member>
 		<member name="physics/2d/cell_size" type="int" setter="" getter="" default="128">
-			Cell size used for the broad-phase 2D hash grid algorithm.
+			Cell size used for the broad-phase 2D hash grid algorithm (in pixels).
 		</member>
 		<member name="physics/2d/default_angular_damp" type="float" setter="" getter="" default="1.0">
 			The default angular damp in 2D.
@@ -1196,7 +1205,7 @@
 		<member name="rendering/vulkan/staging_buffer/texture_upload_region_size_px" type="int" setter="" getter="" default="64">
 		</member>
 		<member name="world/2d/cell_size" type="int" setter="" getter="" default="100">
-			Cell size used for the 2D hash grid that [VisibilityNotifier2D] uses.
+			Cell size used for the 2D hash grid that [VisibilityNotifier2D] uses (in pixels).
 		</member>
 	</members>
 	<constants>

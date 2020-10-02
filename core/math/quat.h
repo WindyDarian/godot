@@ -130,7 +130,7 @@ public:
 			w(q.w) {
 	}
 
-	Quat operator=(const Quat &q) {
+	Quat &operator=(const Quat &q) {
 		x = q.x;
 		y = q.y;
 		z = q.z;
@@ -222,6 +222,10 @@ bool Quat::operator==(const Quat &p_quat) const {
 
 bool Quat::operator!=(const Quat &p_quat) const {
 	return x != p_quat.x || y != p_quat.y || z != p_quat.z || w != p_quat.w;
+}
+
+_FORCE_INLINE_ Quat operator*(const real_t &p_real, const Quat &p_quat) {
+	return p_quat * p_real;
 }
 
 #endif // QUAT_H
