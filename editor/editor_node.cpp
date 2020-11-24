@@ -30,21 +30,21 @@
 
 #include "editor_node.h"
 
-#include "core/bind/core_bind.h"
-#include "core/class_db.h"
+#include "core/config/project_settings.h"
+#include "core/core_bind.h"
 #include "core/input/input.h"
 #include "core/io/config_file.h"
 #include "core/io/image_loader.h"
 #include "core/io/resource_loader.h"
 #include "core/io/resource_saver.h"
 #include "core/io/stream_peer_ssl.h"
-#include "core/message_queue.h"
+#include "core/object/class_db.h"
+#include "core/object/message_queue.h"
 #include "core/os/file_access.h"
 #include "core/os/keyboard.h"
 #include "core/os/os.h"
-#include "core/print_string.h"
-#include "core/project_settings.h"
-#include "core/translation.h"
+#include "core/string/print_string.h"
+#include "core/string/translation.h"
 #include "core/version.h"
 #include "main/main.h"
 #include "scene/gui/center_container.h"
@@ -128,6 +128,7 @@
 #include "editor/plugins/gi_probe_editor_plugin.h"
 #include "editor/plugins/gpu_particles_2d_editor_plugin.h"
 #include "editor/plugins/gpu_particles_3d_editor_plugin.h"
+#include "editor/plugins/gpu_particles_collision_sdf_editor_plugin.h"
 #include "editor/plugins/gradient_editor_plugin.h"
 #include "editor/plugins/item_list_editor_plugin.h"
 #include "editor/plugins/light_occluder_2d_editor_plugin.h"
@@ -504,6 +505,12 @@ void EditorNode::_notification(int p_what) {
 				RS::get_singleton()->environment_set_volumetric_fog_filter_active(bool(GLOBAL_GET("rendering/volumetric_fog/use_filter")));
 				RS::get_singleton()->environment_set_volumetric_fog_directional_shadow_shrink_size(GLOBAL_GET("rendering/volumetric_fog/directional_shadow_shrink"));
 				RS::get_singleton()->environment_set_volumetric_fog_positional_shadow_shrink_size(GLOBAL_GET("rendering/volumetric_fog/positional_shadow_shrink"));
+				RS::get_singleton()->canvas_set_shadow_texture_size(GLOBAL_GET("rendering/quality/2d_shadow_atlas/size"));
+
+				bool snap_2d_transforms = GLOBAL_GET("rendering/quality/2d/snap_2d_transforms_to_pixel");
+				scene_root->set_snap_2d_transforms_to_pixel(snap_2d_transforms);
+				bool snap_2d_vertices = GLOBAL_GET("rendering/quality/2d/snap_2d_vertices_to_pixel");
+				scene_root->set_snap_2d_vertices_to_pixel(snap_2d_vertices);
 			}
 
 			ResourceImporterTexture::get_singleton()->update_imports();
@@ -515,6 +522,8 @@ void EditorNode::_notification(int p_what) {
 			OS::get_singleton()->set_low_processor_usage_mode_sleep_usec(int(EDITOR_GET("interface/editor/low_processor_mode_sleep_usec")));
 			get_tree()->get_root()->set_as_audio_listener(false);
 			get_tree()->get_root()->set_as_audio_listener_2d(false);
+			get_tree()->get_root()->set_snap_2d_transforms_to_pixel(false);
+			get_tree()->get_root()->set_snap_2d_vertices_to_pixel(false);
 			get_tree()->set_auto_accept_quit(false);
 			get_tree()->get_root()->connect("files_dropped", callable_mp(this, &EditorNode::_dropped_files));
 
@@ -751,15 +760,18 @@ void EditorNode::_fs_changed() {
 					preset_name);
 		} else {
 			Ref<EditorExportPlatform> platform = preset->get_platform();
-			if (platform.is_null()) {
+			const String export_path = export_defer.path.empty() ? preset->get_export_path() : export_defer.path;
+			if (export_path.empty()) {
+				export_error = vformat("Export preset '%s' doesn't have a default export path, and none was specified.", preset_name);
+			} else if (platform.is_null()) {
 				export_error = vformat("Export preset '%s' doesn't have a matching platform.", preset_name);
 			} else {
 				Error err = OK;
 				if (export_defer.pack_only) { // Only export .pck or .zip data pack.
-					if (export_defer.path.ends_with(".zip")) {
-						err = platform->export_zip(preset, export_defer.debug, export_defer.path);
-					} else if (export_defer.path.ends_with(".pck")) {
-						err = platform->export_pack(preset, export_defer.debug, export_defer.path);
+					if (export_path.ends_with(".zip")) {
+						err = platform->export_zip(preset, export_defer.debug, export_path);
+					} else if (export_path.ends_with(".pck")) {
+						err = platform->export_pack(preset, export_defer.debug, export_path);
 					}
 				} else { // Normal project export.
 					String config_error;
@@ -768,7 +780,7 @@ void EditorNode::_fs_changed() {
 						ERR_PRINT(vformat("Cannot export project with preset '%s' due to configuration errors:\n%s", preset_name, config_error));
 						err = missing_templates ? ERR_FILE_NOT_FOUND : ERR_UNCONFIGURED;
 					} else {
-						err = platform->export_project(preset, export_defer.debug, export_defer.path);
+						err = platform->export_project(preset, export_defer.debug, export_path);
 					}
 				}
 				switch (err) {
@@ -778,7 +790,7 @@ void EditorNode::_fs_changed() {
 						export_error = vformat("Project export failed for preset '%s', the export template appears to be missing.", preset_name);
 						break;
 					case ERR_FILE_BAD_PATH:
-						export_error = vformat("Project export failed for preset '%s', the target path '%s' appears to be invalid.", preset_name, export_defer.path);
+						export_error = vformat("Project export failed for preset '%s', the target path '%s' appears to be invalid.", preset_name, export_path);
 						break;
 					default:
 						export_error = vformat("Project export failed with error code %d for preset '%s'.", (int)err, preset_name);
@@ -1670,7 +1682,7 @@ void EditorNode::_dialog_action(String p_file) {
 			if (err == ERR_FILE_CANT_OPEN || err == ERR_FILE_NOT_FOUND) {
 				config.instance(); // new config
 			} else if (err != OK) {
-				show_warning(TTR("Error trying to save layout!"));
+				show_warning(TTR("An error occurred while trying to save the editor layout.\nMake sure the editor's user data path is writable."));
 				return;
 			}
 
@@ -1682,7 +1694,7 @@ void EditorNode::_dialog_action(String p_file) {
 			_update_layouts_menu();
 
 			if (p_file == "Default") {
-				show_warning(TTR("Default editor layout overridden."));
+				show_warning(TTR("Default editor layout overridden.\nTo restore the Default layout to its base settings, use the Delete Layout option and delete the Default layout."));
 			}
 
 		} break;
@@ -1713,7 +1725,7 @@ void EditorNode::_dialog_action(String p_file) {
 			_update_layouts_menu();
 
 			if (p_file == "Default") {
-				show_warning(TTR("Restored default layout to base settings."));
+				show_warning(TTR("Restored the Default layout to its base settings."));
 			}
 
 		} break;
@@ -2696,10 +2708,14 @@ void EditorNode::_screenshot(bool p_use_utc) {
 }
 
 void EditorNode::_save_screenshot(NodePath p_path) {
-	SubViewport *viewport = Object::cast_to<SubViewport>(EditorInterface::get_singleton()->get_editor_viewport()->get_viewport());
-	viewport->set_clear_mode(SubViewport::CLEAR_MODE_ONLY_NEXT_FRAME);
-	Ref<Image> img = viewport->get_texture()->get_data();
-	viewport->set_clear_mode(SubViewport::CLEAR_MODE_ALWAYS);
+	Control *editor_viewport = EditorInterface::get_singleton()->get_editor_viewport();
+	ERR_FAIL_COND_MSG(!editor_viewport, "Cannot get editor viewport.");
+	Viewport *viewport = editor_viewport->get_viewport();
+	ERR_FAIL_COND_MSG(!viewport, "Cannot get editor viewport.");
+	Ref<ViewportTexture> texture = viewport->get_texture();
+	ERR_FAIL_COND_MSG(texture.is_null(), "Cannot get editor viewport texture.");
+	Ref<Image> img = texture->get_data();
+	ERR_FAIL_COND_MSG(img.is_null(), "Cannot get editor viewport texture image.");
 	Error error = img->save_png(p_path);
 	ERR_FAIL_COND_MSG(error != OK, "Cannot save screenshot to file '" + p_path + "'.");
 }
@@ -4224,6 +4240,7 @@ void EditorNode::_save_docks_to_config(Ref<ConfigFile> p_layout, const String &p
 
 	p_layout->set_value(p_section, "dock_filesystem_split", filesystem_dock->get_split_offset());
 	p_layout->set_value(p_section, "dock_filesystem_display_mode", filesystem_dock->get_display_mode());
+	p_layout->set_value(p_section, "dock_filesystem_file_sort", filesystem_dock->get_file_sort());
 	p_layout->set_value(p_section, "dock_filesystem_file_list_display_mode", filesystem_dock->get_file_list_display_mode());
 
 	for (int i = 0; i < vsplits.size(); i++) {
@@ -4416,6 +4433,11 @@ void EditorNode::_load_docks_from_config(Ref<ConfigFile> p_layout, const String 
 	if (p_layout->has_section_key(p_section, "dock_filesystem_display_mode")) {
 		FileSystemDock::DisplayMode dock_filesystem_display_mode = FileSystemDock::DisplayMode(int(p_layout->get_value(p_section, "dock_filesystem_display_mode")));
 		filesystem_dock->set_display_mode(dock_filesystem_display_mode);
+	}
+
+	if (p_layout->has_section_key(p_section, "dock_filesystem_file_sort")) {
+		FileSystemDock::FileSortOption dock_filesystem_file_sort = FileSystemDock::FileSortOption(int(p_layout->get_value(p_section, "dock_filesystem_file_sort")));
+		filesystem_dock->set_file_sort(dock_filesystem_file_sort);
 	}
 
 	if (p_layout->has_section_key(p_section, "dock_filesystem_file_list_display_mode")) {
@@ -5121,7 +5143,6 @@ void EditorNode::_dropped_files(const Vector<String> &p_files, int p_screen) {
 
 void EditorNode::_add_dropped_files_recursive(const Vector<String> &p_files, String to_path) {
 	DirAccessRef dir = DirAccess::create(DirAccess::ACCESS_FILESYSTEM);
-	Vector<String> just_copy = String("ttf,otf").split(",");
 
 	for (int i = 0; i < p_files.size(); i++) {
 		String from = p_files[i];
@@ -5152,9 +5173,6 @@ void EditorNode::_add_dropped_files_recursive(const Vector<String> &p_files, Str
 			continue;
 		}
 
-		if (!ResourceFormatImporter::get_singleton()->can_be_imported(from) && (just_copy.find(from.get_extension().to_lower()) == -1)) {
-			continue;
-		}
 		dir->copy(from, to);
 	}
 }
@@ -5550,46 +5568,51 @@ EditorNode::EditorNode() {
 
 	{
 		int display_scale = EditorSettings::get_singleton()->get("interface/editor/display_scale");
-		float custom_display_scale = EditorSettings::get_singleton()->get("interface/editor/custom_display_scale");
 
 		switch (display_scale) {
 			case 0: {
-				// Try applying a suitable display scale automatically
+				// Try applying a suitable display scale automatically.
 #ifdef OSX_ENABLED
 				editor_set_scale(DisplayServer::get_singleton()->screen_get_max_scale());
 #else
 				const int screen = DisplayServer::get_singleton()->window_get_current_screen();
-				editor_set_scale(DisplayServer::get_singleton()->screen_get_dpi(screen) >= 192 && DisplayServer::get_singleton()->screen_get_size(screen).x > 2000 ? 2.0 : 1.0);
+				float scale;
+				if (DisplayServer::get_singleton()->screen_get_dpi(screen) >= 192 && DisplayServer::get_singleton()->screen_get_size(screen).y >= 1400) {
+					// hiDPI display.
+					scale = 2.0;
+				} else if (DisplayServer::get_singleton()->screen_get_size(screen).y <= 800) {
+					// Small loDPI display. Use a smaller display scale so that editor elements fit more easily.
+					// Icons won't look great, but this is better than having editor elements overflow from its window.
+					scale = 0.75;
+				} else {
+					scale = 1.0;
+				}
+
+				editor_set_scale(scale);
 #endif
 			} break;
 
-			case 1: {
+			case 1:
 				editor_set_scale(0.75);
-			} break;
-
-			case 2: {
+				break;
+			case 2:
 				editor_set_scale(1.0);
-			} break;
-
-			case 3: {
+				break;
+			case 3:
 				editor_set_scale(1.25);
-			} break;
-
-			case 4: {
+				break;
+			case 4:
 				editor_set_scale(1.5);
-			} break;
-
-			case 5: {
+				break;
+			case 5:
 				editor_set_scale(1.75);
-			} break;
-
-			case 6: {
+				break;
+			case 6:
 				editor_set_scale(2.0);
-			} break;
-
-			default: {
-				editor_set_scale(custom_display_scale);
-			} break;
+				break;
+			default:
+				editor_set_scale(EditorSettings::get_singleton()->get("interface/editor/custom_display_scale"));
+				break;
 		}
 	}
 
@@ -6635,6 +6658,7 @@ EditorNode::EditorNode() {
 	add_editor_plugin(memnew(PhysicalBone3DEditorPlugin(this)));
 	add_editor_plugin(memnew(MeshEditorPlugin(this)));
 	add_editor_plugin(memnew(MaterialEditorPlugin(this)));
+	add_editor_plugin(memnew(GPUParticlesCollisionSDFEditorPlugin(this)));
 
 	for (int i = 0; i < EditorPlugins::get_plugin_count(); i++) {
 		add_editor_plugin(EditorPlugins::create(i, this));
@@ -6789,14 +6813,16 @@ EditorNode::EditorNode() {
 	ED_SHORTCUT("editor/editor_2d", TTR("Open 2D Editor"), KEY_MASK_ALT | KEY_1);
 	ED_SHORTCUT("editor/editor_3d", TTR("Open 3D Editor"), KEY_MASK_ALT | KEY_2);
 	ED_SHORTCUT("editor/editor_script", TTR("Open Script Editor"), KEY_MASK_ALT | KEY_3);
+	ED_SHORTCUT("editor/editor_assetlib", TTR("Open Asset Library"), KEY_MASK_ALT | KEY_4);
 	ED_SHORTCUT("editor/editor_help", TTR("Search Help"), KEY_MASK_ALT | KEY_SPACE);
 #else
-	ED_SHORTCUT("editor/editor_2d", TTR("Open 2D Editor"), KEY_F1);
-	ED_SHORTCUT("editor/editor_3d", TTR("Open 3D Editor"), KEY_F2);
-	ED_SHORTCUT("editor/editor_script", TTR("Open Script Editor"), KEY_F3); //hack needed for script editor F3 search to work :) Assign like this or don't use F3
-	ED_SHORTCUT("editor/editor_help", TTR("Search Help"), KEY_MASK_SHIFT | KEY_F1);
+	// Use the Ctrl modifier so F2 can be used to rename nodes in the scene tree dock.
+	ED_SHORTCUT("editor/editor_2d", TTR("Open 2D Editor"), KEY_MASK_CTRL | KEY_F1);
+	ED_SHORTCUT("editor/editor_3d", TTR("Open 3D Editor"), KEY_MASK_CTRL | KEY_F2);
+	ED_SHORTCUT("editor/editor_script", TTR("Open Script Editor"), KEY_MASK_CTRL | KEY_F3);
+	ED_SHORTCUT("editor/editor_assetlib", TTR("Open Asset Library"), KEY_MASK_CTRL | KEY_F4);
+	ED_SHORTCUT("editor/editor_help", TTR("Search Help"), KEY_F1);
 #endif
-	ED_SHORTCUT("editor/editor_assetlib", TTR("Open Asset Library"));
 	ED_SHORTCUT("editor/editor_next", TTR("Open the next Editor"));
 	ED_SHORTCUT("editor/editor_prev", TTR("Open the previous Editor"));
 

@@ -31,7 +31,7 @@
 #ifndef TEST_LIST_H
 #define TEST_LIST_H
 
-#include "core/list.h"
+#include "core/templates/list.h"
 
 #include "tests/test_macros.h"
 
@@ -273,7 +273,6 @@ TEST_CASE("[Stress][List] Swap random 10 elements, 1000 iterations.") {
 	populate_integers(list, n, 10);
 	swap_random(list, n, 10, 1000);
 }
-
 } // namespace TestList
 
 #endif // TEST_LIST_H

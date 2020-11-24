@@ -43,7 +43,6 @@ class TileMapEditor : public VBoxContainer {
 	GDCLASS(TileMapEditor, VBoxContainer);
 
 	enum Tool {
-
 		TOOL_NONE,
 		TOOL_PAINTING,
 		TOOL_ERASING,
@@ -58,7 +57,6 @@ class TileMapEditor : public VBoxContainer {
 	};
 
 	enum Options {
-
 		OPTION_COPY,
 		OPTION_ERASE_SELECTION,
 		OPTION_FIX_INVALID,
@@ -119,6 +117,7 @@ class TileMapEditor : public VBoxContainer {
 	Rect2i rectangle;
 
 	Point2i over_tile;
+	bool refocus_over_tile = false;
 
 	bool *bucket_cache_visited;
 	Rect2i bucket_cache_rect;

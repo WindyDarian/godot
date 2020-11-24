@@ -28,21 +28,20 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
 
-#import <GameKit/GameKit.h>
 #import <UIKit/UIKit.h>
 
 @class GodotView;
+@class GodotNativeVideoView;
+@class GodotKeyboardInputView;
 
-@interface ViewController : UIViewController <GKGameCenterControllerDelegate>
+@interface ViewController : UIViewController
 
-- (GodotView *)godotView;
+@property(nonatomic, readonly, strong) GodotView *godotView;
+@property(nonatomic, readonly, strong) GodotNativeVideoView *videoView;
+@property(nonatomic, readonly, strong) GodotKeyboardInputView *keyboardView;
 
 // MARK: Native Video Player
 
 - (BOOL)playVideoAtPath:(NSString *)filePath volume:(float)videoVolume audio:(NSString *)audioTrack subtitle:(NSString *)subtitleTrack;
-- (BOOL)isVideoPlaying;
-- (void)pauseVideo;
-- (void)unpauseVideo;
-- (void)stopVideo;
 
 @end

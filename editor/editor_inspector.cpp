@@ -358,16 +358,16 @@ bool EditorPropertyRevert::may_node_be_in_instance(Node *p_node) {
 	Node *node = p_node;
 
 	while (node) {
-		if (node->get_scene_instance_state().is_valid()) {
-			might_be = true;
-			break;
-		}
 		if (node == edited_scene) {
 			if (node->get_scene_inherited_state().is_valid()) {
 				might_be = true;
 				break;
 			}
 			might_be = false;
+			break;
+		}
+		if (node->get_scene_instance_state().is_valid()) {
+			might_be = true;
 			break;
 		}
 		node = node->get_owner();
@@ -414,9 +414,9 @@ bool EditorPropertyRevert::get_instanced_node_original_property(Node *p_node, co
 		node = node->get_owner();
 	}
 
-	if (!found && node) {
+	if (!found && p_node) {
 		//if not found, try default class value
-		Variant attempt = ClassDB::class_get_default_property_value(node->get_class_name(), p_prop);
+		Variant attempt = ClassDB::class_get_default_property_value(p_node->get_class_name(), p_prop);
 		if (attempt.get_type() != Variant::NIL) {
 			found = true;
 			value = attempt;
@@ -2278,7 +2278,7 @@ void EditorInspector::_property_checked(const String &p_path, bool p_checked) {
 			for (List<PropertyInfo>::Element *E = pinfo.front(); E; E = E->next()) {
 				if (E->get().name == p_path) {
 					Callable::CallError ce;
-					to_create = Variant::construct(E->get().type, nullptr, 0, ce);
+					Variant::construct(E->get().type, to_create, nullptr, 0, ce);
 					break;
 				}
 			}

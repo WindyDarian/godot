@@ -81,6 +81,10 @@ public:
 		current_seed = pcg.state;
 		return pcg32_random_r(&pcg);
 	}
+	_FORCE_INLINE_ uint32_t rand(uint32_t bounds) {
+		current_seed = pcg.state;
+		return pcg32_boundedrand_r(&pcg, bounds);
+	}
 
 	// Obtaining floating point numbers in [0, 1] range with "good enough" uniformity.
 	// These functions sample the output of rand() as the fraction part of an infinite binary number,
@@ -129,7 +133,7 @@ public:
 
 	double random(double p_from, double p_to);
 	float random(float p_from, float p_to);
-	real_t random(int p_from, int p_to) { return (real_t)random((real_t)p_from, (real_t)p_to); }
+	int random(int p_from, int p_to);
 };
 
 #endif // RANDOM_PCG_H

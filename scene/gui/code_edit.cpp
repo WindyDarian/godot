@@ -132,6 +132,7 @@ void CodeEdit::set_line_as_breakpoint(int p_line, bool p_breakpointed) {
 		breakpointed_lines.erase(p_line);
 	}
 	emit_signal("breakpoint_toggled", p_line);
+	update();
 }
 
 bool CodeEdit::is_line_breakpointed(int p_line) const {
@@ -160,6 +161,7 @@ Array CodeEdit::get_breakpointed_lines() const {
 void CodeEdit::set_line_as_bookmarked(int p_line, bool p_bookmarked) {
 	int mask = get_line_gutter_metadata(p_line, main_gutter);
 	set_line_gutter_metadata(p_line, main_gutter, p_bookmarked ? mask | MAIN_GUTTER_BOOKMARK : mask & ~MAIN_GUTTER_BOOKMARK);
+	update();
 }
 
 bool CodeEdit::is_line_bookmarked(int p_line) const {
@@ -188,6 +190,7 @@ Array CodeEdit::get_bookmarked_lines() const {
 void CodeEdit::set_line_as_executing(int p_line, bool p_executing) {
 	int mask = get_line_gutter_metadata(p_line, main_gutter);
 	set_line_gutter_metadata(p_line, main_gutter, p_executing ? mask | MAIN_GUTTER_EXECUTING : mask & ~MAIN_GUTTER_EXECUTING);
+	update();
 }
 
 bool CodeEdit::is_line_executing(int p_line) const {
@@ -338,7 +341,10 @@ void CodeEdit::_gutter_clicked(int p_line, int p_gutter) {
 	}
 
 	if (p_gutter == line_number_gutter) {
-		cursor_set_line(p_line);
+		set_selection_mode(TextEdit::SelectionMode::SELECTION_MODE_LINE, p_line, 0);
+		select(p_line, 0, p_line + 1, 0);
+		cursor_set_line(p_line + 1);
+		cursor_set_column(0);
 		return;
 	}
 

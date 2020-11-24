@@ -31,7 +31,7 @@
 #ifndef JAVA_CLASS_WRAPPER_H
 #define JAVA_CLASS_WRAPPER_H
 
-#include "core/reference.h"
+#include "core/object/reference.h"
 
 #ifdef ANDROID_ENABLED
 #include <android/log.h>
@@ -47,7 +47,6 @@ class JavaClass : public Reference {
 
 #ifdef ANDROID_ENABLED
 	enum ArgumentType{
-
 		ARG_TYPE_VOID,
 		ARG_TYPE_BOOLEAN,
 		ARG_TYPE_BYTE,

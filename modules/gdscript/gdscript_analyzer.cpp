@@ -30,12 +30,12 @@
 
 #include "gdscript_analyzer.h"
 
-#include "core/class_db.h"
-#include "core/hash_map.h"
+#include "core/config/project_settings.h"
 #include "core/io/resource_loader.h"
+#include "core/object/class_db.h"
+#include "core/object/script_language.h"
 #include "core/os/file_access.h"
-#include "core/project_settings.h"
-#include "core/script_language.h"
+#include "core/templates/hash_map.h"
 #include "gdscript.h"
 
 // TODO: Move this to a central location (maybe core?).
@@ -577,6 +577,12 @@ void GDScriptAnalyzer::resolve_class_interface(GDScriptParser::ClassNode *p_clas
 
 				GDScriptParser::DataType datatype = member.constant->get_datatype();
 				if (member.constant->initializer) {
+					if (member.constant->initializer->type == GDScriptParser::Node::ARRAY) {
+						const_fold_array(static_cast<GDScriptParser::ArrayNode *>(member.constant->initializer));
+					} else if (member.constant->initializer->type == GDScriptParser::Node::DICTIONARY) {
+						const_fold_dictionary(static_cast<GDScriptParser::DictionaryNode *>(member.constant->initializer));
+					}
+
 					if (!member.constant->initializer->is_constant) {
 						push_error(R"(Initializer for a constant must be a constant expression.)", member.constant->initializer);
 					}
@@ -1113,6 +1119,11 @@ void GDScriptAnalyzer::resolve_constant(GDScriptParser::ConstantNode *p_constant
 	GDScriptParser::DataType type;
 
 	reduce_expression(p_constant->initializer);
+	if (p_constant->initializer->type == GDScriptParser::Node::ARRAY) {
+		const_fold_array(static_cast<GDScriptParser::ArrayNode *>(p_constant->initializer));
+	} else if (p_constant->initializer->type == GDScriptParser::Node::DICTIONARY) {
+		const_fold_dictionary(static_cast<GDScriptParser::DictionaryNode *>(p_constant->initializer));
+	}
 
 	if (!p_constant->initializer->is_constant) {
 		push_error(vformat(R"(Assigned value for constant "%s" isn't a constant expression.)", p_constant->identifier->name), p_constant->initializer);
@@ -1422,22 +1433,9 @@ void GDScriptAnalyzer::reduce_expression(GDScriptParser::ExpressionNode *p_expre
 }
 
 void GDScriptAnalyzer::reduce_array(GDScriptParser::ArrayNode *p_array) {
-	bool all_is_constant = true;
-
 	for (int i = 0; i < p_array->elements.size(); i++) {
 		GDScriptParser::ExpressionNode *element = p_array->elements[i];
 		reduce_expression(element);
-		all_is_constant = all_is_constant && element->is_constant;
-	}
-
-	if (all_is_constant) {
-		Array array;
-		array.resize(p_array->elements.size());
-		for (int i = 0; i < p_array->elements.size(); i++) {
-			array[i] = p_array->elements[i]->reduced_value;
-		}
-		p_array->is_constant = true;
-		p_array->reduced_value = array;
 	}
 
 	// It's array in any case.
@@ -1713,7 +1711,8 @@ void GDScriptAnalyzer::reduce_call(GDScriptParser::CallNode *p_call, bool is_awa
 				}
 
 				Callable::CallError err;
-				Variant value = Variant::construct(builtin_type, (const Variant **)args.ptr(), args.size(), err);
+				Variant value;
+				Variant::construct(builtin_type, value, (const Variant **)args.ptr(), args.size(), err);
 
 				switch (err.error) {
 					case Callable::CallError::CALL_ERROR_INVALID_ARGUMENT:
@@ -1984,8 +1983,6 @@ void GDScriptAnalyzer::reduce_cast(GDScriptParser::CastNode *p_cast) {
 }
 
 void GDScriptAnalyzer::reduce_dictionary(GDScriptParser::DictionaryNode *p_dictionary) {
-	bool all_is_constant = true;
-
 	HashMap<Variant, GDScriptParser::ExpressionNode *, VariantHasher, VariantComparator> elements;
 
 	for (int i = 0; i < p_dictionary->elements.size(); i++) {
@@ -1994,7 +1991,6 @@ void GDScriptAnalyzer::reduce_dictionary(GDScriptParser::DictionaryNode *p_dicti
 			reduce_expression(element.key);
 		}
 		reduce_expression(element.value);
-		all_is_constant = all_is_constant && element.key->is_constant && element.value->is_constant;
 
 		if (element.key->is_constant) {
 			if (elements.has(element.key->reduced_value)) {
@@ -2003,16 +1999,6 @@ void GDScriptAnalyzer::reduce_dictionary(GDScriptParser::DictionaryNode *p_dicti
 				elements[element.key->reduced_value] = element.value;
 			}
 		}
-	}
-
-	if (all_is_constant) {
-		Dictionary dict;
-		for (int i = 0; i < p_dictionary->elements.size(); i++) {
-			const GDScriptParser::DictionaryNode::Pair &element = p_dictionary->elements[i];
-			dict[element.key->reduced_value] = element.value->reduced_value;
-		}
-		p_dictionary->is_constant = true;
-		p_dictionary->reduced_value = dict;
 	}
 
 	// It's dictionary in any case.
@@ -2090,7 +2076,8 @@ void GDScriptAnalyzer::reduce_identifier_from_base(GDScriptParser::IdentifierNod
 				}
 				default: {
 					Callable::CallError temp;
-					Variant dummy = Variant::construct(base.builtin_type, nullptr, 0, temp);
+					Variant dummy;
+					Variant::construct(base.builtin_type, dummy, nullptr, 0, temp);
 					List<PropertyInfo> properties;
 					dummy.get_property_list(&properties);
 					for (const List<PropertyInfo>::Element *E = properties.front(); E != nullptr; E = E->next()) {
@@ -2294,10 +2281,12 @@ void GDScriptAnalyzer::reduce_identifier(GDScriptParser::IdentifierNode *p_ident
 	StringName name = p_identifier->name;
 	p_identifier->source = GDScriptParser::IdentifierNode::UNDEFINED_SOURCE;
 
-	// Check globals.
-	if (GDScriptParser::get_builtin_type(name) < Variant::VARIANT_MAX) {
+	// Check globals. We make an exception for Variant::OBJECT because it's the base class for
+	// non-builtin types so we allow doing e.g. Object.new()
+	Variant::Type builtin_type = GDScriptParser::get_builtin_type(name);
+	if (builtin_type != Variant::OBJECT && builtin_type < Variant::VARIANT_MAX) {
 		if (can_be_builtin) {
-			p_identifier->set_datatype(make_builtin_meta_type(GDScriptParser::get_builtin_type(name)));
+			p_identifier->set_datatype(make_builtin_meta_type(builtin_type));
 			return;
 		} else {
 			push_error(R"(Builtin type cannot be used as a name on its own.)", p_identifier);
@@ -2451,7 +2440,7 @@ void GDScriptAnalyzer::reduce_subscript(GDScriptParser::SubscriptNode *p_subscri
 		if (p_subscript->base->is_constant) {
 			// Just try to get it.
 			bool valid = false;
-			Variant value = p_subscript->base->reduced_value.get_named(p_subscript->attribute->name, &valid);
+			Variant value = p_subscript->base->reduced_value.get_named(p_subscript->attribute->name, valid);
 			if (!valid) {
 				push_error(vformat(R"(Cannot get member "%s" from "%s".)", p_subscript->attribute->name, p_subscript->base->reduced_value), p_subscript->index);
 			} else {
@@ -2552,7 +2541,7 @@ void GDScriptAnalyzer::reduce_subscript(GDScriptParser::SubscriptNode *p_subscri
 								error = index_type.builtin_type != Variant::INT && index_type.builtin_type != Variant::STRING;
 								break;
 							// Don't support indexing, but we will check it later.
-							case Variant::_RID:
+							case Variant::RID:
 							case Variant::BOOL:
 							case Variant::CALLABLE:
 							case Variant::FLOAT:
@@ -2585,7 +2574,7 @@ void GDScriptAnalyzer::reduce_subscript(GDScriptParser::SubscriptNode *p_subscri
 
 				switch (base_type.builtin_type) {
 					// Can't index at all.
-					case Variant::_RID:
+					case Variant::RID:
 					case Variant::BOOL:
 					case Variant::CALLABLE:
 					case Variant::FLOAT:
@@ -2737,6 +2726,46 @@ void GDScriptAnalyzer::reduce_unary_op(GDScriptParser::UnaryOpNode *p_unary_op) 
 	p_unary_op->set_datatype(result);
 }
 
+void GDScriptAnalyzer::const_fold_array(GDScriptParser::ArrayNode *p_array) {
+	bool all_is_constant = true;
+
+	for (int i = 0; i < p_array->elements.size(); i++) {
+		GDScriptParser::ExpressionNode *element = p_array->elements[i];
+		all_is_constant = all_is_constant && element->is_constant;
+		if (!all_is_constant) {
+			return;
+		}
+	}
+
+	Array array;
+	array.resize(p_array->elements.size());
+	for (int i = 0; i < p_array->elements.size(); i++) {
+		array[i] = p_array->elements[i]->reduced_value;
+	}
+	p_array->is_constant = true;
+	p_array->reduced_value = array;
+}
+
+void GDScriptAnalyzer::const_fold_dictionary(GDScriptParser::DictionaryNode *p_dictionary) {
+	bool all_is_constant = true;
+
+	for (int i = 0; i < p_dictionary->elements.size(); i++) {
+		const GDScriptParser::DictionaryNode::Pair &element = p_dictionary->elements[i];
+		all_is_constant = all_is_constant && element.key->is_constant && element.value->is_constant;
+		if (!all_is_constant) {
+			return;
+		}
+	}
+
+	Dictionary dict;
+	for (int i = 0; i < p_dictionary->elements.size(); i++) {
+		const GDScriptParser::DictionaryNode::Pair &element = p_dictionary->elements[i];
+		dict[element.key->reduced_value] = element.value->reduced_value;
+	}
+	p_dictionary->is_constant = true;
+	p_dictionary->reduced_value = dict;
+}
+
 GDScriptParser::DataType GDScriptAnalyzer::type_from_variant(const Variant &p_value, const GDScriptParser::Node *p_source) {
 	GDScriptParser::DataType result;
 	result.is_constant = true;
@@ -2842,7 +2871,8 @@ bool GDScriptAnalyzer::get_function_signature(GDScriptParser::Node *p_source, GD
 	if (p_base_type.kind == GDScriptParser::DataType::BUILTIN) {
 		// Construct a base type to get methods.
 		Callable::CallError err;
-		Variant dummy = Variant::construct(p_base_type.builtin_type, nullptr, 0, err);
+		Variant dummy;
+		Variant::construct(p_base_type.builtin_type, dummy, nullptr, 0, err);
 		if (err.error != Callable::CallError::CALL_OK) {
 			ERR_FAIL_V_MSG(false, "Could not construct base Variant type.");
 		}
@@ -3068,7 +3098,7 @@ GDScriptParser::DataType GDScriptAnalyzer::get_operation_type(Variant::Operator 
 		a = a_ref;
 	} else {
 		Callable::CallError err;
-		a = Variant::construct(a_type, nullptr, 0, err);
+		Variant::construct(a_type, a, nullptr, 0, err);
 		if (err.error != Callable::CallError::CALL_OK) {
 			r_valid = false;
 			ERR_FAIL_V_MSG(result, vformat("Could not construct value of type %s", Variant::get_type_name(a_type)));
@@ -3081,7 +3111,7 @@ GDScriptParser::DataType GDScriptAnalyzer::get_operation_type(Variant::Operator 
 		b = b_ref;
 	} else {
 		Callable::CallError err;
-		b = Variant::construct(b_type, nullptr, 0, err);
+		Variant::construct(b_type, b, nullptr, 0, err);
 		if (err.error != Callable::CallError::CALL_OK) {
 			r_valid = false;
 			ERR_FAIL_V_MSG(result, vformat("Could not construct value of type %s", Variant::get_type_name(b_type)));

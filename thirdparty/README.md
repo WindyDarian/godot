@@ -76,14 +76,10 @@ Files extracted from upstream source:
 
 ## doctest
 - Upstream: https://github.com/onqtam/doctest
-- Version: 1c8da00 (2.4.0)
+- Version: 8424be5 (2.4.1)
 - License: MIT
 
 Extracted from .zip provided. Extracted license and header only.
-
-Important: Some files have Godot-made changes.
-They are marked with `// -- GODOT start --` and `// -- GODOT end --`
-comments.
 
 ## enet
 
@@ -151,7 +147,7 @@ Use UI font variant if available, because it has tight vertical metrics and good
 ## freetype
 
 - Upstream: https://www.freetype.org
-- Version: 2.10.2 (2020)
+- Version: 2.10.4 (2020)
 - License: FreeType License (BSD-like)
 
 Files extracted from upstream source:
@@ -164,7 +160,7 @@ Files extracted from upstream source:
 ## glslang
 
 - Upstream: https://github.com/KhronosGroup/glslang
-- Version: git (4fc7a33910fb8e40b970d160e1b38ab3f67fe0f3, 2020)
+- Version: git (bacaef3237c515e40d1a24722be48c0a0b30f75f, 2020)
 - License: glslang
 
 Version should be kept in sync with the one of the used Vulkan SDK (see `vulkan`
@@ -173,10 +169,12 @@ good glslang commit: https://github.com/KhronosGroup/Vulkan-ValidationLayers/blo
 
 Files extracted from upstream source:
 
-- `glslang`, `OGLCompilersDLL`, `SPIRV`
+- `glslang` (except `glslang/HLSL`), `OGLCompilersDLL`, `SPIRV`
+- `StandAlone/{DirStackFileIncluder.h,ResourceLimits.{cpp,h}}`
+- Run `cmake . && make` and copy generated `include/glslang/build_info.h`
+  to `glslang/build_info.h`
 - `LICENSE.txt`
-- Unnecessary files like `CMakeLists.txt`, `revision.template` and
-  `updateGrammar` removed.
+- Unnecessary files like `CMakeLists.txt` and `updateGrammar` removed.
 
 Patches in the `patches` directory should be re-applied after updates.
 
@@ -376,7 +374,7 @@ Collection of single-file libraries used in Godot components.
   * License: Apache 2.0
 - `open-simplex-noise.{c,h}`
   * Upstream: https://github.com/smcameron/open-simplex-noise-in-c
-  * Version: git (0d555e7f40527d0870906fe9469a3b1bb4020b7f, 2015) + custom changes
+  * Version: git (0fef0dbedd76f767da7e3c894822729d0f07e54d, 2020) + custom changes
   * License: Unlicense
 - `pcg.{cpp,h}`
   * Upstream: http://www.pcg-random.org
@@ -433,7 +431,7 @@ Collection of single-file libraries used in Godot components.
 ## nanosvg
 
 - Upstream: https://github.com/memononen/nanosvg
-- Version: git (25241c5a8f8451d41ab1b02ab2d865b01600d949, 2019)
+- Version: git (3e403ec72a9145cbbcc6c63d94a4caf079aafec2, 2020)
 - License: zlib
 
 Files extracted from the upstream source:
@@ -592,7 +590,7 @@ folder.
 ## vulkan
 
 - Upstream: https://github.com/KhronosGroup/Vulkan-Loader
-- Version: sdk-1.2.131.2 (2020)
+- Version: sdk-1.2.154.0 (2020)
 - License: Apache 2.0
 
 Unless there is a specific reason to package a more recent version, please stick
@@ -610,11 +608,10 @@ Files extracted from upstream source:
 
 `vk_enum_string_helper.h` is taken from the matching `Vulkan-ValidationLayers`
 SDK release: https://github.com/KhronosGroup/Vulkan-ValidationLayers/blob/master/layers/generated/vk_enum_string_helper.h
-Includes custom change to disable MSVC pragma, might be upstreamed via:
-https://github.com/KhronosGroup/Vulkan-ValidationLayers/pull/1666
 
 `vk_mem_alloc.h` is taken from https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator
 Version: 2.3.0 (2019)
+`vk_mem_alloc.cpp` and `android/vk_mem_alloc.cpp` are Godot files and should be preserved on updates.
 
 Patches in the `patches` directory should be re-applied after updates.
 

@@ -32,7 +32,7 @@
 #define EDITOR_PLUGIN_H
 
 #include "core/io/config_file.h"
-#include "core/undo_redo.h"
+#include "core/object/undo_redo.h"
 #include "editor/debugger/editor_debugger_node.h"
 #include "editor/editor_inspector.h"
 #include "editor/editor_translation_parser.h"
@@ -221,7 +221,7 @@ public:
 
 	int update_overlays() const;
 
-	void queue_save_layout() const;
+	void queue_save_layout();
 
 	void make_bottom_panel_item_visible(Control *p_item);
 	void hide_bottom_panel();

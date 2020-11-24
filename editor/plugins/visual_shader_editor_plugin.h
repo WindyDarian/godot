@@ -33,6 +33,7 @@
 
 #include "editor/editor_node.h"
 #include "editor/editor_plugin.h"
+#include "editor/plugins/curve_editor_plugin.h"
 #include "editor/property_editor.h"
 #include "scene/gui/button.h"
 #include "scene/gui/graph_edit.h"
@@ -73,6 +74,8 @@ private:
 		VBoxContainer *preview_box;
 		LineEdit *uniform_name;
 		OptionButton *const_op;
+		CodeEdit *expression_edit;
+		CurveEditor *curve_editor;
 	};
 
 	Ref<VisualShader> visual_shader;
@@ -91,6 +94,8 @@ public:
 	void register_uniform_name(int p_id, LineEdit *p_uniform_name);
 	void register_default_input_button(int p_node_id, int p_port_id, Button *p_button);
 	void register_constant_option_btn(int p_node_id, OptionButton *p_button);
+	void register_expression_edit(int p_node_id, CodeEdit *p_expression_edit);
+	void register_curve_editor(int p_node_id, CurveEditor *p_curve_editor);
 	void clear_links();
 	void set_shader_type(VisualShader::Type p_type);
 	bool is_preview_visible(int p_id) const;
@@ -109,7 +114,9 @@ public:
 	void set_input_port_default_value(VisualShader::Type p_type, int p_node_id, int p_port_id, Variant p_value);
 	void update_uniform_refs();
 	void set_uniform_name(VisualShader::Type p_type, int p_node_id, const String &p_name);
+	void update_curve(int p_node_id);
 	void update_constant(VisualShader::Type p_type, int p_node_id);
+	void set_expression(VisualShader::Type p_type, int p_node_id, const String &p_expression);
 	int get_constant_index(float p_constant) const;
 	void update_node_size(int p_node_id);
 	VisualShader::Type get_shader_type() const;
@@ -251,6 +258,7 @@ class VisualShaderEditor : public VBoxContainer {
 	int texture2d_array_node_option_idx;
 	int texture3d_node_option_idx;
 	int custom_node_option_idx;
+	int curve_node_option_idx;
 	List<String> keyword_list;
 
 	List<VisualShaderNodeUniformRef> uniform_refs;
@@ -262,6 +270,8 @@ class VisualShaderEditor : public VBoxContainer {
 	void _add_texture2d_node(const String &p_path);
 	void _add_texture2d_array_node(const String &p_path);
 	void _add_texture3d_node(const String &p_path);
+	void _add_curve_node(const String &p_path);
+
 	VisualShaderNode *_add_node(int p_idx, int p_op_idx = -1);
 	void _update_options_menu();
 	void _set_mode(int p_which);
@@ -290,8 +300,9 @@ class VisualShaderEditor : public VBoxContainer {
 	void _scroll_changed(const Vector2 &p_scroll);
 	void _node_selected(Object *p_node);
 
-	void _delete_request(int);
-	void _delete_nodes();
+	void _delete_nodes(int p_type, const List<int> &p_nodes);
+	void _delete_node_request(int p_type, int p_node);
+	void _delete_nodes_request();
 
 	void _removed_from_graph();
 

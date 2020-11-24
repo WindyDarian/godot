@@ -31,9 +31,9 @@
 #ifndef GDSCRIPT_ANALYZER_H
 #define GDSCRIPT_ANALYZER_H
 
-#include "core/object.h"
-#include "core/reference.h"
-#include "core/set.h"
+#include "core/object/object.h"
+#include "core/object/reference.h"
+#include "core/templates/set.h"
 #include "gdscript_cache.h"
 #include "gdscript_parser.h"
 
@@ -88,6 +88,9 @@ class GDScriptAnalyzer {
 	void reduce_subscript(GDScriptParser::SubscriptNode *p_subscript);
 	void reduce_ternary_op(GDScriptParser::TernaryOpNode *p_ternary_op);
 	void reduce_unary_op(GDScriptParser::UnaryOpNode *p_unary_op);
+
+	void const_fold_array(GDScriptParser::ArrayNode *p_array);
+	void const_fold_dictionary(GDScriptParser::DictionaryNode *p_dictionary);
 
 	// Helpers.
 	GDScriptParser::DataType type_from_variant(const Variant &p_value, const GDScriptParser::Node *p_source);

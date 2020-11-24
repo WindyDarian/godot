@@ -30,7 +30,7 @@
 
 #include "code_completion.h"
 
-#include "core/project_settings.h"
+#include "core/config/project_settings.h"
 #include "editor/editor_file_system.h"
 #include "editor/editor_settings.h"
 #include "scene/gui/control.h"
@@ -246,5 +246,4 @@ PackedStringArray get_code_completion(CompletionKind p_kind, const String &p_scr
 
 	return suggestions;
 }
-
 } // namespace gdmono

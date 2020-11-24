@@ -30,6 +30,7 @@
 
 #include "main.h"
 
+#include "core/config/project_settings.h"
 #include "core/core_string_names.h"
 #include "core/crypto/crypto.h"
 #include "core/debugger/engine_debugger.h"
@@ -41,12 +42,11 @@
 #include "core/io/image_loader.h"
 #include "core/io/ip.h"
 #include "core/io/resource_loader.h"
-#include "core/message_queue.h"
+#include "core/object/message_queue.h"
 #include "core/os/dir_access.h"
 #include "core/os/os.h"
-#include "core/project_settings.h"
 #include "core/register_core_types.h"
-#include "core/translation.h"
+#include "core/string/translation.h"
 #include "core/version.h"
 #include "core/version_hash.gen.h"
 #include "drivers/register_driver_types.h"
@@ -334,7 +334,10 @@ void Main::print_help(const char *p_binary) {
 	OS::get_singleton()->print("  -d, --debug                      Debug (local stdout debugger).\n");
 	OS::get_singleton()->print("  -b, --breakpoints                Breakpoint list as source::line comma-separated pairs, no spaces (use %%20 instead).\n");
 	OS::get_singleton()->print("  --profiling                      Enable profiling in the script debugger.\n");
+	OS::get_singleton()->print("  --vk-layers                      Enable Vulkan Validation layers for debugging.\n");
+#if DEBUG_ENABLED
 	OS::get_singleton()->print("  --gpu-abort                      Abort on GPU errors (usually validation layer errors), may help see the problem if your system freezes.\n");
+#endif
 	OS::get_singleton()->print("  --remote-debug <uri>             Remote debug (<protocol>://<host/IP>[:<port>], e.g. tcp://127.0.0.1:6007).\n");
 #if defined(DEBUG_ENABLED) && !defined(SERVER_ENABLED)
 	OS::get_singleton()->print("  --debug-collisions               Show collision shapes when running the scene.\n");
@@ -695,9 +698,12 @@ Error Main::setup(const char *execpath, int argc, char *argv[], bool p_second_ph
 		} else if (I->get() == "-w" || I->get() == "--windowed") { // force windowed window
 
 			init_windowed = true;
-		} else if (I->get() == "--gpu-abort") { // force windowed window
-
+		} else if (I->get() == "--vk-layers") {
+			Engine::singleton->use_validation_layers = true;
+#ifdef DEBUG_ENABLED
+		} else if (I->get() == "--gpu-abort") {
 			Engine::singleton->abort_on_gpu_errors = true;
+#endif
 		} else if (I->get() == "--tablet-driver") {
 			if (I->next()) {
 				tablet_driver = I->next()->get();
@@ -1137,7 +1143,7 @@ Error Main::setup(const char *execpath, int argc, char *argv[], bool p_second_ph
 		use_custom_res = false;
 		input_map->load_default(); //keys for editor
 	} else {
-		input_map->load_from_globals(); //keys for game
+		input_map->load_from_project_settings(); //keys for game
 	}
 
 	if (bool(ProjectSettings::get_singleton()->get("application/run/disable_stdout"))) {
@@ -1267,7 +1273,6 @@ Error Main::setup(const char *execpath, int argc, char *argv[], bool p_second_ph
 		OS::get_singleton()->_allow_layered = false;
 	}
 
-	Engine::get_singleton()->_pixel_snap = GLOBAL_DEF("rendering/quality/2d/use_pixel_snap", false);
 	OS::get_singleton()->_keep_screen_on = GLOBAL_DEF("display/window/energy_saving/keep_screen_on", true);
 	if (rtm == -1) {
 		rtm = GLOBAL_DEF("rendering/threads/thread_model", OS::RENDER_THREAD_SAFE);
@@ -1603,7 +1608,7 @@ Error Main::setup2(Thread::ID p_main_tid_override) {
 	GLOBAL_DEF("application/config/icon", String());
 	ProjectSettings::get_singleton()->set_custom_property_info("application/config/icon",
 			PropertyInfo(Variant::STRING, "application/config/icon",
-					PROPERTY_HINT_FILE, "*.png,*.webp"));
+					PROPERTY_HINT_FILE, "*.png,*.webp,*.svg,*.svgz"));
 
 	GLOBAL_DEF("application/config/macos_native_icon", String());
 	ProjectSettings::get_singleton()->set_custom_property_info("application/config/macos_native_icon",
@@ -1885,14 +1890,6 @@ bool Main::start() {
 		return false;
 	}
 
-	if (_export_preset != "") {
-		if (positional_arg == "") {
-			String err = "Command line includes export parameter option, but no destination path was given.\n";
-			err += "Please specify the binary's file path to export to. Aborting export.";
-			ERR_PRINT(err);
-			return false;
-		}
-	}
 #endif
 
 	if (script == "" && game_path == "" && String(GLOBAL_DEF("application/run/main_scene", "")) != "") {
@@ -2227,7 +2224,7 @@ bool Main::start() {
 
 #ifdef TOOLS_ENABLED
 			if (editor) {
-				if (game_path != GLOBAL_GET("application/run/main_scene") || !editor_node->has_scenes_in_session()) {
+				if (game_path != String(GLOBAL_GET("application/run/main_scene")) || !editor_node->has_scenes_in_session()) {
 					Error serr = editor_node->load_scene(local_game_path);
 					if (serr != OK) {
 						ERR_PRINT("Failed to load scene");
@@ -2391,7 +2388,6 @@ bool Main::iteration() {
 	for (int iters = 0; iters < advance.physics_steps; ++iters) {
 		uint64_t physics_begin = OS::get_singleton()->get_ticks_usec();
 
-		PhysicsServer3D::get_singleton()->sync();
 		PhysicsServer3D::get_singleton()->flush_queries();
 
 		PhysicsServer2D::get_singleton()->sync();

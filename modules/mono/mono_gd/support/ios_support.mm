@@ -72,7 +72,6 @@ void initialize() {
 
 void cleanup() {
 }
-
 } // namespace support
 } // namespace ios
 } // namespace gdmono
@@ -131,8 +130,7 @@ GD_PINVOKE_EXPORT void *xamarin_timezone_get_data(const char *p_name, uint32_t *
 	NSTimeZone *tz = nil;
 	if (p_name) {
 		NSString *n = [[NSString alloc] initWithUTF8String:p_name];
-		tz = [[[NSTimeZone alloc] initWithName:n] autorelease];
-		[n release];
+		tz = [[NSTimeZone alloc] initWithName:n];
 	} else {
 		tz = [NSTimeZone localTimeZone];
 	}

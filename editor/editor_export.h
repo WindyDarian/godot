@@ -31,8 +31,8 @@
 #ifndef EDITOR_EXPORT_H
 #define EDITOR_EXPORT_H
 
+#include "core/io/resource.h"
 #include "core/os/dir_access.h"
-#include "core/resource.h"
 #include "scene/main/node.h"
 #include "scene/main/timer.h"
 #include "scene/resources/texture.h"
@@ -67,8 +67,6 @@ private:
 	String exporter;
 	Set<String> selected_files;
 	bool runnable = false;
-
-	Vector<String> patches;
 
 	friend class EditorExport;
 	friend class EditorExportPlatform;
@@ -120,12 +118,6 @@ public:
 
 	void set_exclude_filter(const String &p_exclude);
 	String get_exclude_filter() const;
-
-	void add_patch(const String &p_path, int p_at_pos = -1);
-	void set_patch(int p_index, const String &p_path);
-	String get_patch(int p_index);
-	void remove_patch(int p_idx);
-	Vector<String> get_patches() const;
 
 	void set_custom_features(const String &p_custom_features);
 	String get_custom_features() const;

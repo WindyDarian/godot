@@ -30,6 +30,7 @@
 
 #include "editor_export.h"
 
+#include "core/config/project_settings.h"
 #include "core/crypto/crypto_core.h"
 #include "core/io/config_file.h"
 #include "core/io/file_access_encrypted.h"
@@ -37,10 +38,9 @@
 #include "core/io/resource_loader.h"
 #include "core/io/resource_saver.h"
 #include "core/io/zip_io.h"
+#include "core/object/script_language.h"
 #include "core/os/dir_access.h"
 #include "core/os/file_access.h"
-#include "core/project_settings.h"
-#include "core/script_language.h"
 #include "core/version.h"
 #include "editor/editor_file_system.h"
 #include "editor/plugins/script_editor_plugin.h"
@@ -183,35 +183,6 @@ void EditorExportPreset::remove_export_file(const String &p_path) {
 
 bool EditorExportPreset::has_export_file(const String &p_path) {
 	return selected_files.has(p_path);
-}
-
-void EditorExportPreset::add_patch(const String &p_path, int p_at_pos) {
-	if (p_at_pos < 0) {
-		patches.push_back(p_path);
-	} else {
-		patches.insert(p_at_pos, p_path);
-	}
-	EditorExport::singleton->save_presets();
-}
-
-void EditorExportPreset::remove_patch(int p_idx) {
-	patches.remove(p_idx);
-	EditorExport::singleton->save_presets();
-}
-
-void EditorExportPreset::set_patch(int p_index, const String &p_path) {
-	ERR_FAIL_INDEX(p_index, patches.size());
-	patches.write[p_index] = p_path;
-	EditorExport::singleton->save_presets();
-}
-
-String EditorExportPreset::get_patch(int p_index) {
-	ERR_FAIL_INDEX_V(p_index, patches.size(), String());
-	return patches[p_index];
-}
-
-Vector<String> EditorExportPreset::get_patches() const {
-	return patches;
 }
 
 void EditorExportPreset::set_custom_features(const String &p_custom_features) {
@@ -765,6 +736,9 @@ Error EditorExportPlatform::export_project_files(const Ref<EditorExportPreset> &
 
 	_edit_filter_list(paths, p_preset->get_include_filter(), false);
 	_edit_filter_list(paths, p_preset->get_exclude_filter(), true);
+
+	// Ignore import files, since these are automatically added to the jar later with the resources
+	_edit_filter_list(paths, String("*.import"), true);
 
 	// Get encryption filters.
 	bool enc_pck = p_preset->get_enc_pck();
@@ -1341,7 +1315,6 @@ void EditorExport::_save() {
 		config->set_value(section, "include_filter", preset->get_include_filter());
 		config->set_value(section, "exclude_filter", preset->get_exclude_filter());
 		config->set_value(section, "export_path", preset->get_export_path());
-		config->set_value(section, "patch_list", preset->get_patches());
 		config->set_value(section, "encryption_include_filters", preset->get_enc_in_filter());
 		config->set_value(section, "encryption_exclude_filters", preset->get_enc_ex_filter());
 		config->set_value(section, "encrypt_pck", preset->get_enc_pck());
@@ -1529,12 +1502,6 @@ void EditorExport::load_config() {
 		preset->set_exclude_filter(config->get_value(section, "exclude_filter"));
 		preset->set_export_path(config->get_value(section, "export_path", ""));
 
-		Vector<String> patch_list = config->get_value(section, "patch_list");
-
-		for (int i = 0; i < patch_list.size(); i++) {
-			preset->add_patch(patch_list[i]);
-		}
-
 		if (config->has_section_key(section, "encrypt_pck")) {
 			preset->set_enc_pck(config->get_value(section, "encrypt_pck"));
 		}
@@ -1665,15 +1632,17 @@ void EditorExportPlatformPC::get_preset_features(const Ref<EditorExportPreset> &
 }
 
 void EditorExportPlatformPC::get_export_options(List<ExportOption> *r_options) {
+	r_options->push_back(ExportOption(PropertyInfo(Variant::STRING, "custom_template/debug", PROPERTY_HINT_GLOBAL_FILE), ""));
+	r_options->push_back(ExportOption(PropertyInfo(Variant::STRING, "custom_template/release", PROPERTY_HINT_GLOBAL_FILE), ""));
+
+	r_options->push_back(ExportOption(PropertyInfo(Variant::BOOL, "binary_format/64_bits"), true));
+	r_options->push_back(ExportOption(PropertyInfo(Variant::BOOL, "binary_format/embed_pck"), false));
+
 	r_options->push_back(ExportOption(PropertyInfo(Variant::BOOL, "texture_format/bptc"), false));
 	r_options->push_back(ExportOption(PropertyInfo(Variant::BOOL, "texture_format/s3tc"), true));
 	r_options->push_back(ExportOption(PropertyInfo(Variant::BOOL, "texture_format/etc"), false));
 	r_options->push_back(ExportOption(PropertyInfo(Variant::BOOL, "texture_format/etc2"), false));
 	r_options->push_back(ExportOption(PropertyInfo(Variant::BOOL, "texture_format/no_bptc_fallbacks"), true));
-	r_options->push_back(ExportOption(PropertyInfo(Variant::BOOL, "binary_format/64_bits"), true));
-	r_options->push_back(ExportOption(PropertyInfo(Variant::BOOL, "binary_format/embed_pck"), false));
-	r_options->push_back(ExportOption(PropertyInfo(Variant::STRING, "custom_template/release", PROPERTY_HINT_GLOBAL_FILE), ""));
-	r_options->push_back(ExportOption(PropertyInfo(Variant::STRING, "custom_template/debug", PROPERTY_HINT_GLOBAL_FILE), ""));
 }
 
 String EditorExportPlatformPC::get_name() const {

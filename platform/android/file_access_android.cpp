@@ -29,12 +29,11 @@
 /*************************************************************************/
 
 #include "file_access_android.h"
-#include "core/print_string.h"
+#include "core/string/print_string.h"
 
 AAssetManager *FileAccessAndroid::asset_manager = nullptr;
 
 /*void FileAccessAndroid::make_default() {
-
 	create_func=create_android;
 }*/
 

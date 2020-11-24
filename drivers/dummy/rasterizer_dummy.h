@@ -32,8 +32,8 @@
 #define RASTERIZER_DUMMY_H
 
 #include "core/math/camera_matrix.h"
-#include "core/rid_owner.h"
-#include "core/self_list.h"
+#include "core/templates/rid_owner.h"
+#include "core/templates/self_list.h"
 #include "scene/resources/mesh.h"
 #include "servers/rendering/rasterizer.h"
 #include "servers/rendering_server.h"
@@ -80,7 +80,7 @@ public:
 	void environment_set_canvas_max_layer(RID p_env, int p_max_layer) override {}
 	void environment_set_ambient_light(RID p_env, const Color &p_color, RS::EnvironmentAmbientSource p_ambient = RS::ENV_AMBIENT_SOURCE_BG, float p_energy = 1.0, float p_sky_contribution = 0.0, RS::EnvironmentReflectionSource p_reflection_source = RS::ENV_REFLECTION_SOURCE_BG, const Color &p_ao_color = Color()) override {}
 
-	void environment_set_glow(RID p_env, bool p_enable, int p_level_flags, float p_intensity, float p_strength, float p_mix, float p_bloom_threshold, RS::EnvironmentGlowBlendMode p_blend_mode, float p_hdr_bleed_threshold, float p_hdr_bleed_scale, float p_hdr_luminance_cap) override {}
+	void environment_set_glow(RID p_env, bool p_enable, Vector<float> p_levels, float p_intensity, float p_strength, float p_mix, float p_bloom_threshold, RS::EnvironmentGlowBlendMode p_blend_mode, float p_hdr_bleed_threshold, float p_hdr_bleed_scale, float p_hdr_luminance_cap) override {}
 	void environment_glow_set_use_bicubic_upscale(bool p_enable) override {}
 	void environment_glow_set_use_high_quality(bool p_enable) override {}
 
@@ -98,7 +98,7 @@ public:
 
 	void environment_set_adjustment(RID p_env, bool p_enable, float p_brightness, float p_contrast, float p_saturation, RID p_ramp) override {}
 
-	void environment_set_fog(RID p_env, bool p_enable, const Color &p_light_color, float p_light_energy, float p_sun_scatter, float p_density, float p_height, float p_height_density) override {}
+	void environment_set_fog(RID p_env, bool p_enable, const Color &p_light_color, float p_light_energy, float p_sun_scatter, float p_density, float p_height, float p_height_density, float p_aerial_perspective) override {}
 	void environment_set_volumetric_fog(RID p_env, bool p_enable, float p_density, const Color &p_light, float p_light_energy, float p_length, float p_detail_spread, float p_gi_inject, RS::EnvVolumetricFogShadowFilter p_shadow_filter) override {}
 	void environment_set_volumetric_fog_volume_size(int p_size, int p_depth) override {}
 	void environment_set_volumetric_fog_filter_active(bool p_enable) override {}
@@ -154,13 +154,14 @@ public:
 	void render_material(const Transform &p_cam_transform, const CameraMatrix &p_cam_projection, bool p_cam_ortogonal, InstanceBase **p_cull_result, int p_cull_count, RID p_framebuffer, const Rect2i &p_region) override {}
 	void render_sdfgi(RID p_render_buffers, int p_region, InstanceBase **p_cull_result, int p_cull_count) override {}
 	void render_sdfgi_static_lights(RID p_render_buffers, uint32_t p_cascade_count, const uint32_t *p_cascade_indices, const RID **p_positional_light_cull_result, const uint32_t *p_positional_light_cull_count) override {}
+	void render_particle_collider_heightfield(RID p_collider, const Transform &p_transform, InstanceBase **p_cull_result, int p_cull_count) override {}
 
 	void set_scene_pass(uint64_t p_pass) override {}
 	void set_time(double p_time, double p_step) override {}
 	void set_debug_draw_mode(RS::ViewportDebugDraw p_debug_draw) override {}
 
 	RID render_buffers_create() override { return RID(); }
-	void render_buffers_configure(RID p_render_buffers, RID p_render_target, int p_width, int p_height, RS::ViewportMSAA p_msaa, RS::ViewportScreenSpaceAA p_screen_space_aa) override {}
+	void render_buffers_configure(RID p_render_buffers, RID p_render_target, int p_width, int p_height, RS::ViewportMSAA p_msaa, RS::ViewportScreenSpaceAA p_screen_space_aa, bool p_use_debanding) override {}
 
 	void screen_space_roughness_limiter_set_active(bool p_enable, float p_amount, float p_curve) override {}
 	bool screen_space_roughness_limiter_is_active() const override { return false; }
@@ -182,21 +183,21 @@ class RasterizerStorageDummy : public RasterizerStorage {
 public:
 	/* TEXTURE API */
 	struct DummyTexture {
-		int width;
-		int height;
-		uint32_t flags;
-		Image::Format format;
+		int width = 0;
+		int height = 0;
+		uint32_t flags = 0;
+		Image::Format format = Image::Format::FORMAT_MAX;
 		Ref<Image> image;
 		String path;
 	};
 
 	struct DummySurface {
-		uint32_t format;
-		RS::PrimitiveType primitive;
+		uint32_t format = 0;
+		RS::PrimitiveType primitive = RS::PrimitiveType::PRIMITIVE_MAX;
 		Vector<uint8_t> array;
-		int vertex_count;
+		int vertex_count = 0;
 		Vector<uint8_t> index_array;
-		int index_count;
+		int index_count = 0;
 		AABB aabb;
 		Vector<Vector<uint8_t>> blend_shapes;
 		Vector<AABB> bone_aabbs;
@@ -204,8 +205,8 @@ public:
 
 	struct DummyMesh {
 		Vector<DummySurface> surfaces;
-		int blend_shape_count;
-		RS::BlendShapeMode blend_shape_mode;
+		int blend_shape_count = 0;
+		RS::BlendShapeMode blend_shape_mode = RS::BlendShapeMode::BLEND_SHAPE_MODE_NORMALIZED;
 	};
 
 	mutable RID_PtrOwner<DummyTexture> texture_owner;
@@ -250,9 +251,17 @@ public:
 	void texture_add_to_decal_atlas(RID p_texture, bool p_panorama_to_dp = false) override {}
 	void texture_remove_from_decal_atlas(RID p_texture, bool p_panorama_to_dp = false) override {}
 
+	/* CANVAS TEXTURE API */
+
+	RID canvas_texture_create() override { return RID(); }
+	void canvas_texture_set_channel(RID p_canvas_texture, RS::CanvasTextureChannel p_channel, RID p_texture) override {}
+	void canvas_texture_set_shading_parameters(RID p_canvas_texture, const Color &p_base_color, float p_shininess) override {}
+
+	void canvas_texture_set_texture_filter(RID p_item, RS::CanvasItemTextureFilter p_filter) override {}
+	void canvas_texture_set_texture_repeat(RID p_item, RS::CanvasItemTextureRepeat p_repeat) override {}
+
 #if 0
 	RID texture_create() override {
-
 		DummyTexture *texture = memnew(DummyTexture);
 		ERR_FAIL_COND_V(!texture, RID());
 		return texture_owner.make_rid(texture);
@@ -699,14 +708,11 @@ public:
 	/* LIGHTMAP CAPTURE */
 #if 0
 	struct Instantiable {
-
 		SelfList<RasterizerScene::InstanceBase>::List instance_list;
 
 		_FORCE_INLINE_ void instance_change_notify(bool p_aabb = true, bool p_materials = true) override {
-
 			SelfList<RasterizerScene::InstanceBase> *instances = instance_list.first();
 			while (instances) override {
-
 				//instances->self()->base_changed(p_aabb, p_materials);
 				instances = instances->next();
 			}
@@ -715,7 +721,6 @@ public:
 		_FORCE_INLINE_ void instance_remove_deps() override {
 			SelfList<RasterizerScene::InstanceBase> *instances = instance_list.first();
 			while (instances) override {
-
 				SelfList<RasterizerScene::InstanceBase> *next = instances->next();
 				//instances->self()->base_removed();
 				instances = next;
@@ -728,7 +733,6 @@ public:
 	};
 
 	struct LightmapCapture : public Instantiable {
-
 		Vector<LightmapCaptureOctree> octree;
 		AABB bounds;
 		Transform cell_xform;
@@ -802,6 +806,7 @@ public:
 	void particles_set_fractional_delta(RID p_particles, bool p_enable) override {}
 	void particles_set_subemitter(RID p_particles, RID p_subemitter_particles) override {}
 	void particles_set_view_axis(RID p_particles, const Vector3 &p_axis) override {}
+	void particles_set_collision_base_size(RID p_particles, float p_size) override {}
 	void particles_restart(RID p_particles) override {}
 
 	void particles_set_draw_order(RID p_particles, RS::ParticlesDrawOrder p_order) override {}
@@ -818,6 +823,28 @@ public:
 	bool particles_get_emitting(RID p_particles) override { return false; }
 	int particles_get_draw_passes(RID p_particles) const override { return 0; }
 	RID particles_get_draw_pass_mesh(RID p_particles, int p_pass) const override { return RID(); }
+
+	void particles_add_collision(RID p_particles, RasterizerScene::InstanceBase *p_instance) override {}
+	void particles_remove_collision(RID p_particles, RasterizerScene::InstanceBase *p_instance) override {}
+
+	void update_particles() override {}
+
+	/* PARTICLES COLLISION */
+
+	RID particles_collision_create() override { return RID(); }
+	void particles_collision_set_collision_type(RID p_particles_collision, RS::ParticlesCollisionType p_type) override {}
+	void particles_collision_set_cull_mask(RID p_particles_collision, uint32_t p_cull_mask) override {}
+	void particles_collision_set_sphere_radius(RID p_particles_collision, float p_radius) override {}
+	void particles_collision_set_box_extents(RID p_particles_collision, const Vector3 &p_extents) override {}
+	void particles_collision_set_attractor_strength(RID p_particles_collision, float p_strength) override {}
+	void particles_collision_set_attractor_directionality(RID p_particles_collision, float p_directionality) override {}
+	void particles_collision_set_attractor_attenuation(RID p_particles_collision, float p_curve) override {}
+	void particles_collision_set_field_texture(RID p_particles_collision, RID p_texture) override {}
+	void particles_collision_height_field_update(RID p_particles_collision) override {}
+	void particles_collision_set_height_field_resolution(RID p_particles_collision, RS::ParticlesCollisionHeightfieldResolution p_resolution) override {}
+	AABB particles_collision_get_aabb(RID p_particles_collision) const override { return AABB(); }
+	bool particles_collision_is_heightfield(RID p_particles_collision) const override { return false; }
+	RID particles_collision_get_heightfield_framebuffer(RID p_particles_collision) const override { return RID(); }
 
 	/* GLOBAL VARIABLES */
 
@@ -911,23 +938,22 @@ public:
 
 class RasterizerCanvasDummy : public RasterizerCanvas {
 public:
-	TextureBindingID request_texture_binding(RID p_texture, RID p_normalmap, RID p_specular, RS::CanvasItemTextureFilter p_filter, RS::CanvasItemTextureRepeat p_repeat, RID p_multimesh) override { return 0; }
-	void free_texture_binding(TextureBindingID p_binding) override {}
-
 	PolygonID request_polygon(const Vector<int> &p_indices, const Vector<Point2> &p_points, const Vector<Color> &p_colors, const Vector<Point2> &p_uvs = Vector<Point2>(), const Vector<int> &p_bones = Vector<int>(), const Vector<float> &p_weights = Vector<float>()) override { return 0; }
 	void free_polygon(PolygonID p_polygon) override {}
 
-	void canvas_render_items(RID p_to_render_target, Item *p_item_list, const Color &p_modulate, Light *p_light_list, const Transform2D &p_canvas_transform) override {}
+	void canvas_render_items(RID p_to_render_target, Item *p_item_list, const Color &p_modulate, Light *p_light_list, Light *p_directional_list, const Transform2D &p_canvas_transform, RS::CanvasItemTextureFilter p_default_filter, RS::CanvasItemTextureRepeat p_default_repeat, bool p_snap_2d_vertices_to_pixel) override {}
 	void canvas_debug_viewport_shadows(Light *p_lights_with_shadow) override {}
 
 	RID light_create() override { return RID(); }
 	void light_set_texture(RID p_rid, RID p_texture) override {}
-	void light_set_use_shadow(RID p_rid, bool p_enable, int p_resolution) override {}
-	void light_update_shadow(RID p_rid, const Transform2D &p_light_xform, int p_light_mask, float p_near, float p_far, LightOccluderInstance *p_occluders) override {}
+	void light_set_use_shadow(RID p_rid, bool p_enable) override {}
+	void light_update_shadow(RID p_rid, int p_shadow_index, const Transform2D &p_light_xform, int p_light_mask, float p_near, float p_far, LightOccluderInstance *p_occluders) override {}
+	void light_update_directional_shadow(RID p_rid, int p_shadow_index, const Transform2D &p_light_xform, int p_light_mask, float p_cull_distance, const Rect2 &p_clip_rect, LightOccluderInstance *p_occluders) override {}
 
 	RID occluder_polygon_create() override { return RID(); }
 	void occluder_polygon_set_shape_as_lines(RID p_occluder, const Vector<Vector2> &p_lines) override {}
 	void occluder_polygon_set_cull_mode(RID p_occluder, RS::CanvasOccluderPolygonCullMode p_mode) override {}
+	void set_shadow_texture_size(int p_size) override {}
 
 	void draw_window_margins(int *p_margins, RID *p_margin_textures) override {}
 

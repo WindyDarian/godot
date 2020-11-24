@@ -31,7 +31,6 @@
 #include "font.h"
 
 #include "core/io/resource_loader.h"
-#include "core/method_bind_ext.gen.inc"
 #include "core/os/file_access.h"
 
 void Font::draw_halign(RID p_canvas_item, const Point2 &p_pos, HAlign p_align, float p_width, const String &p_text, const Color &p_modulate, const Color &p_outline_modulate) const {
@@ -550,7 +549,7 @@ float BitmapFont::draw_char(RID p_canvas_item, const Point2 &p_pos, char32_t p_c
 		cpos.x += c->h_align;
 		cpos.y -= ascent;
 		cpos.y += c->v_align;
-		RenderingServer::get_singleton()->canvas_item_add_texture_rect_region(p_canvas_item, Rect2(cpos, c->rect.size), textures[c->texture_idx]->get_rid(), c->rect, p_modulate, false, RID(), RID(), Color(1, 1, 1, 1), false);
+		RenderingServer::get_singleton()->canvas_item_add_texture_rect_region(p_canvas_item, Rect2(cpos, c->rect.size), textures[c->texture_idx]->get_rid(), c->rect, p_modulate, false, false);
 	}
 
 	return get_char_size(p_char, p_next).width;

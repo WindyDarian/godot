@@ -32,10 +32,10 @@
 
 #include "os_iphone.h"
 #import "app_delegate.h"
+#include "core/config/project_settings.h"
 #include "core/io/file_access_pack.h"
 #include "core/os/dir_access.h"
 #include "core/os/file_access.h"
-#include "core/project_settings.h"
 #include "display_server_iphone.h"
 #include "drivers/unix/syslog_logger.h"
 #import "godot_view.h"
@@ -125,21 +125,6 @@ void OSIPhone::initialize() {
 }
 
 void OSIPhone::initialize_modules() {
-#ifdef GAME_CENTER_ENABLED
-	game_center = memnew(GameCenter);
-	Engine::get_singleton()->add_singleton(Engine::Singleton("GameCenter", game_center));
-#endif
-
-#ifdef STOREKIT_ENABLED
-	store_kit = memnew(InAppStore);
-	Engine::get_singleton()->add_singleton(Engine::Singleton("InAppStore", store_kit));
-#endif
-
-#ifdef ICLOUD_ENABLED
-	icloud = memnew(ICloud);
-	Engine::get_singleton()->add_singleton(Engine::Singleton("ICloud", icloud));
-#endif
-
 	ios = memnew(iOS);
 	Engine::get_singleton()->add_singleton(Engine::Singleton("iOS", ios));
 
@@ -155,26 +140,12 @@ void OSIPhone::deinitialize_modules() {
 		memdelete(ios);
 	}
 
-#ifdef GAME_CENTER_ENABLED
-	if (game_center) {
-		memdelete(game_center);
-	}
-#endif
-
-#ifdef STOREKIT_ENABLED
-	if (store_kit) {
-		memdelete(store_kit);
-	}
-#endif
-
-#ifdef ICLOUD_ENABLED
-	if (icloud) {
-		memdelete(icloud);
-	}
-#endif
+	godot_ios_plugins_deinitialize();
 }
 
 void OSIPhone::set_main_loop(MainLoop *p_main_loop) {
+	godot_ios_plugins_initialize();
+
 	main_loop = p_main_loop;
 
 	if (main_loop) {
@@ -271,7 +242,6 @@ String OSIPhone::get_model_name() const {
 Error OSIPhone::shell_open(String p_uri) {
 	NSString *urlPath = [[NSString alloc] initWithUTF8String:p_uri.utf8().get_data()];
 	NSURL *url = [NSURL URLWithString:urlPath];
-	[urlPath release];
 
 	if (![[UIApplication sharedApplication] canOpenURL:url]) {
 		return ERR_CANT_OPEN;
@@ -279,11 +249,7 @@ Error OSIPhone::shell_open(String p_uri) {
 
 	printf("opening url %s\n", p_uri.utf8().get_data());
 
-	//    if (@available(iOS 10, *)) {
 	[[UIApplication sharedApplication] openURL:url options:@{} completionHandler:nil];
-	//    } else {
-	//        [[UIApplication sharedApplication] openURL:url];
-	//    }
 
 	return OK;
 };

@@ -30,12 +30,12 @@
 
 #include "tree.h"
 
+#include "core/config/project_settings.h"
 #include "core/input/input.h"
 #include "core/math/math_funcs.h"
 #include "core/os/keyboard.h"
 #include "core/os/os.h"
-#include "core/print_string.h"
-#include "core/project_settings.h"
+#include "core/string/print_string.h"
 #include "scene/main/window.h"
 
 #include "box_container.h"
@@ -1173,6 +1173,9 @@ int Tree::draw_item(const Point2i &p_pos, const Point2 &p_draw_ofs, const Size2 
 
 				if (p_item->cells[i].text.size() > 0) {
 					float icon_width = p_item->cells[i].get_icon_size().width;
+					if (p_item->get_icon_max_width(i) > 0) {
+						icon_width = p_item->get_icon_max_width(i);
+					}
 					r.position.x += icon_width;
 					r.size.x -= icon_width;
 				}
@@ -1810,7 +1813,6 @@ int Tree::propagate_mouse_event(const Point2i &p_pos, int x_ofs, int y_ofs, bool
 			case TreeItem::CELL_MODE_RANGE: {
 				if (c.text != "") {
 					//if (x >= (get_column_width(col)-item_h/2)) {
-
 					popup_menu->clear();
 					for (int i = 0; i < c.text.get_slice_count(","); i++) {
 						String s = c.text.get_slicec(',', i);
@@ -3892,7 +3894,7 @@ Tree::Tree() {
 	popup_menu = memnew(PopupMenu);
 	popup_menu->hide();
 	add_child(popup_menu);
-	//	popup_menu->set_as_toplevel(true);
+	//	popup_menu->set_as_top_level(true);
 
 	popup_editor = memnew(Popup);
 	popup_editor->set_wrap_controls(true);

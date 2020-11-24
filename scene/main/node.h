@@ -31,13 +31,12 @@
 #ifndef NODE_H
 #define NODE_H
 
-#include "core/class_db.h"
-#include "core/map.h"
-#include "core/node_path.h"
-#include "core/object.h"
-#include "core/project_settings.h"
-#include "core/script_language.h"
-#include "core/typed_array.h"
+#include "core/config/project_settings.h"
+#include "core/object/class_db.h"
+#include "core/object/script_language.h"
+#include "core/string/node_path.h"
+#include "core/templates/map.h"
+#include "core/variant/typed_array.h"
 #include "scene/main/scene_tree.h"
 
 class Viewport;
@@ -48,14 +47,12 @@ class Node : public Object {
 
 public:
 	enum PauseMode {
-
 		PAUSE_MODE_INHERIT,
 		PAUSE_MODE_STOP,
 		PAUSE_MODE_PROCESS
 	};
 
 	enum DuplicateFlags {
-
 		DUPLICATE_SIGNALS = 1,
 		DUPLICATE_GROUPS = 2,
 		DUPLICATE_SCRIPTS = 4,
@@ -219,7 +216,6 @@ protected:
 
 public:
 	enum {
-
 		// you can make your own, but don't use the same numbers as other notifications in other nodes
 		NOTIFICATION_ENTER_TREE = 10,
 		NOTIFICATION_EXIT_TREE = 11,

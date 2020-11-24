@@ -32,10 +32,10 @@
 
 #ifdef UNIX_ENABLED
 
+#include "core/config/project_settings.h"
 #include "core/debugger/engine_debugger.h"
 #include "core/debugger/script_debugger.h"
 #include "core/os/thread_dummy.h"
-#include "core/project_settings.h"
 #include "drivers/unix/dir_access_unix.h"
 #include "drivers/unix/file_access_unix.h"
 #include "drivers/unix/net_socket_posix.h"
@@ -331,7 +331,7 @@ Error OS_Unix::execute(const String &p_path, const List<String> &p_arguments, bo
 		int status;
 		waitpid(pid, &status, 0);
 		if (r_exitcode) {
-			*r_exitcode = WEXITSTATUS(status);
+			*r_exitcode = WIFEXITED(status) ? WEXITSTATUS(status) : status;
 		}
 
 	} else {

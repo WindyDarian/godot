@@ -31,13 +31,13 @@
 #ifndef SHADER_LANGUAGE_H
 #define SHADER_LANGUAGE_H
 
-#include "core/list.h"
-#include "core/map.h"
-#include "core/script_language.h"
-#include "core/string_name.h"
+#include "core/object/script_language.h"
+#include "core/string/string_name.h"
+#include "core/string/ustring.h"
+#include "core/templates/list.h"
+#include "core/templates/map.h"
 #include "core/typedefs.h"
-#include "core/ustring.h"
-#include "core/variant.h"
+#include "core/variant/variant.h"
 
 class ShaderLanguage {
 public:
@@ -846,6 +846,7 @@ private:
 	StringName completion_function;
 	StringName completion_struct;
 	int completion_argument;
+	const Map<StringName, FunctionInfo> *stages = nullptr;
 
 	bool _get_completable_identifier(BlockNode *p_block, CompletionType p_type, StringName &identifier);
 	static const BuiltinFuncDef builtin_func_defs[];

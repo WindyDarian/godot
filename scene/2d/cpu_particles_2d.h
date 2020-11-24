@@ -31,7 +31,7 @@
 #ifndef CPU_PARTICLES_2D_H
 #define CPU_PARTICLES_2D_H
 
-#include "core/rid.h"
+#include "core/templates/rid.h"
 #include "scene/2d/node_2d.h"
 #include "scene/resources/texture.h"
 
@@ -46,7 +46,6 @@ public:
 	};
 
 	enum Parameter {
-
 		PARAM_INITIAL_LINEAR_VELOCITY,
 		PARAM_ANGULAR_VELOCITY,
 		PARAM_ORBIT_VELOCITY,
@@ -147,7 +146,6 @@ private:
 	DrawOrder draw_order;
 
 	Ref<Texture2D> texture;
-	Ref<Texture2D> normalmap;
 
 	////////
 
@@ -231,9 +229,6 @@ public:
 
 	void set_texture(const Ref<Texture2D> &p_texture);
 	Ref<Texture2D> get_texture() const;
-
-	void set_normalmap(const Ref<Texture2D> &p_normalmap);
-	Ref<Texture2D> get_normalmap() const;
 
 	///////////////////
 

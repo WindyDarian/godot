@@ -361,6 +361,65 @@ layout(location = 0) out vec4 frag_color;
 
 #endif // RENDER DEPTH
 
+#ifdef ALPHA_HASH_USED
+
+float hash_2d(vec2 p) {
+	return fract(1.0e4 * sin(17.0 * p.x + 0.1 * p.y) *
+				 (0.1 + abs(sin(13.0 * p.y + p.x))));
+}
+
+float hash_3d(vec3 p) {
+	return hash_2d(vec2(hash_2d(p.xy), p.z));
+}
+
+float compute_alpha_hash_threshold(vec3 pos, float hash_scale) {
+	vec3 dx = dFdx(pos);
+	vec3 dy = dFdx(pos);
+	float delta_max_sqr = max(length(dx), length(dy));
+	float pix_scale = 1.0 / (hash_scale * delta_max_sqr);
+
+	vec2 pix_scales =
+			vec2(exp2(floor(log2(pix_scale))), exp2(ceil(log2(pix_scale))));
+
+	vec2 a_thresh = vec2(hash_3d(floor(pix_scales.x * pos.xyz)),
+			hash_3d(floor(pix_scales.y * pos.xyz)));
+
+	float lerp_factor = fract(log2(pix_scale));
+
+	float a_interp = (1.0 - lerp_factor) * a_thresh.x + lerp_factor * a_thresh.y;
+
+	float min_lerp = min(lerp_factor, 1.0 - lerp_factor);
+
+	vec3 cases = vec3(a_interp * a_interp / (2.0 * min_lerp * (1.0 - min_lerp)),
+			(a_interp - 0.5 * min_lerp) / (1.0 - min_lerp),
+			1.0 - ((1.0 - a_interp) * (1.0 - a_interp) /
+						  (2.0 * min_lerp * (1.0 - min_lerp))));
+
+	float alpha_hash_threshold =
+			(lerp_factor < (1.0 - min_lerp)) ? ((lerp_factor < min_lerp) ? cases.x : cases.y) : cases.z;
+
+	return clamp(alpha_hash_threshold, 0.0, 1.0);
+}
+
+#endif // ALPHA_HASH_USED
+
+#ifdef ALPHA_ANTIALIASING_EDGE_USED
+
+float calc_mip_level(vec2 texture_coord) {
+	vec2 dx = dFdx(texture_coord);
+	vec2 dy = dFdy(texture_coord);
+	float delta_max_sqr = max(dot(dx, dx), dot(dy, dy));
+	return max(0.0, 0.5 * log2(delta_max_sqr));
+}
+
+float compute_alpha_antialiasing_edge(float input_alpha, vec2 texture_coord, float alpha_edge) {
+	input_alpha *= 1.0 + max(0, calc_mip_level(texture_coord)) * 0.25; // 0.25 mip scale, magic number
+	input_alpha = (input_alpha - alpha_edge) / max(fwidth(input_alpha), 0.0001) + 0.5;
+	return clamp(input_alpha, 0.0, 1.0);
+}
+
+#endif // ALPHA_ANTIALIASING_USED
+
 // This returns the G_GGX function divided by 2 cos_theta_m, where in practice cos_theta_m is either N.L or N.V.
 // We're dividing this factor off because the overall term we'll end up looks like
 // (see, for example, the first unnumbered equation in B. Burley, "Physically Based Shading at Disney", SIGGRAPH 2012):
@@ -809,7 +868,6 @@ void light_process_omni(uint idx, vec3 vertex, vec3 eye_vec, vec3 normal, vec3 v
 		inout float alpha,
 #endif
 		inout vec3 diffuse_light, inout vec3 specular_light) {
-
 	vec3 light_rel_vec = lights.data[idx].position - vertex;
 	float light_length = length(light_rel_vec);
 	float normalized_distance = light_length * lights.data[idx].inv_radius;
@@ -1099,7 +1157,6 @@ void light_process_spot(uint idx, vec3 vertex, vec3 eye_vec, vec3 normal, vec3 v
 #endif
 		inout vec3 diffuse_light,
 		inout vec3 specular_light) {
-
 	vec3 light_rel_vec = lights.data[idx].position - vertex;
 	float light_length = length(light_rel_vec);
 	float normalized_distance = light_length * lights.data[idx].inv_radius;
@@ -1621,6 +1678,22 @@ vec4 volumetric_fog_process(vec2 screen_uv, float z) {
 vec4 fog_process(vec3 vertex) {
 	vec3 fog_color = scene_data.fog_light_color;
 
+	if (scene_data.fog_aerial_perspective > 0.0) {
+		vec3 sky_fog_color = vec3(0.0);
+		vec3 cube_view = scene_data.radiance_inverse_xform * vertex;
+		// mip_level always reads from the second mipmap and higher so the fog is always slightly blurred
+		float mip_level = mix(1.0 / MAX_ROUGHNESS_LOD, 1.0, 1.0 - (abs(vertex.z) - scene_data.z_near) / (scene_data.z_far - scene_data.z_near));
+#ifdef USE_RADIANCE_CUBEMAP_ARRAY
+		float lod, blend;
+		blend = modf(mip_level * MAX_ROUGHNESS_LOD, lod);
+		sky_fog_color = texture(samplerCubeArray(radiance_cubemap, material_samplers[SAMPLER_LINEAR_WITH_MIPMAPS_CLAMP]), vec4(cube_view, lod)).rgb;
+		sky_fog_color = mix(sky_fog_color, texture(samplerCubeArray(radiance_cubemap, material_samplers[SAMPLER_LINEAR_WITH_MIPMAPS_CLAMP]), vec4(cube_view, lod + 1)).rgb, blend);
+#else
+		sky_fog_color = textureLod(samplerCube(radiance_cubemap, material_samplers[SAMPLER_LINEAR_WITH_MIPMAPS_CLAMP]), cube_view, mip_level * MAX_ROUGHNESS_LOD).rgb;
+#endif //USE_RADIANCE_CUBEMAP_ARRAY
+		fog_color = mix(fog_color, sky_fog_color, scene_data.fog_aerial_perspective);
+	}
+
 	if (scene_data.fog_sun_scatter > 0.001) {
 		vec4 sun_scatter = vec4(0.0);
 		float sun_total = 0.0;
@@ -1676,6 +1749,15 @@ void main() {
 	float clearcoat_gloss = 0.0;
 	float anisotropy = 0.0;
 	vec2 anisotropy_flow = vec2(1.0, 0.0);
+#if defined(CUSTOM_FOG_USED)
+	vec4 custom_fog = vec4(0.0);
+#endif
+#if defined(CUSTOM_RADIANCE_USED)
+	vec4 custom_radiance = vec4(0.0);
+#endif
+#if defined(CUSTOM_IRRADIANCE_USED)
+	vec4 custom_irradiance = vec4(0.0);
+#endif
 
 #if defined(AO_USED)
 	float ao = 1.0;
@@ -1683,10 +1765,6 @@ void main() {
 #endif
 
 	float alpha = 1.0;
-
-#if defined(ALPHA_SCISSOR_USED)
-	float alpha_scissor = 0.5;
-#endif
 
 #if defined(TANGENT_USED) || defined(NORMALMAP_USED) || defined(LIGHT_ANISOTROPY_USED)
 	vec3 binormal = normalize(binormal_interp);
@@ -1724,6 +1802,19 @@ void main() {
 
 	float sss_strength = 0.0;
 
+#ifdef ALPHA_SCISSOR_USED
+	float alpha_scissor_threshold = 1.0;
+#endif // ALPHA_SCISSOR_USED
+
+#ifdef ALPHA_HASH_USED
+	float alpha_hash_scale = 1.0;
+#endif // ALPHA_HASH_USED
+
+#ifdef ALPHA_ANTIALIASING_EDGE_USED
+	float alpha_antialiasing_edge = 0.0;
+	vec2 alpha_texture_coordinate = vec2(0.0, 0.0);
+#endif // ALPHA_ANTIALIASING_EDGE_USED
+
 	{
 		/* clang-format off */
 
@@ -1732,7 +1823,7 @@ FRAGMENT_SHADER_CODE
 		/* clang-format on */
 	}
 
-#if defined(LIGHT_TRANSMITTANCE_USED)
+#ifdef LIGHT_TRANSMITTANCE_USED
 #ifdef SSS_MODE_SKIN
 	transmittance_color.a = sss_strength;
 #else
@@ -1740,25 +1831,43 @@ FRAGMENT_SHADER_CODE
 #endif
 #endif
 
-#if !defined(USE_SHADOW_TO_OPACITY)
+#ifndef USE_SHADOW_TO_OPACITY
 
-#if defined(ALPHA_SCISSOR_USED)
-	if (alpha < alpha_scissor) {
+#ifdef ALPHA_SCISSOR_USED
+	if (alpha < alpha_scissor_threshold) {
 		discard;
 	}
 #endif // ALPHA_SCISSOR_USED
 
-#ifdef USE_OPAQUE_PREPASS
+// alpha hash can be used in unison with alpha antialiasing
+#ifdef ALPHA_HASH_USED
+	if (alpha < compute_alpha_hash_threshold(vertex, alpha_hash_scale)) {
+		discard;
+	}
+#endif // ALPHA_HASH_USED
 
+// If we are not edge antialiasing, we need to remove the output alpha channel from scissor and hash
+#if (defined(ALPHA_SCISSOR_USED) || defined(ALPHA_HASH_USED)) && !defined(ALPHA_ANTIALIASING_EDGE_USED)
+	alpha = 1.0;
+#endif
+
+#ifdef ALPHA_ANTIALIASING_EDGE_USED
+// If alpha scissor is used, we must further the edge threshold, otherwise we wont get any edge feather
+#ifdef ALPHA_SCISSOR_USED
+	alpha_antialiasing_edge = clamp(alpha_scissor_threshold + alpha_antialiasing_edge, 0.0, 1.0);
+#endif
+	alpha = compute_alpha_antialiasing_edge(alpha, alpha_texture_coordinate, alpha_antialiasing_edge);
+#endif // ALPHA_ANTIALIASING_EDGE_USED
+
+#ifdef USE_OPAQUE_PREPASS
 	if (alpha < opaque_prepass_threshold) {
 		discard;
 	}
-
 #endif // USE_OPAQUE_PREPASS
 
 #endif // !USE_SHADOW_TO_OPACITY
 
-#if defined(NORMALMAP_USED)
+#ifdef NORMALMAP_USED
 
 	normalmap.xy = normalmap.xy * 2.0 - 1.0;
 	normalmap.z = sqrt(max(0.0, 1.0 - dot(normalmap.xy, normalmap.xy))); //always ignore Z, as it can be RG packed, Z may be pos/neg, etc.
@@ -1767,7 +1876,7 @@ FRAGMENT_SHADER_CODE
 
 #endif
 
-#if defined(LIGHT_ANISOTROPY_USED)
+#ifdef LIGHT_ANISOTROPY_USED
 
 	if (anisotropy > 0.01) {
 		//rotation matrix
@@ -1893,6 +2002,10 @@ FRAGMENT_SHADER_CODE
 		specular_light *= scene_data.ambient_light_color_energy.a;
 	}
 
+#if defined(CUSTOM_RADIANCE_USED)
+	specular_light = mix(specular_light, custom_radiance.rgb, custom_radiance.a);
+#endif
+
 #ifndef USE_LIGHTMAP
 	//lightmap overrides everything
 	if (scene_data.use_ambient_light) {
@@ -1910,7 +2023,9 @@ FRAGMENT_SHADER_CODE
 		}
 	}
 #endif // USE_LIGHTMAP
-
+#if defined(CUSTOM_IRRADIANCE_USED)
+	ambient_light = mix(specular_light, custom_irradiance.rgb, custom_irradiance.a);
+#endif
 #endif //!defined(MODE_RENDER_DEPTH) && !defined(MODE_UNSHADED)
 
 	//radiance
@@ -2726,17 +2841,23 @@ FRAGMENT_SHADER_CODE
 	specular_buffer = vec4(specular_light, metallic);
 #endif
 
+	// Draw "fixed" fog before volumetric fog to ensure volumetric fog can appear in front of the sky.
+	if (scene_data.fog_enabled) {
+		vec4 fog = fog_process(vertex);
+		diffuse_buffer.rgb = mix(diffuse_buffer.rgb, fog.rgb, fog.a);
+		specular_buffer.rgb = mix(specular_buffer.rgb, vec3(0.0), fog.a);
+	}
+
 	if (scene_data.volumetric_fog_enabled) {
 		vec4 fog = volumetric_fog_process(screen_uv, -vertex.z);
 		diffuse_buffer.rgb = mix(diffuse_buffer.rgb, fog.rgb, fog.a);
 		specular_buffer.rgb = mix(specular_buffer.rgb, vec3(0.0), fog.a);
 	}
 
-	if (scene_data.fog_enabled) {
-		vec4 fog = fog_process(vertex);
-		diffuse_buffer.rgb = mix(diffuse_buffer.rgb, fog.rgb, fog.a);
-		specular_buffer.rgb = mix(specular_buffer.rgb, vec3(0.0), fog.a);
-	}
+#if defined(CUSTOM_FOG_USED)
+	diffuse_buffer.rgb = mix(diffuse_buffer.rgb, custom_fog.rgb, custom_fog.a);
+	specular_buffer.rgb = mix(specular_buffer.rgb, vec3(0.0), custom_fog.a);
+#endif //CUSTOM_FOG_USED
 
 #else //MODE_MULTIPLE_RENDER_TARGETS
 
@@ -2747,15 +2868,20 @@ FRAGMENT_SHADER_CODE
 	//frag_color = vec4(1.0);
 #endif //USE_NO_SHADING
 
+	// Draw "fixed" fog before volumetric fog to ensure volumetric fog can appear in front of the sky.
+	if (scene_data.fog_enabled) {
+		vec4 fog = fog_process(vertex);
+		frag_color.rgb = mix(frag_color.rgb, fog.rgb, fog.a);
+	}
+
 	if (scene_data.volumetric_fog_enabled) {
 		vec4 fog = volumetric_fog_process(screen_uv, -vertex.z);
 		frag_color.rgb = mix(frag_color.rgb, fog.rgb, fog.a);
 	}
 
-	if (scene_data.fog_enabled) {
-		vec4 fog = fog_process(vertex);
-		frag_color.rgb = mix(frag_color.rgb, fog.rgb, fog.a);
-	}
+#if defined(CUSTOM_FOG_USED)
+	frag_color.rgb = mix(frag_color.rgb, custom_fog.rgb, custom_fog.a);
+#endif //CUSTOM_FOG_USED
 
 #endif //MODE_MULTIPLE_RENDER_TARGETS
 

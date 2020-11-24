@@ -31,7 +31,7 @@
 #ifndef PHYSICS_SERVER_SW
 #define PHYSICS_SERVER_SW
 
-#include "core/rid_owner.h"
+#include "core/templates/rid_owner.h"
 #include "joints_3d_sw.h"
 #include "servers/physics_server_3d.h"
 #include "shape_3d_sw.h"
@@ -44,7 +44,6 @@ class PhysicsServer3DSW : public PhysicsServer3D {
 	friend class PhysicsDirectSpaceState3DSW;
 	bool active;
 	int iterations;
-	bool doing_sync;
 	real_t last_step;
 
 	int island_count;
@@ -365,7 +364,6 @@ public:
 	virtual void set_active(bool p_active) override;
 	virtual void init() override;
 	virtual void step(real_t p_step) override;
-	virtual void sync() override {}
 	virtual void flush_queries() override;
 	virtual void finish() override;
 

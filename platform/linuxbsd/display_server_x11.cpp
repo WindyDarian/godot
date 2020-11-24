@@ -32,8 +32,8 @@
 
 #ifdef X11_ENABLED
 
-#include "core/print_string.h"
-#include "core/project_settings.h"
+#include "core/config/project_settings.h"
+#include "core/string/print_string.h"
 #include "detect_prime_x11.h"
 #include "key_mapping_x11.h"
 #include "main/main.h"
@@ -737,6 +737,7 @@ void DisplayServerX11::delete_sub_window(WindowID p_id) {
 	XDestroyWindow(x11_display, wd.x11_window);
 	if (wd.xic) {
 		XDestroyIC(wd.xic);
+		wd.xic = nullptr;
 	}
 
 	windows.erase(p_id);
@@ -793,7 +794,9 @@ void DisplayServerX11::window_set_title(const String &p_title, WindowID p_window
 
 	Atom _net_wm_name = XInternAtom(x11_display, "_NET_WM_NAME", false);
 	Atom utf8_string = XInternAtom(x11_display, "UTF8_STRING", false);
-	XChangeProperty(x11_display, wd.x11_window, _net_wm_name, utf8_string, 8, PropModeReplace, (unsigned char *)p_title.utf8().get_data(), p_title.utf8().length());
+	if (_net_wm_name != None && utf8_string != None) {
+		XChangeProperty(x11_display, wd.x11_window, _net_wm_name, utf8_string, 8, PropModeReplace, (unsigned char *)p_title.utf8().get_data(), p_title.utf8().length());
+	}
 }
 
 void DisplayServerX11::window_set_mouse_passthrough(const Vector<Vector2> &p_region, WindowID p_window) {
@@ -1183,6 +1186,10 @@ bool DisplayServerX11::_window_maximize_check(WindowID p_window, const char *p_a
 	unsigned char *data = nullptr;
 	bool retval = false;
 
+	if (property == None) {
+		return false;
+	}
+
 	int result = XGetWindowProperty(
 			x11_display,
 			wd.x11_window,
@@ -1271,7 +1278,9 @@ void DisplayServerX11::_set_wm_fullscreen(WindowID p_window, bool p_enabled) {
 		hints.flags = 2;
 		hints.decorations = 0;
 		property = XInternAtom(x11_display, "_MOTIF_WM_HINTS", True);
-		XChangeProperty(x11_display, wd.x11_window, property, property, 32, PropModeReplace, (unsigned char *)&hints, 5);
+		if (property != None) {
+			XChangeProperty(x11_display, wd.x11_window, property, property, 32, PropModeReplace, (unsigned char *)&hints, 5);
+		}
 	}
 
 	if (p_enabled) {
@@ -1298,7 +1307,9 @@ void DisplayServerX11::_set_wm_fullscreen(WindowID p_window, bool p_enabled) {
 	// set bypass compositor hint
 	Atom bypass_compositor = XInternAtom(x11_display, "_NET_WM_BYPASS_COMPOSITOR", False);
 	unsigned long compositing_disable_on = p_enabled ? 1 : 0;
-	XChangeProperty(x11_display, wd.x11_window, bypass_compositor, XA_CARDINAL, 32, PropModeReplace, (unsigned char *)&compositing_disable_on, 1);
+	if (bypass_compositor != None) {
+		XChangeProperty(x11_display, wd.x11_window, bypass_compositor, XA_CARDINAL, 32, PropModeReplace, (unsigned char *)&compositing_disable_on, 1);
+	}
 
 	XFlush(x11_display);
 
@@ -1312,7 +1323,9 @@ void DisplayServerX11::_set_wm_fullscreen(WindowID p_window, bool p_enabled) {
 		hints.flags = 2;
 		hints.decorations = window_get_flag(WINDOW_FLAG_BORDERLESS, p_window) ? 0 : 1;
 		property = XInternAtom(x11_display, "_MOTIF_WM_HINTS", True);
-		XChangeProperty(x11_display, wd.x11_window, property, property, 32, PropModeReplace, (unsigned char *)&hints, 5);
+		if (property != None) {
+			XChangeProperty(x11_display, wd.x11_window, property, property, 32, PropModeReplace, (unsigned char *)&hints, 5);
+		}
 	}
 }
 
@@ -1447,6 +1460,10 @@ DisplayServer::WindowMode DisplayServerX11::window_get_mode(WindowID p_window) c
 	{ // Test minimized.
 		// Using ICCCM -- Inter-Client Communication Conventions Manual
 		Atom property = XInternAtom(x11_display, "WM_STATE", True);
+		if (property == None) {
+			return WINDOW_MODE_WINDOWED;
+		}
+
 		Atom type;
 		int format;
 		unsigned long len;
@@ -1502,7 +1519,9 @@ void DisplayServerX11::window_set_flag(WindowFlags p_flag, bool p_enabled, Windo
 			hints.flags = 2;
 			hints.decorations = p_enabled ? 0 : 1;
 			property = XInternAtom(x11_display, "_MOTIF_WM_HINTS", True);
-			XChangeProperty(x11_display, wd.x11_window, property, property, 32, PropModeReplace, (unsigned char *)&hints, 5);
+			if (property != None) {
+				XChangeProperty(x11_display, wd.x11_window, property, property, 32, PropModeReplace, (unsigned char *)&hints, 5);
+			}
 
 			// Preserve window size
 			window_set_size(window_get_size(p_window), p_window);
@@ -1942,28 +1961,29 @@ String DisplayServerX11::keyboard_get_layout_name(int p_index) const {
 }
 
 DisplayServerX11::Property DisplayServerX11::_read_property(Display *p_display, Window p_window, Atom p_property) {
-	Atom actual_type;
-	int actual_format;
-	unsigned long nitems;
-	unsigned long bytes_after;
+	Atom actual_type = None;
+	int actual_format = 0;
+	unsigned long nitems = 0;
+	unsigned long bytes_after = 0;
 	unsigned char *ret = nullptr;
 
 	int read_bytes = 1024;
 
-	//Keep trying to read the property until there are no
-	//bytes unread.
-	do {
-		if (ret != nullptr) {
-			XFree(ret);
-		}
+	// Keep trying to read the property until there are no bytes unread.
+	if (p_property != None) {
+		do {
+			if (ret != nullptr) {
+				XFree(ret);
+			}
 
-		XGetWindowProperty(p_display, p_window, p_property, 0, read_bytes, False, AnyPropertyType,
-				&actual_type, &actual_format, &nitems, &bytes_after,
-				&ret);
+			XGetWindowProperty(p_display, p_window, p_property, 0, read_bytes, False, AnyPropertyType,
+					&actual_type, &actual_format, &nitems, &bytes_after,
+					&ret);
 
-		read_bytes *= 2;
+			read_bytes *= 2;
 
-	} while (bytes_after != 0);
+		} while (bytes_after != 0);
+	}
 
 	Property p = { ret, actual_format, (int)nitems, actual_type };
 
@@ -2784,6 +2804,13 @@ void DisplayServerX11::process_events() {
 
 				wd.focused = true;
 
+				if (wd.xic) {
+					// Block events polling while changing input focus
+					// because it triggers some event polling internally.
+					MutexLock mutex_lock(events_mutex);
+					XSetICFocus(wd.xic);
+				}
+
 				// Keep track of focus order for overlapping windows.
 				static unsigned int focus_order = 0;
 				wd.focus_order = ++focus_order;
@@ -2812,12 +2839,6 @@ void DisplayServerX11::process_events() {
 					XIGrabDevice(x11_display, xi.touch_devices[i], x11_window, CurrentTime, None, XIGrabModeAsync, XIGrabModeAsync, False, &xi.touch_event_mask);
 				}*/
 #endif
-				if (wd.xic) {
-					// Block events polling while changing input focus
-					// because it triggers some event polling internally.
-					MutexLock mutex_lock(events_mutex);
-					XSetICFocus(wd.xic);
-				}
 
 				if (!app_focused) {
 					if (OS::get_singleton()->get_main_loop()) {
@@ -2833,6 +2854,13 @@ void DisplayServerX11::process_events() {
 				WindowData &wd = windows[window_id];
 
 				wd.focused = false;
+
+				if (wd.xic) {
+					// Block events polling while changing input focus
+					// because it triggers some event polling internally.
+					MutexLock mutex_lock(events_mutex);
+					XUnsetICFocus(wd.xic);
+				}
 
 				Input::get_singleton()->release_pressed_events();
 				_send_window_event(wd, WINDOW_EVENT_FOCUS_OUT);
@@ -2864,12 +2892,6 @@ void DisplayServerX11::process_events() {
 				}
 				xi.state.clear();
 #endif
-				if (wd.xic) {
-					// Block events polling while changing input focus
-					// because it triggers some event polling internally.
-					MutexLock mutex_lock(events_mutex);
-					XUnsetICFocus(wd.xic);
-				}
 			} break;
 
 			case ConfigureNotify: {
@@ -3373,7 +3395,9 @@ void DisplayServerX11::set_icon(const Ref<Image> &p_icon) {
 				pr += 4;
 			}
 
-			XChangeProperty(x11_display, wd.x11_window, net_wm_icon, XA_CARDINAL, 32, PropModeReplace, (unsigned char *)pd.ptr(), pd.size());
+			if (net_wm_icon != None) {
+				XChangeProperty(x11_display, wd.x11_window, net_wm_icon, XA_CARDINAL, 32, PropModeReplace, (unsigned char *)pd.ptr(), pd.size());
+			}
 
 			if (!g_set_icon_error) {
 				break;
@@ -3466,7 +3490,9 @@ DisplayServerX11::WindowID DisplayServerX11::_create_window(WindowMode p_mode, u
 		{
 			const long pid = OS::get_singleton()->get_process_id();
 			Atom net_wm_pid = XInternAtom(x11_display, "_NET_WM_PID", False);
-			XChangeProperty(x11_display, wd.x11_window, net_wm_pid, XA_CARDINAL, 32, PropModeReplace, (unsigned char *)&pid, 1);
+			if (net_wm_pid != None) {
+				XChangeProperty(x11_display, wd.x11_window, net_wm_pid, XA_CARDINAL, 32, PropModeReplace, (unsigned char *)&pid, 1);
+			}
 		}
 
 		long im_event_mask = 0;
@@ -3514,7 +3540,9 @@ DisplayServerX11::WindowID DisplayServerX11::_create_window(WindowMode p_mode, u
 		/* set the titlebar name */
 		XStoreName(x11_display, wd.x11_window, "Godot");
 		XSetWMProtocols(x11_display, wd.x11_window, &wm_delete, 1);
-		XChangeProperty(x11_display, wd.x11_window, xdnd_aware, XA_ATOM, 32, PropModeReplace, (unsigned char *)&xdnd_version, 1);
+		if (xdnd_aware != None) {
+			XChangeProperty(x11_display, wd.x11_window, xdnd_aware, XA_ATOM, 32, PropModeReplace, (unsigned char *)&xdnd_version, 1);
+		}
 
 		if (xim && xim_style) {
 			// Block events polling while changing input focus
@@ -3545,20 +3573,25 @@ DisplayServerX11::WindowID DisplayServerX11::_create_window(WindowMode p_mode, u
 			hints.flags = 2;
 			hints.decorations = 0;
 			property = XInternAtom(x11_display, "_MOTIF_WM_HINTS", True);
-			XChangeProperty(x11_display, wd.x11_window, property, property, 32, PropModeReplace, (unsigned char *)&hints, 5);
+			if (property != None) {
+				XChangeProperty(x11_display, wd.x11_window, property, property, 32, PropModeReplace, (unsigned char *)&hints, 5);
+			}
 		}
 
 		if (wd.menu_type) {
 			// Set Utility type to disable fade animations.
 			Atom type_atom = XInternAtom(x11_display, "_NET_WM_WINDOW_TYPE_UTILITY", False);
 			Atom wt_atom = XInternAtom(x11_display, "_NET_WM_WINDOW_TYPE", False);
-
-			XChangeProperty(x11_display, wd.x11_window, wt_atom, XA_ATOM, 32, PropModeReplace, (unsigned char *)&type_atom, 1);
+			if (wt_atom != None && type_atom != None) {
+				XChangeProperty(x11_display, wd.x11_window, wt_atom, XA_ATOM, 32, PropModeReplace, (unsigned char *)&type_atom, 1);
+			}
 		} else {
 			Atom type_atom = XInternAtom(x11_display, "_NET_WM_WINDOW_TYPE_NORMAL", False);
 			Atom wt_atom = XInternAtom(x11_display, "_NET_WM_WINDOW_TYPE", False);
 
-			XChangeProperty(x11_display, wd.x11_window, wt_atom, XA_ATOM, 32, PropModeReplace, (unsigned char *)&type_atom, 1);
+			if (wt_atom != None && type_atom != None) {
+				XChangeProperty(x11_display, wd.x11_window, wt_atom, XA_ATOM, 32, PropModeReplace, (unsigned char *)&type_atom, 1);
+			}
 		}
 
 		_update_size_hints(id);
@@ -3840,6 +3873,10 @@ DisplayServerX11::DisplayServerX11(const String &p_rendering_driver, WindowMode 
 			(screen_get_size(0).width - p_resolution.width) / 2,
 			(screen_get_size(0).height - p_resolution.height) / 2);
 	WindowID main_window = _create_window(p_mode, p_flags, Rect2i(window_position, p_resolution));
+	if (main_window == INVALID_WINDOW_ID) {
+		r_error = ERR_CANT_CREATE;
+		return;
+	}
 	for (int i = 0; i < WINDOW_FLAG_MAX; i++) {
 		if (p_flags & (1 << i)) {
 			window_set_flag(WindowFlags(i), true, main_window);
@@ -4044,11 +4081,13 @@ DisplayServerX11::~DisplayServerX11() {
 		}
 #endif
 
-		if (E->get().xic) {
-			XDestroyIC(E->get().xic);
+		WindowData &wd = E->get();
+		if (wd.xic) {
+			XDestroyIC(wd.xic);
+			wd.xic = nullptr;
 		}
-		XUnmapWindow(x11_display, E->get().x11_window);
-		XDestroyWindow(x11_display, E->get().x11_window);
+		XUnmapWindow(x11_display, wd.x11_window);
+		XDestroyWindow(x11_display, wd.x11_window);
 	}
 
 	//destroy drivers

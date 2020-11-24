@@ -30,7 +30,7 @@
 
 #import "godot_view.h"
 #include "core/os/keyboard.h"
-#include "core/ustring.h"
+#include "core/string/ustring.h"
 #import "display_layer.h"
 #include "display_server_iphone.h"
 #import "godot_view_gesture_recognizer.h"
@@ -42,7 +42,6 @@ static const int max_touches = 8;
 
 @interface GodotView () {
 	UITouch *godot_touches[max_touches];
-	String keyboard_text;
 }
 
 @property(assign, nonatomic) BOOL isActive;
@@ -145,8 +144,6 @@ static const int max_touches = 8;
 	if (self.delayGestureRecognizer) {
 		self.delayGestureRecognizer = nil;
 	}
-
-	[super dealloc];
 }
 
 - (void)godot_commonInit {
@@ -156,7 +153,7 @@ static const int max_touches = 8;
 
 	// Configure and start accelerometer
 	if (!self.motionManager) {
-		self.motionManager = [[[CMMotionManager alloc] init] autorelease];
+		self.motionManager = [[CMMotionManager alloc] init];
 		if (self.motionManager.deviceMotionAvailable) {
 			self.motionManager.deviceMotionUpdateInterval = 1.0 / 70.0;
 			[self.motionManager startDeviceMotionUpdatesUsingReferenceFrame:CMAttitudeReferenceFrameXMagneticNorthZVertical];
@@ -169,7 +166,6 @@ static const int max_touches = 8;
 	GodotViewGestureRecognizer *gestureRecognizer = [[GodotViewGestureRecognizer alloc] init];
 	self.delayGestureRecognizer = gestureRecognizer;
 	[self addGestureRecognizer:self.delayGestureRecognizer];
-	[gestureRecognizer release];
 }
 
 - (void)stopRendering {
@@ -204,14 +200,11 @@ static const int max_touches = 8;
 	if (self.useCADisplayLink) {
 		self.displayLink = [CADisplayLink displayLinkWithTarget:self selector:@selector(drawView)];
 
-		//        if (@available(iOS 10, *)) {
-		self.displayLink.preferredFramesPerSecond = (NSInteger)(1.0 / self.renderingInterval);
-		//        } else {
-		//            // Approximate frame rate
-		//            // assumes device refreshes at 60 fps
-		//            int frameInterval = (int)floor(self.renderingInterval * 60.0f);
-		//            [self.displayLink setFrameInterval:frameInterval];
-		//        }
+		// Approximate frame rate
+		// assumes device refreshes at 60 fps
+		int displayFPS = (NSInteger)(1.0 / self.renderingInterval);
+
+		self.displayLink.preferredFramesPerSecond = displayFPS;
 
 		// Setup DisplayLink in main thread
 		[self.displayLink addToRunLoop:[NSRunLoop currentRunLoop] forMode:NSRunLoopCommonModes];
@@ -283,40 +276,6 @@ static const int max_touches = 8;
 }
 
 // MARK: - Input
-
-// MARK: Keyboard
-
-- (BOOL)canBecomeFirstResponder {
-	return YES;
-}
-
-- (BOOL)becomeFirstResponderWithString:(String)p_existing {
-	keyboard_text = p_existing;
-	return [self becomeFirstResponder];
-}
-
-- (BOOL)resignFirstResponder {
-	keyboard_text = String();
-	return [super resignFirstResponder];
-}
-
-- (void)deleteBackward {
-	if (keyboard_text.length()) {
-		keyboard_text.erase(keyboard_text.length() - 1, 1);
-	}
-	DisplayServerIPhone::get_singleton()->key(KEY_BACKSPACE, true);
-}
-
-- (BOOL)hasText {
-	return keyboard_text.length() > 0;
-}
-
-- (void)insertText:(NSString *)p_text {
-	String character;
-	character.parse_utf8([p_text UTF8String]);
-	keyboard_text = keyboard_text + character;
-	DisplayServerIPhone::get_singleton()->key(character[0] == 10 ? KEY_ENTER : character[0], true);
-}
 
 // MARK: Touches
 

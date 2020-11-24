@@ -41,7 +41,6 @@
 
 class RenderingServerRaster : public RenderingServer {
 	enum {
-
 		MAX_INSTANCE_CULL = 8192,
 		MAX_INSTANCE_LIGHTS = 4,
 		LIGHT_CACHE_DIRTY = -1,
@@ -452,6 +451,7 @@ public:
 	BIND1(particles_restart, RID)
 	BIND6(particles_emit, RID, const Transform &, const Vector3 &, const Color &, const Color &, uint32_t)
 	BIND2(particles_set_subemitter, RID, RID)
+	BIND2(particles_set_collision_base_size, RID, float)
 
 	BIND2(particles_set_draw_order, RID, RS::ParticlesDrawOrder)
 
@@ -460,6 +460,21 @@ public:
 
 	BIND1R(AABB, particles_get_current_aabb, RID)
 	BIND2(particles_set_emission_transform, RID, const Transform &)
+
+	/* PARTICLES COLLISION */
+
+	BIND0R(RID, particles_collision_create)
+
+	BIND2(particles_collision_set_collision_type, RID, ParticlesCollisionType)
+	BIND2(particles_collision_set_cull_mask, RID, uint32_t)
+	BIND2(particles_collision_set_sphere_radius, RID, float)
+	BIND2(particles_collision_set_box_extents, RID, const Vector3 &)
+	BIND2(particles_collision_set_attractor_strength, RID, float)
+	BIND2(particles_collision_set_attractor_directionality, RID, float)
+	BIND2(particles_collision_set_attractor_attenuation, RID, float)
+	BIND2(particles_collision_set_field_texture, RID, RID)
+	BIND1(particles_collision_height_field_update, RID)
+	BIND2(particles_collision_set_height_field_resolution, RID, ParticlesCollisionHeightfieldResolution)
 
 #undef BINDBASE
 //from now on, calls forwarded to this singleton
@@ -512,6 +527,11 @@ public:
 	BIND2(viewport_remove_canvas, RID, RID)
 	BIND3(viewport_set_canvas_transform, RID, RID, const Transform2D &)
 	BIND2(viewport_set_transparent_background, RID, bool)
+	BIND2(viewport_set_snap_2d_transforms_to_pixel, RID, bool)
+	BIND2(viewport_set_snap_2d_vertices_to_pixel, RID, bool)
+
+	BIND2(viewport_set_default_canvas_item_texture_filter, RID, CanvasItemTextureFilter)
+	BIND2(viewport_set_default_canvas_item_texture_repeat, RID, CanvasItemTextureRepeat)
 
 	BIND2(viewport_set_global_canvas_transform, RID, const Transform2D &)
 	BIND4(viewport_set_canvas_stacking, RID, RID, int, int)
@@ -519,6 +539,7 @@ public:
 	BIND3(viewport_set_shadow_atlas_quadrant_subdivision, RID, int, int)
 	BIND2(viewport_set_msaa, RID, ViewportMSAA)
 	BIND2(viewport_set_screen_space_aa, RID, ViewportScreenSpaceAA)
+	BIND2(viewport_set_use_debanding, RID, bool)
 
 	BIND2R(int, viewport_get_render_info, RID, ViewportRenderInfo)
 	BIND2(viewport_set_debug_draw, RID, ViewportDebugDraw)
@@ -565,7 +586,7 @@ public:
 	BIND9(environment_set_ssao, RID, bool, float, float, float, float, float, EnvironmentSSAOBlur, float)
 	BIND2(environment_set_ssao_quality, EnvironmentSSAOQuality, bool)
 
-	BIND11(environment_set_glow, RID, bool, int, float, float, float, float, EnvironmentGlowBlendMode, float, float, float)
+	BIND11(environment_set_glow, RID, bool, Vector<float>, float, float, float, float, EnvironmentGlowBlendMode, float, float, float)
 	BIND1(environment_glow_set_use_bicubic_upscale, bool)
 	BIND1(environment_glow_set_use_high_quality, bool)
 
@@ -573,7 +594,7 @@ public:
 
 	BIND6(environment_set_adjustment, RID, bool, float, float, float, RID)
 
-	BIND8(environment_set_fog, RID, bool, const Color &, float, float, float, float, float)
+	BIND9(environment_set_fog, RID, bool, const Color &, float, float, float, float, float, float)
 	BIND9(environment_set_volumetric_fog, RID, bool, float, const Color &, float, float, float, float, EnvVolumetricFogShadowFilter)
 
 	BIND2(environment_set_volumetric_fog_volume_size, int, int)
@@ -667,8 +688,18 @@ public:
 	BIND3(canvas_set_parent, RID, RID, float)
 	BIND1(canvas_set_disable_scale, bool)
 
+	BIND0R(RID, canvas_texture_create)
+	BIND3(canvas_texture_set_channel, RID, CanvasTextureChannel, RID)
+	BIND3(canvas_texture_set_shading_parameters, RID, const Color &, float)
+
+	BIND2(canvas_texture_set_texture_filter, RID, CanvasItemTextureFilter)
+	BIND2(canvas_texture_set_texture_repeat, RID, CanvasItemTextureRepeat)
+
 	BIND0R(RID, canvas_item_create)
 	BIND2(canvas_item_set_parent, RID, RID)
+
+	BIND2(canvas_item_set_default_texture_filter, RID, CanvasItemTextureFilter)
+	BIND2(canvas_item_set_default_texture_repeat, RID, CanvasItemTextureRepeat)
 
 	BIND2(canvas_item_set_visible, RID, bool)
 	BIND2(canvas_item_set_light_mask, RID, int)
@@ -684,23 +715,20 @@ public:
 
 	BIND2(canvas_item_set_draw_behind_parent, RID, bool)
 
-	BIND2(canvas_item_set_default_texture_filter, RID, CanvasItemTextureFilter)
-	BIND2(canvas_item_set_default_texture_repeat, RID, CanvasItemTextureRepeat)
-
 	BIND5(canvas_item_add_line, RID, const Point2 &, const Point2 &, const Color &, float)
 	BIND4(canvas_item_add_polyline, RID, const Vector<Point2> &, const Vector<Color> &, float)
 	BIND4(canvas_item_add_multiline, RID, const Vector<Point2> &, const Vector<Color> &, float)
 	BIND3(canvas_item_add_rect, RID, const Rect2 &, const Color &)
 	BIND4(canvas_item_add_circle, RID, const Point2 &, float, const Color &)
-	BIND11(canvas_item_add_texture_rect, RID, const Rect2 &, RID, bool, const Color &, bool, RID, RID, const Color &, CanvasItemTextureFilter, CanvasItemTextureRepeat)
-	BIND12(canvas_item_add_texture_rect_region, RID, const Rect2 &, RID, const Rect2 &, const Color &, bool, RID, RID, const Color &, bool, CanvasItemTextureFilter, CanvasItemTextureRepeat)
-	BIND15(canvas_item_add_nine_patch, RID, const Rect2 &, const Rect2 &, RID, const Vector2 &, const Vector2 &, NinePatchAxisMode, NinePatchAxisMode, bool, const Color &, RID, RID, const Color &, CanvasItemTextureFilter, CanvasItemTextureRepeat)
-	BIND11(canvas_item_add_primitive, RID, const Vector<Point2> &, const Vector<Color> &, const Vector<Point2> &, RID, float, RID, RID, const Color &, CanvasItemTextureFilter, CanvasItemTextureRepeat)
-	BIND10(canvas_item_add_polygon, RID, const Vector<Point2> &, const Vector<Color> &, const Vector<Point2> &, RID, RID, RID, const Color &, CanvasItemTextureFilter, CanvasItemTextureRepeat)
-	BIND14(canvas_item_add_triangle_array, RID, const Vector<int> &, const Vector<Point2> &, const Vector<Color> &, const Vector<Point2> &, const Vector<int> &, const Vector<float> &, RID, int, RID, RID, const Color &, CanvasItemTextureFilter, CanvasItemTextureRepeat)
-	BIND10(canvas_item_add_mesh, RID, const RID &, const Transform2D &, const Color &, RID, RID, RID, const Color &, CanvasItemTextureFilter, CanvasItemTextureRepeat)
-	BIND8(canvas_item_add_multimesh, RID, RID, RID, RID, RID, const Color &, CanvasItemTextureFilter, CanvasItemTextureRepeat)
-	BIND8(canvas_item_add_particles, RID, RID, RID, RID, RID, const Color &, CanvasItemTextureFilter, CanvasItemTextureRepeat)
+	BIND6(canvas_item_add_texture_rect, RID, const Rect2 &, RID, bool, const Color &, bool)
+	BIND7(canvas_item_add_texture_rect_region, RID, const Rect2 &, RID, const Rect2 &, const Color &, bool, bool)
+	BIND10(canvas_item_add_nine_patch, RID, const Rect2 &, const Rect2 &, RID, const Vector2 &, const Vector2 &, NinePatchAxisMode, NinePatchAxisMode, bool, const Color &)
+	BIND6(canvas_item_add_primitive, RID, const Vector<Point2> &, const Vector<Color> &, const Vector<Point2> &, RID, float)
+	BIND5(canvas_item_add_polygon, RID, const Vector<Point2> &, const Vector<Color> &, const Vector<Point2> &, RID)
+	BIND9(canvas_item_add_triangle_array, RID, const Vector<int> &, const Vector<Point2> &, const Vector<Color> &, const Vector<Point2> &, const Vector<int> &, const Vector<float> &, RID, int)
+	BIND5(canvas_item_add_mesh, RID, const RID &, const Transform2D &, const Color &, RID)
+	BIND3(canvas_item_add_multimesh, RID, RID, RID)
+	BIND3(canvas_item_add_particles, RID, RID, RID)
 	BIND2(canvas_item_add_set_transform, RID, const Transform2D &)
 	BIND2(canvas_item_add_clip_ignore, RID, bool)
 	BIND2(canvas_item_set_sort_children_by_y, RID, bool)
@@ -716,10 +744,15 @@ public:
 
 	BIND2(canvas_item_set_use_parent_material, RID, bool)
 
+	BIND6(canvas_item_set_canvas_group_mode, RID, CanvasGroupMode, float, bool, float, bool)
+
 	BIND0R(RID, canvas_light_create)
+
+	BIND2(canvas_light_set_mode, RID, CanvasLightMode)
+
 	BIND2(canvas_light_attach_to_canvas, RID, RID)
 	BIND2(canvas_light_set_enabled, RID, bool)
-	BIND2(canvas_light_set_scale, RID, float)
+	BIND2(canvas_light_set_texture_scale, RID, float)
 	BIND2(canvas_light_set_transform, RID, const Transform2D &)
 	BIND2(canvas_light_set_texture, RID, RID)
 	BIND2(canvas_light_set_texture_offset, RID, const Vector2 &)
@@ -730,11 +763,11 @@ public:
 	BIND3(canvas_light_set_layer_range, RID, int, int)
 	BIND2(canvas_light_set_item_cull_mask, RID, int)
 	BIND2(canvas_light_set_item_shadow_cull_mask, RID, int)
+	BIND2(canvas_light_set_directional_distance, RID, float)
 
-	BIND2(canvas_light_set_mode, RID, CanvasLightMode)
+	BIND2(canvas_light_set_blend_mode, RID, CanvasLightBlendMode)
 
 	BIND2(canvas_light_set_shadow_enabled, RID, bool)
-	BIND2(canvas_light_set_shadow_buffer_size, RID, int)
 	BIND2(canvas_light_set_shadow_filter, RID, CanvasLightShadowFilter)
 	BIND2(canvas_light_set_shadow_color, RID, const Color &)
 	BIND2(canvas_light_set_shadow_smooth, RID, float)
@@ -751,6 +784,8 @@ public:
 	BIND2(canvas_occluder_polygon_set_shape_as_lines, RID, const Vector<Vector2> &)
 
 	BIND2(canvas_occluder_polygon_set_cull_mode, RID, CanvasOccluderPolygonCullMode)
+
+	BIND1(canvas_set_shadow_texture_size, int)
 
 	/* GLOBAL VARIABLES */
 

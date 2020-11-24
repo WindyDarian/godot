@@ -65,7 +65,7 @@ void TileMapEditor::_notification(int p_what) {
 
 			paint_button->set_icon(get_theme_icon("Edit", "EditorIcons"));
 			line_button->set_icon(get_theme_icon("CurveLinear", "EditorIcons"));
-			rectangle_button->set_icon(get_theme_icon("RectangleShape2D", "EditorIcons"));
+			rectangle_button->set_icon(get_theme_icon("Rectangle", "EditorIcons"));
 			bucket_fill_button->set_icon(get_theme_icon("Bucket", "EditorIcons"));
 			picker_button->set_icon(get_theme_icon("ColorPick", "EditorIcons"));
 			select_button->set_icon(get_theme_icon("ActionCopy", "EditorIcons"));
@@ -88,6 +88,25 @@ void TileMapEditor::_notification(int p_what) {
 
 		case NOTIFICATION_EXIT_TREE: {
 			get_tree()->disconnect("node_removed", callable_mp(this, &TileMapEditor::_node_removed));
+		} break;
+
+		case NOTIFICATION_APPLICATION_FOCUS_OUT: {
+			if (tool == TOOL_PAINTING) {
+				Vector<int> ids = get_selected_tiles();
+
+				if (ids.size() > 0 && ids[0] != TileMap::INVALID_CELL) {
+					_set_cell(over_tile, ids, flip_h, flip_v, transpose);
+					_finish_undo();
+
+					paint_undo.clear();
+				}
+
+				tool = TOOL_NONE;
+				_update_button_tool();
+			}
+
+			// set flag to ignore over_tile on refocus
+			refocus_over_tile = true;
 		} break;
 	}
 }
@@ -394,7 +413,9 @@ struct _PaletteEntry {
 	String name;
 
 	bool operator<(const _PaletteEntry &p_rhs) const {
-		return name < p_rhs.name;
+		// Natural no case comparison will compare strings based on CharType
+		// order (except digits) and on numbers that start on the same position.
+		return name.naturalnocasecmp_to(p_rhs.name) < 0;
 	}
 };
 } // namespace
@@ -630,9 +651,15 @@ Vector<Vector2> TileMapEditor::_bucket_fill(const Point2i &p_start, bool erase, 
 		return Vector<Vector2>();
 	}
 
+	// Check if the tile variation is the same
+	Vector2 prev_position = node->get_cell_autotile_coord(p_start.x, p_start.y);
 	if (ids.size() == 1 && ids[0] == prev_id) {
-		// Same ID, nothing to change
-		return Vector<Vector2>();
+		int current = manual_palette->get_current();
+		Vector2 position = manual_palette->get_item_metadata(current);
+		if (prev_position == position) {
+			// Same ID and variation, nothing to change
+			return Vector<Vector2>();
+		}
 	}
 
 	Rect2i r = node->get_used_rect();
@@ -1297,6 +1324,12 @@ bool TileMapEditor::forward_gui_input(const Ref<InputEvent> &p_event) {
 		if (new_over_tile != over_tile) {
 			over_tile = new_over_tile;
 			CanvasItemEditor::get_singleton()->update_viewport();
+		}
+
+		if (refocus_over_tile) {
+			// editor lost focus; forget last tile position
+			old_over_tile = new_over_tile;
+			refocus_over_tile = false;
 		}
 
 		int tile_under = node->get_cell(over_tile.x, over_tile.y);

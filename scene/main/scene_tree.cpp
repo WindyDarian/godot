@@ -30,16 +30,16 @@
 
 #include "scene_tree.h"
 
+#include "core/config/project_settings.h"
 #include "core/debugger/engine_debugger.h"
 #include "core/input/input.h"
 #include "core/io/marshalls.h"
 #include "core/io/resource_loader.h"
-#include "core/message_queue.h"
+#include "core/object/message_queue.h"
 #include "core/os/dir_access.h"
 #include "core/os/keyboard.h"
 #include "core/os/os.h"
-#include "core/print_string.h"
-#include "core/project_settings.h"
+#include "core/string/print_string.h"
 #include "node.h"
 #include "scene/debugger/scene_debugger.h"
 #include "scene/resources/dynamic_font.h"
@@ -827,12 +827,9 @@ void SceneTree::_notify_group_pause(const StringName &p_group, int p_notificatio
 
 /*
 void SceneMainLoop::_update_listener_2d() {
-
 	if (listener_2d.is_valid()) {
-
 		SpatialSound2DServer::get_singleton()->listener_set_space( listener_2d, world_2d->get_sound_space() );
 	}
-
 }
 
 */
@@ -1383,13 +1380,22 @@ SceneTree::SceneTree() {
 	root->set_as_audio_listener_2d(true);
 	current_scene = nullptr;
 
-	int msaa_mode = GLOBAL_DEF("rendering/quality/screen_filters/msaa", 0);
+	const int msaa_mode = GLOBAL_DEF("rendering/quality/screen_filters/msaa", 0);
 	ProjectSettings::get_singleton()->set_custom_property_info("rendering/quality/screen_filters/msaa", PropertyInfo(Variant::INT, "rendering/quality/screen_filters/msaa", PROPERTY_HINT_ENUM, "Disabled (Fastest),2x (Fast),4x (Average),8x (Slow),16x (Slower)"));
 	root->set_msaa(Viewport::MSAA(msaa_mode));
 
-	int ssaa_mode = GLOBAL_DEF("rendering/quality/screen_filters/screen_space_aa", 0);
+	const int ssaa_mode = GLOBAL_DEF("rendering/quality/screen_filters/screen_space_aa", 0);
 	ProjectSettings::get_singleton()->set_custom_property_info("rendering/quality/screen_filters/screen_space_aa", PropertyInfo(Variant::INT, "rendering/quality/screen_filters/screen_space_aa", PROPERTY_HINT_ENUM, "Disabled (Fastest),FXAA (Fast)"));
 	root->set_screen_space_aa(Viewport::ScreenSpaceAA(ssaa_mode));
+
+	const bool use_debanding = GLOBAL_DEF("rendering/quality/screen_filters/use_debanding", false);
+	root->set_use_debanding(use_debanding);
+
+	bool snap_2d_transforms = GLOBAL_DEF("rendering/quality/2d/snap_2d_transforms_to_pixel", false);
+	root->set_snap_2d_transforms_to_pixel(snap_2d_transforms);
+
+	bool snap_2d_vertices = GLOBAL_DEF("rendering/quality/2d/snap_2d_vertices_to_pixel", false);
+	root->set_snap_2d_vertices_to_pixel(snap_2d_vertices);
 
 	{ //load default fallback environment
 		//get possible extensions

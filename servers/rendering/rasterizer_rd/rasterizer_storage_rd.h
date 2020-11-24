@@ -31,7 +31,7 @@
 #ifndef RASTERIZER_STORAGE_RD_H
 #define RASTERIZER_STORAGE_RD_H
 
-#include "core/rid_owner.h"
+#include "core/templates/rid_owner.h"
 #include "servers/rendering/rasterizer.h"
 #include "servers/rendering/rasterizer_rd/rasterizer_effects_rd.h"
 #include "servers/rendering/rasterizer_rd/shader_compiler_rd.h"
@@ -155,6 +155,7 @@ public:
 		DEFAULT_RD_TEXTURE_MULTIMESH_BUFFER,
 		DEFAULT_RD_TEXTURE_CUBEMAP_BLACK,
 		DEFAULT_RD_TEXTURE_CUBEMAP_ARRAY_BLACK,
+		DEFAULT_RD_TEXTURE_CUBEMAP_WHITE,
 		DEFAULT_RD_TEXTURE_3D_WHITE,
 		DEFAULT_RD_TEXTURE_2D_ARRAY_WHITE,
 		DEFAULT_RD_TEXTURE_2D_UINT,
@@ -174,6 +175,29 @@ public:
 	};
 
 private:
+	/* CANVAS TEXTURE API (2D) */
+
+	struct CanvasTexture {
+		RID diffuse;
+		RID normalmap;
+		RID specular;
+		Color specular_color = Color(1, 1, 1, 1);
+		float shininess = 1.0;
+
+		RS::CanvasItemTextureFilter texture_filter = RS::CANVAS_ITEM_TEXTURE_FILTER_DEFAULT;
+		RS::CanvasItemTextureRepeat texture_repeat = RS::CANVAS_ITEM_TEXTURE_REPEAT_DEFAULT;
+		RID uniform_sets[RS::CANVAS_ITEM_TEXTURE_FILTER_MAX][RS::CANVAS_ITEM_TEXTURE_REPEAT_MAX];
+
+		Size2i size_cache = Size2i(1, 1);
+		bool use_normal_cache = false;
+		bool use_specular_cache = false;
+		bool cleared_cache = true;
+		void clear_sets();
+		~CanvasTexture();
+	};
+
+	RID_PtrOwner<CanvasTexture> canvas_texture_owner;
+
 	/* TEXTURE API */
 	struct Texture {
 		enum Type {
@@ -231,6 +255,8 @@ private:
 
 		RS::TextureDetectRoughnessCallback detect_roughness_callback = nullptr;
 		void *detect_roughness_callback_ud = nullptr;
+
+		CanvasTexture *canvas_texture = nullptr;
 	};
 
 	struct TextureToRDFormat {
@@ -475,6 +501,46 @@ private:
 	};
 
 	struct ParticlesFrameParams {
+		enum {
+			MAX_ATTRACTORS = 32,
+			MAX_COLLIDERS = 32,
+			MAX_3D_TEXTURES = 7
+		};
+
+		enum AttractorType {
+			ATTRACTOR_TYPE_SPHERE,
+			ATTRACTOR_TYPE_BOX,
+			ATTRACTOR_TYPE_VECTOR_FIELD,
+		};
+
+		struct Attractor {
+			float transform[16];
+			float extents[3]; //exents or radius
+			uint32_t type;
+
+			uint32_t texture_index; //texture index for vector field
+			float strength;
+			float attenuation;
+			float directionality;
+		};
+
+		enum CollisionType {
+			COLLISION_TYPE_SPHERE,
+			COLLISION_TYPE_BOX,
+			COLLISION_TYPE_SDF,
+			COLLISION_TYPE_HEIGHT_FIELD
+		};
+
+		struct Collider {
+			float transform[16];
+			float extents[3]; //exents or radius
+			uint32_t type;
+
+			uint32_t texture_index; //texture index for vector field
+			float scale;
+			uint32_t pad[2];
+		};
+
 		uint32_t emitting;
 		float system_phase;
 		float prev_system_phase;
@@ -486,9 +552,14 @@ private:
 		float delta;
 
 		uint32_t random_seed;
-		uint32_t pad[3];
+		uint32_t attractor_count;
+		uint32_t collider_count;
+		float particle_size;
 
 		float emission_transform[16];
+
+		Attractor attractors[MAX_ATTRACTORS];
+		Collider colliders[MAX_COLLIDERS];
 	};
 
 	struct ParticleEmissionBufferData {
@@ -536,6 +607,11 @@ private:
 		RID particles_material_uniform_set;
 		RID particles_copy_uniform_set;
 		RID particles_transforms_buffer_uniform_set;
+		RID collision_textures_uniform_set;
+
+		RID collision_3d_textures[ParticlesFrameParams::MAX_3D_TEXTURES];
+		uint32_t collision_3d_textures_used = 0;
+		RID collision_heightmap_texture;
 
 		RID particles_sort_buffer;
 		RID particles_sort_uniform_set;
@@ -557,6 +633,7 @@ private:
 		int fixed_fps;
 		bool fractional_delta;
 		float frame_remainder;
+		float collision_base_size;
 
 		bool clear;
 
@@ -568,6 +645,8 @@ private:
 
 		ParticleEmissionBuffer *emission_buffer = nullptr;
 		RID emission_storage_buffer;
+
+		Set<RasterizerScene::InstanceBase *> collisions;
 
 		Particles() :
 				inactive(true),
@@ -590,6 +669,7 @@ private:
 				fixed_fps(0),
 				fractional_delta(false),
 				frame_remainder(0),
+				collision_base_size(0.01),
 				clear(true) {
 		}
 
@@ -703,6 +783,28 @@ private:
 	void update_particles();
 
 	mutable RID_Owner<Particles> particles_owner;
+
+	/* Particles Collision */
+
+	struct ParticlesCollision {
+		RS::ParticlesCollisionType type = RS::PARTICLES_COLLISION_TYPE_SPHERE_ATTRACT;
+		uint32_t cull_mask = 0xFFFFFFFF;
+		float radius = 1.0;
+		Vector3 extents = Vector3(1, 1, 1);
+		float attractor_strength = 1.0;
+		float attractor_attenuation = 1.0;
+		float attractor_directionality = 0.0;
+		RID field_texture;
+		RID heightfield_texture;
+		RID heightfield_fb;
+		Size2i heightfield_fb_size;
+
+		RS::ParticlesCollisionHeightfieldResolution heightfield_resolution = RS::PARTICLES_COLLISION_HEIGHTFIELD_RESOLUTION_1024;
+
+		RasterizerScene::InstanceDependency instance_dependency;
+	};
+
+	mutable RID_Owner<ParticlesCollision> particles_collision_owner;
 
 	/* Skeleton */
 
@@ -888,6 +990,7 @@ private:
 		bool flags[RENDER_TARGET_FLAG_MAX];
 
 		RID backbuffer; //used for effects
+		RID backbuffer_fb;
 		RID backbuffer_mipmap0;
 
 		struct BackbufferMipmap {
@@ -896,6 +999,8 @@ private:
 		};
 
 		Vector<BackbufferMipmap> backbuffer_mipmaps;
+
+		RID framebuffer_uniform_set;
 		RID backbuffer_uniform_set;
 
 		//texture generated for this owner (nor RD).
@@ -1070,6 +1175,18 @@ public:
 	_FORCE_INLINE_ RID sampler_rd_get_default(RS::CanvasItemTextureFilter p_filter, RS::CanvasItemTextureRepeat p_repeat) {
 		return default_rd_samplers[p_filter][p_repeat];
 	}
+
+	/* CANVAS TEXTURE API */
+
+	virtual RID canvas_texture_create();
+
+	virtual void canvas_texture_set_channel(RID p_canvas_texture, RS::CanvasTextureChannel p_channel, RID p_texture);
+	virtual void canvas_texture_set_shading_parameters(RID p_canvas_texture, const Color &p_specular_color, float p_shininess);
+
+	virtual void canvas_texture_set_texture_filter(RID p_canvas_texture, RS::CanvasItemTextureFilter p_filter);
+	virtual void canvas_texture_set_texture_repeat(RID p_canvas_texture, RS::CanvasItemTextureRepeat p_repeat);
+
+	bool canvas_texture_get_uniform_set(RID p_texture, RS::CanvasItemTextureFilter p_base_filter, RS::CanvasItemTextureRepeat p_base_repeat, RID p_base_shader, int p_base_set, RID &r_uniform_set, Size2i &r_size, Color &r_specular_shininess, bool &r_use_normal, bool &r_use_specular);
 
 	/* SHADER API */
 
@@ -1691,6 +1808,7 @@ public:
 	void particles_set_process_material(RID p_particles, RID p_material);
 	void particles_set_fixed_fps(RID p_particles, int p_fps);
 	void particles_set_fractional_delta(RID p_particles, bool p_enable);
+	void particles_set_collision_base_size(RID p_particles, float p_size);
 	void particles_restart(RID p_particles);
 	void particles_emit(RID p_particles, const Transform &p_transform, const Vector3 &p_velocity, const Color &p_color, const Color &p_custom, uint32_t p_emit_flags);
 	void particles_set_subemitter(RID p_particles, RID p_subemitter_particles);
@@ -1748,6 +1866,27 @@ public:
 		return particles->particles_transforms_buffer_uniform_set;
 	}
 
+	virtual void particles_add_collision(RID p_particles, RasterizerScene::InstanceBase *p_instance);
+	virtual void particles_remove_collision(RID p_particles, RasterizerScene::InstanceBase *p_instance);
+
+	/* PARTICLES COLLISION */
+
+	virtual RID particles_collision_create();
+	virtual void particles_collision_set_collision_type(RID p_particles_collision, RS::ParticlesCollisionType p_type);
+	virtual void particles_collision_set_cull_mask(RID p_particles_collision, uint32_t p_cull_mask);
+	virtual void particles_collision_set_sphere_radius(RID p_particles_collision, float p_radius); //for spheres
+	virtual void particles_collision_set_box_extents(RID p_particles_collision, const Vector3 &p_extents); //for non-spheres
+	virtual void particles_collision_set_attractor_strength(RID p_particles_collision, float p_strength);
+	virtual void particles_collision_set_attractor_directionality(RID p_particles_collision, float p_directionality);
+	virtual void particles_collision_set_attractor_attenuation(RID p_particles_collision, float p_curve);
+	virtual void particles_collision_set_field_texture(RID p_particles_collision, RID p_texture); //for SDF and vector field, heightfield is dynamic
+	virtual void particles_collision_height_field_update(RID p_particles_collision); //for SDF and vector field
+	virtual void particles_collision_set_height_field_resolution(RID p_particles_collision, RS::ParticlesCollisionHeightfieldResolution p_resolution); //for SDF and vector field
+	virtual AABB particles_collision_get_aabb(RID p_particles_collision) const;
+	virtual Vector3 particles_collision_get_extents(RID p_particles_collision) const;
+	virtual bool particles_collision_is_heightfield(RID p_particles_collision) const;
+	RID particles_collision_get_heightfield_framebuffer(RID p_particles_collision) const;
+
 	/* GLOBAL VARIABLES API */
 
 	virtual void global_variable_add(const StringName &p_name, RS::GlobalVariableType p_type, const Variant &p_value);
@@ -1779,7 +1918,10 @@ public:
 	void render_target_set_flag(RID p_render_target, RenderTargetFlags p_flag, bool p_value);
 	bool render_target_was_used(RID p_render_target);
 	void render_target_set_as_unused(RID p_render_target);
-	void render_target_copy_to_back_buffer(RID p_render_target, const Rect2i &p_region);
+	void render_target_copy_to_back_buffer(RID p_render_target, const Rect2i &p_region, bool p_gen_mipmaps);
+	void render_target_clear_back_buffer(RID p_render_target, const Rect2i &p_region, const Color &p_color);
+	void render_target_gen_back_buffer_mipmaps(RID p_render_target, const Rect2i &p_region);
+
 	RID render_target_get_back_buffer_uniform_set(RID p_render_target, RID p_base_shader);
 
 	virtual void render_target_request_clear(RID p_render_target, const Color &p_clear_color);
@@ -1791,6 +1933,14 @@ public:
 	Size2 render_target_get_size(RID p_render_target);
 	RID render_target_get_rd_framebuffer(RID p_render_target);
 	RID render_target_get_rd_texture(RID p_render_target);
+	RID render_target_get_rd_backbuffer(RID p_render_target);
+	RID render_target_get_rd_backbuffer_framebuffer(RID p_render_target);
+
+	RID render_target_get_framebuffer_uniform_set(RID p_render_target);
+	RID render_target_get_backbuffer_uniform_set(RID p_render_target);
+
+	void render_target_set_framebuffer_uniform_set(RID p_render_target, RID p_uniform_set);
+	void render_target_set_backbuffer_uniform_set(RID p_render_target, RID p_uniform_set);
 
 	RS::InstanceType get_base_type(RID p_rid) const;
 
@@ -1817,6 +1967,8 @@ public:
 	virtual uint64_t get_captured_timestamp_gpu_time(uint32_t p_index) const;
 	virtual uint64_t get_captured_timestamp_cpu_time(uint32_t p_index) const;
 	virtual String get_captured_timestamp_name(uint32_t p_index) const;
+
+	RID get_default_rd_storage_buffer() { return default_rd_storage_buffer; }
 
 	static RasterizerStorageRD *base_singleton;
 

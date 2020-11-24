@@ -32,7 +32,7 @@
 #define VECTOR2_H
 
 #include "core/math/math_funcs.h"
-#include "core/ustring.h"
+#include "core/string/ustring.h"
 
 struct Vector2i;
 
@@ -64,6 +64,14 @@ struct Vector2 {
 
 	real_t length() const;
 	real_t length_squared() const;
+
+	Vector2 min(const Vector2 &p_vector2) const {
+		return Vector2(MIN(x, p_vector2.x), MIN(y, p_vector2.y));
+	}
+
+	Vector2 max(const Vector2 &p_vector2) const {
+		return Vector2(MAX(x, p_vector2.x), MAX(y, p_vector2.y));
+	}
 
 	real_t distance_to(const Vector2 &p_vector2) const;
 	real_t distance_squared_to(const Vector2 &p_vector2) const;
@@ -282,10 +290,12 @@ struct Vector2i {
 	void operator*=(const int &rvalue);
 
 	Vector2i operator/(const Vector2i &p_v1) const;
-
 	Vector2i operator/(const int &rvalue) const;
-
 	void operator/=(const int &rvalue);
+
+	Vector2i operator%(const Vector2i &p_v1) const;
+	Vector2i operator%(const int &rvalue) const;
+	void operator%=(const int &rvalue);
 
 	Vector2i operator-() const;
 	bool operator<(const Vector2i &p_vec2) const { return (x == p_vec2.x) ? (y < p_vec2.y) : (x < p_vec2.x); }

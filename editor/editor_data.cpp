@@ -30,10 +30,10 @@
 
 #include "editor_data.h"
 
+#include "core/config/project_settings.h"
 #include "core/io/resource_loader.h"
 #include "core/os/dir_access.h"
 #include "core/os/file_access.h"
-#include "core/project_settings.h"
 #include "editor_node.h"
 #include "editor_settings.h"
 #include "scene/resources/packed_scene.h"
@@ -936,7 +936,13 @@ void EditorData::script_class_save_icon_paths() {
 		}
 	}
 
-	ProjectSettings::get_singleton()->set("_global_script_class_icons", d);
+	if (d.empty()) {
+		if (ProjectSettings::get_singleton()->has_setting("_global_script_class_icons")) {
+			ProjectSettings::get_singleton()->clear("_global_script_class_icons");
+		}
+	} else {
+		ProjectSettings::get_singleton()->set("_global_script_class_icons", d);
+	}
 	ProjectSettings::get_singleton()->save();
 }
 
