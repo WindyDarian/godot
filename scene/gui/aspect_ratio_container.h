@@ -1,5 +1,5 @@
 /*************************************************************************/
-/*  light_occluder_2d.h                                                  */
+/*  aspect_ratio_container.h                                             */
 /*************************************************************************/
 /*                       This file is part of:                           */
 /*                           GODOT ENGINE                                */
@@ -28,88 +28,53 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
 
-#ifndef LIGHTOCCLUDER2D_H
-#define LIGHTOCCLUDER2D_H
+#ifndef ASPECT_RATIO_CONTAINER_H
+#define ASPECT_RATIO_CONTAINER_H
 
-#include "scene/2d/node_2d.h"
+#include "scene/gui/container.h"
 
-class OccluderPolygon2D : public Resource {
-	GDCLASS(OccluderPolygon2D, Resource);
-
-public:
-	enum CullMode {
-		CULL_DISABLED,
-		CULL_CLOCKWISE,
-		CULL_COUNTER_CLOCKWISE
-	};
-
-private:
-	RID occ_polygon;
-	Vector<Vector2> polygon;
-	bool closed;
-	CullMode cull;
-
-	mutable Rect2 item_rect;
-	mutable bool rect_cache_dirty;
-
-protected:
-	static void _bind_methods();
-
-public:
-#ifdef TOOLS_ENABLED
-	virtual Rect2 _edit_get_rect() const;
-	virtual bool _edit_is_selected_on_click(const Point2 &p_point, double p_tolerance) const;
-#endif
-
-	void set_polygon(const Vector<Vector2> &p_polygon);
-	Vector<Vector2> get_polygon() const;
-
-	void set_closed(bool p_closed);
-	bool is_closed() const;
-
-	void set_cull_mode(CullMode p_mode);
-	CullMode get_cull_mode() const;
-
-	virtual RID get_rid() const override;
-	OccluderPolygon2D();
-	~OccluderPolygon2D();
-};
-
-VARIANT_ENUM_CAST(OccluderPolygon2D::CullMode);
-
-class LightOccluder2D : public Node2D {
-	GDCLASS(LightOccluder2D, Node2D);
-
-	RID occluder;
-	bool enabled;
-	int mask;
-	Ref<OccluderPolygon2D> occluder_polygon;
-	bool sdf_collision;
-	void _poly_changed();
+class AspectRatioContainer : public Container {
+	GDCLASS(AspectRatioContainer, Container);
 
 protected:
 	void _notification(int p_what);
 	static void _bind_methods();
+	virtual Size2 get_minimum_size() const override;
 
 public:
-#ifdef TOOLS_ENABLED
-	virtual Rect2 _edit_get_rect() const override;
-	virtual bool _edit_is_selected_on_click(const Point2 &p_point, double p_tolerance) const override;
-#endif
+	enum StretchMode {
+		STRETCH_WIDTH_CONTROLS_HEIGHT,
+		STRETCH_HEIGHT_CONTROLS_WIDTH,
+		STRETCH_FIT,
+		STRETCH_COVER,
+	};
+	enum AlignMode {
+		ALIGN_BEGIN,
+		ALIGN_CENTER,
+		ALIGN_END,
+	};
 
-	void set_occluder_polygon(const Ref<OccluderPolygon2D> &p_polygon);
-	Ref<OccluderPolygon2D> get_occluder_polygon() const;
+private:
+	float ratio = 1.0;
+	StretchMode stretch_mode = STRETCH_FIT;
+	AlignMode alignment_horizontal = ALIGN_CENTER;
+	AlignMode alignment_vertical = ALIGN_CENTER;
 
-	void set_occluder_light_mask(int p_mask);
-	int get_occluder_light_mask() const;
+public:
+	void set_ratio(float p_ratio);
+	float get_ratio() const { return ratio; }
 
-	void set_as_sdf_collision(bool p_enable);
-	bool is_set_as_sdf_collision() const;
+	void set_stretch_mode(StretchMode p_mode);
+	StretchMode get_stretch_mode() const { return stretch_mode; }
 
-	String get_configuration_warning() const override;
+	void set_alignment_horizontal(AlignMode p_alignment_horizontal);
+	AlignMode get_alignment_horizontal() const { return alignment_horizontal; }
 
-	LightOccluder2D();
-	~LightOccluder2D();
+	void set_alignment_vertical(AlignMode p_alignment_vertical);
+	AlignMode get_alignment_vertical() const { return alignment_vertical; }
 };
 
-#endif // LIGHTOCCLUDER2D_H
+VARIANT_ENUM_CAST(AspectRatioContainer::StretchMode);
+VARIANT_ENUM_CAST(AspectRatioContainer::AlignMode);
+
+#endif // ASPECT_RATIO_CONTAINER_H
