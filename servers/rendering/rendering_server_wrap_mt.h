@@ -244,6 +244,7 @@ public:
 
 	FUNC2(light_directional_set_shadow_mode, RID, LightDirectionalShadowMode)
 	FUNC2(light_directional_set_blend_splits, RID, bool)
+	FUNC2(light_directional_set_sky_only, RID, bool)
 	FUNC2(light_directional_set_shadow_depth_range_mode, RID, LightDirectionalShadowDepthRangeMode)
 
 	/* PROBE API */
@@ -506,7 +507,7 @@ public:
 
 	FUNC9(environment_set_tonemap, RID, EnvironmentToneMapper, float, float, bool, float, float, float, float)
 
-	FUNC6(environment_set_adjustment, RID, bool, float, float, float, RID)
+	FUNC7(environment_set_adjustment, RID, bool, float, float, float, bool, RID)
 
 	FUNC9(environment_set_fog, RID, bool, const Color &, float, float, float, float, float, float)
 
@@ -618,7 +619,7 @@ public:
 	FUNC2(canvas_item_set_draw_behind_parent, RID, bool)
 
 	FUNC5(canvas_item_add_line, RID, const Point2 &, const Point2 &, const Color &, float)
-	FUNC4(canvas_item_add_polyline, RID, const Vector<Point2> &, const Vector<Color> &, float)
+	FUNC5(canvas_item_add_polyline, RID, const Vector<Point2> &, const Vector<Color> &, float, bool)
 	FUNC4(canvas_item_add_multiline, RID, const Vector<Point2> &, const Vector<Color> &, float)
 	FUNC3(canvas_item_add_rect, RID, const Rect2 &, const Color &)
 	FUNC4(canvas_item_add_circle, RID, const Point2 &, float, const Color &)

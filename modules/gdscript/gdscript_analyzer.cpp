@@ -983,12 +983,14 @@ void GDScriptAnalyzer::resolve_for(GDScriptParser::ForNode *p_for) {
 						}
 
 						GDScriptParser::DataType arg_type = call->arguments[i]->get_datatype();
-						if (arg_type.kind != GDScriptParser::DataType::BUILTIN) {
-							all_is_constant = false;
-							push_error(vformat(R"*(Invalid argument for "range()" call. Argument %d should be int or float but "%s" was given.)*", i + 1, arg_type.to_string()), call->arguments[i]);
-						} else if (arg_type.builtin_type != Variant::INT && arg_type.builtin_type != Variant::FLOAT) {
-							all_is_constant = false;
-							push_error(vformat(R"*(Invalid argument for "range()" call. Argument %d should be int or float but "%s" was given.)*", i + 1, arg_type.to_string()), call->arguments[i]);
+						if (!arg_type.is_variant()) {
+							if (arg_type.kind != GDScriptParser::DataType::BUILTIN) {
+								all_is_constant = false;
+								push_error(vformat(R"*(Invalid argument for "range()" call. Argument %d should be int or float but "%s" was given.)*", i + 1, arg_type.to_string()), call->arguments[i]);
+							} else if (arg_type.builtin_type != Variant::INT && arg_type.builtin_type != Variant::FLOAT) {
+								all_is_constant = false;
+								push_error(vformat(R"*(Invalid argument for "range()" call. Argument %d should be int or float but "%s" was given.)*", i + 1, arg_type.to_string()), call->arguments[i]);
+							}
 						}
 					}
 
@@ -1707,7 +1709,27 @@ void GDScriptAnalyzer::reduce_call(GDScriptParser::CallNode *p_call, bool is_awa
 				call_type.native_type = function_name; // "Object".
 			}
 
-			if (all_is_constant) {
+			bool safe_to_fold = true;
+			switch (builtin_type) {
+				// Those are stored by reference so not suited for compile-time construction.
+				// Because in this case they would be the same reference in all constructed values.
+				case Variant::OBJECT:
+				case Variant::PACKED_BYTE_ARRAY:
+				case Variant::PACKED_INT32_ARRAY:
+				case Variant::PACKED_INT64_ARRAY:
+				case Variant::PACKED_FLOAT32_ARRAY:
+				case Variant::PACKED_FLOAT64_ARRAY:
+				case Variant::PACKED_STRING_ARRAY:
+				case Variant::PACKED_VECTOR2_ARRAY:
+				case Variant::PACKED_VECTOR3_ARRAY:
+				case Variant::PACKED_COLOR_ARRAY:
+					safe_to_fold = false;
+					break;
+				default:
+					break;
+			}
+
+			if (all_is_constant && safe_to_fold) {
 				// Construct here.
 				Vector<const Variant *> args;
 				for (int i = 0; i < p_call->arguments.size(); i++) {

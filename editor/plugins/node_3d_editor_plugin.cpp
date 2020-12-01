@@ -138,7 +138,7 @@ void ViewportRotationControl::_draw_axis(const Axis2D &p_axis) {
 	if (front) {
 		String axis_name = direction == 0 ? "X" : (direction == 1 ? "Y" : "Z");
 		draw_circle(p_axis.screen_point, AXIS_CIRCLE_RADIUS, c);
-		draw_char(get_theme_font("rotation_control", "EditorFonts"), p_axis.screen_point + Vector2i(-4, 5) * EDSCALE, axis_name, "", Color(0.3, 0.3, 0.3));
+		draw_char(get_theme_font("rotation_control", "EditorFonts"), p_axis.screen_point + Vector2i(-4, 5) * EDSCALE, axis_name, "", get_theme_font_size("rotation_control_size", "EditorFonts"), Color(0.3, 0.3, 0.3));
 	} else {
 		draw_circle(p_axis.screen_point, AXIS_CIRCLE_RADIUS * (0.55 + (0.2 * (1.0 + p_axis.z_axis))), c);
 	}
@@ -2593,7 +2593,7 @@ void Node3DEditorViewport::_notification(int p_what) {
 	}
 }
 
-static void draw_indicator_bar(Control &surface, real_t fill, const Ref<Texture2D> icon, const Ref<Font> font, const String &text) {
+static void draw_indicator_bar(Control &surface, real_t fill, const Ref<Texture2D> icon, const Ref<Font> font, int font_size, const String &text) {
 	// Adjust bar size from control height
 	const Vector2 surface_size = surface.get_size();
 	const real_t h = surface_size.y / 2.0;
@@ -2613,7 +2613,7 @@ static void draw_indicator_bar(Control &surface, real_t fill, const Ref<Texture2
 	surface.draw_texture(icon, icon_pos);
 
 	// Draw text below the bar (for speed/zoom information).
-	surface.draw_string(font, Vector2(icon_pos.x, icon_pos.y + icon_size.y + 16 * EDSCALE), text);
+	surface.draw_string(font, Vector2(icon_pos.x, icon_pos.y + icon_size.y + 16 * EDSCALE), text, HALIGN_LEFT, -1.f, font_size);
 }
 
 void Node3DEditorViewport::_draw() {
@@ -2651,10 +2651,11 @@ void Node3DEditorViewport::_draw() {
 
 	if (message_time > 0) {
 		Ref<Font> font = get_theme_font("font", "Label");
+		int font_size = get_theme_font_size("font_size", "Label");
 		Point2 msgpos = Point2(5, get_size().y - 20);
-		font->draw(ci, msgpos + Point2(1, 1), message, Color(0, 0, 0, 0.8));
-		font->draw(ci, msgpos + Point2(-1, -1), message, Color(0, 0, 0, 0.8));
-		font->draw(ci, msgpos, message, Color(1, 1, 1, 1));
+		font->draw_string(ci, msgpos + Point2(1, 1), message, HALIGN_LEFT, -1, font_size, Color(0, 0, 0, 0.8));
+		font->draw_string(ci, msgpos + Point2(-1, -1), message, HALIGN_LEFT, -1, font_size, Color(0, 0, 0, 0.8));
+		font->draw_string(ci, msgpos, message, HALIGN_LEFT, -1, font_size, Color(1, 1, 1, 1));
 	}
 
 	if (_edit.mode == TRANSFORM_ROTATE) {
@@ -2717,6 +2718,7 @@ void Node3DEditorViewport::_draw() {
 							1.0 - logscale_t,
 							get_theme_icon("ViewportSpeed", "EditorIcons"),
 							get_theme_font("font", "Label"),
+							get_theme_font_size("font_size", "Label"),
 							vformat("%s u/s", String::num(freelook_speed).pad_decimals(precision)));
 				}
 
@@ -2743,6 +2745,7 @@ void Node3DEditorViewport::_draw() {
 							logscale_t,
 							get_theme_icon("ViewportZoom", "EditorIcons"),
 							get_theme_font("font", "Label"),
+							get_theme_font_size("font_size", "Label"),
 							vformat("%s u", String::num(cursor.distance).pad_decimals(precision)));
 				}
 			}
@@ -3903,8 +3906,9 @@ Node3DEditorViewport::Node3DEditorViewport(Node3DEditor *p_spatial_editor, Edito
 
 	view_menu = memnew(MenuButton);
 	view_menu->set_flat(false);
-	vbox->add_child(view_menu);
 	view_menu->set_h_size_flags(0);
+	view_menu->set_shortcut_context(this);
+	vbox->add_child(view_menu);
 
 	display_submenu = memnew(PopupMenu);
 	view_menu->get_popup()->add_child(display_submenu);
@@ -6217,6 +6221,7 @@ Node3DEditor::Node3DEditor(EditorNode *p_editor) {
 	button_binds.write[0] = MENU_TOOL_SELECT;
 	tool_button[TOOL_MODE_SELECT]->connect("pressed", callable_mp(this, &Node3DEditor::_menu_item_pressed), button_binds);
 	tool_button[TOOL_MODE_SELECT]->set_shortcut(ED_SHORTCUT("spatial_editor/tool_select", TTR("Select Mode"), KEY_Q));
+	tool_button[TOOL_MODE_SELECT]->set_shortcut_context(this);
 	tool_button[TOOL_MODE_SELECT]->set_tooltip(keycode_get_string(KEY_MASK_CMD) + TTR("Drag: Rotate\nAlt+Drag: Move\nAlt+RMB: Depth list selection"));
 
 	hbc_menu->add_child(memnew(VSeparator));
@@ -6228,6 +6233,7 @@ Node3DEditor::Node3DEditor(EditorNode *p_editor) {
 	button_binds.write[0] = MENU_TOOL_MOVE;
 	tool_button[TOOL_MODE_MOVE]->connect("pressed", callable_mp(this, &Node3DEditor::_menu_item_pressed), button_binds);
 	tool_button[TOOL_MODE_MOVE]->set_shortcut(ED_SHORTCUT("spatial_editor/tool_move", TTR("Move Mode"), KEY_W));
+	tool_button[TOOL_MODE_MOVE]->set_shortcut_context(this);
 
 	tool_button[TOOL_MODE_ROTATE] = memnew(Button);
 	hbc_menu->add_child(tool_button[TOOL_MODE_ROTATE]);
@@ -6236,6 +6242,7 @@ Node3DEditor::Node3DEditor(EditorNode *p_editor) {
 	button_binds.write[0] = MENU_TOOL_ROTATE;
 	tool_button[TOOL_MODE_ROTATE]->connect("pressed", callable_mp(this, &Node3DEditor::_menu_item_pressed), button_binds);
 	tool_button[TOOL_MODE_ROTATE]->set_shortcut(ED_SHORTCUT("spatial_editor/tool_rotate", TTR("Rotate Mode"), KEY_E));
+	tool_button[TOOL_MODE_ROTATE]->set_shortcut_context(this);
 
 	tool_button[TOOL_MODE_SCALE] = memnew(Button);
 	hbc_menu->add_child(tool_button[TOOL_MODE_SCALE]);
@@ -6244,6 +6251,7 @@ Node3DEditor::Node3DEditor(EditorNode *p_editor) {
 	button_binds.write[0] = MENU_TOOL_SCALE;
 	tool_button[TOOL_MODE_SCALE]->connect("pressed", callable_mp(this, &Node3DEditor::_menu_item_pressed), button_binds);
 	tool_button[TOOL_MODE_SCALE]->set_shortcut(ED_SHORTCUT("spatial_editor/tool_scale", TTR("Scale Mode"), KEY_R));
+	tool_button[TOOL_MODE_SCALE]->set_shortcut_context(this);
 
 	hbc_menu->add_child(memnew(VSeparator));
 
@@ -6292,6 +6300,7 @@ Node3DEditor::Node3DEditor(EditorNode *p_editor) {
 	button_binds.write[0] = MENU_TOOL_LOCAL_COORDS;
 	tool_option_button[TOOL_OPT_LOCAL_COORDS]->connect("toggled", callable_mp(this, &Node3DEditor::_menu_item_toggled), button_binds);
 	tool_option_button[TOOL_OPT_LOCAL_COORDS]->set_shortcut(ED_SHORTCUT("spatial_editor/local_coords", TTR("Use Local Space"), KEY_T));
+	tool_option_button[TOOL_OPT_LOCAL_COORDS]->set_shortcut_context(this);
 
 	tool_option_button[TOOL_OPT_USE_SNAP] = memnew(Button);
 	hbc_menu->add_child(tool_option_button[TOOL_OPT_USE_SNAP]);
@@ -6300,6 +6309,7 @@ Node3DEditor::Node3DEditor(EditorNode *p_editor) {
 	button_binds.write[0] = MENU_TOOL_USE_SNAP;
 	tool_option_button[TOOL_OPT_USE_SNAP]->connect("toggled", callable_mp(this, &Node3DEditor::_menu_item_toggled), button_binds);
 	tool_option_button[TOOL_OPT_USE_SNAP]->set_shortcut(ED_SHORTCUT("spatial_editor/snap", TTR("Use Snap"), KEY_Y));
+	tool_option_button[TOOL_OPT_USE_SNAP]->set_shortcut_context(this);
 
 	hbc_menu->add_child(memnew(VSeparator));
 
@@ -6337,6 +6347,7 @@ Node3DEditor::Node3DEditor(EditorNode *p_editor) {
 	transform_menu = memnew(MenuButton);
 	transform_menu->set_text(TTR("Transform"));
 	transform_menu->set_switch_on_hover(true);
+	transform_menu->set_shortcut_context(this);
 	hbc_menu->add_child(transform_menu);
 
 	p = transform_menu->get_popup();
@@ -6351,6 +6362,7 @@ Node3DEditor::Node3DEditor(EditorNode *p_editor) {
 	view_menu = memnew(MenuButton);
 	view_menu->set_text(TTR("View"));
 	view_menu->set_switch_on_hover(true);
+	view_menu->set_shortcut_context(this);
 	hbc_menu->add_child(view_menu);
 
 	p = view_menu->get_popup();

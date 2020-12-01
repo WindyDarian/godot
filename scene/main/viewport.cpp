@@ -35,6 +35,8 @@
 #include "core/debugger/engine_debugger.h"
 #include "core/input/input.h"
 #include "core/os/os.h"
+#include "core/string/translation.h"
+
 #include "scene/2d/collision_object_2d.h"
 #include "scene/3d/camera_3d.h"
 #include "scene/3d/collision_object_3d.h"
@@ -285,16 +287,19 @@ void Viewport::_sub_window_update(Window *p_window) {
 
 		// Draw the title bar text.
 		Ref<Font> title_font = p_window->get_theme_font("title_font");
+		int font_size = p_window->get_theme_font_size("title_font_size");
 		Color title_color = p_window->get_theme_color("title_color");
 		int title_height = p_window->get_theme_constant("title_height");
-		int font_height = title_font->get_height() - title_font->get_descent() * 2;
-		int x = (r.size.width - title_font->get_string_size(p_window->get_title()).x) / 2;
-		int y = (-title_height + font_height) / 2;
-
 		int close_h_ofs = p_window->get_theme_constant("close_h_ofs");
 		int close_v_ofs = p_window->get_theme_constant("close_v_ofs");
 
-		title_font->draw(sw.canvas_item, r.position + Point2(x, y), p_window->get_title(), title_color, r.size.width - panel->get_minimum_size().x - close_h_ofs);
+		TextLine title_text = TextLine(p_window->get_title(), title_font, font_size, Dictionary(), TranslationServer::get_singleton()->get_tool_locale());
+		title_text.set_width(r.size.width - panel->get_minimum_size().x - close_h_ofs);
+		title_text.set_direction(p_window->is_layout_rtl() ? TextServer::DIRECTION_RTL : TextServer::DIRECTION_LTR);
+		int x = (r.size.width - title_text.get_size().x) / 2;
+		int y = (-title_height - title_text.get_size().y) / 2;
+
+		title_text.draw(sw.canvas_item, r.position + Point2(x, y), title_color);
 
 		bool hl = gui.subwindow_focused == sw.window && gui.subwindow_drag == SUB_WINDOW_DRAG_CLOSE && gui.subwindow_drag_close_inside;
 
@@ -1804,15 +1809,7 @@ bool Viewport::_gui_drop(Control *p_at_control, Point2 p_at_pos, bool p_just_che
 void Viewport::_gui_input_event(Ref<InputEvent> p_event) {
 	ERR_FAIL_COND(p_event.is_null());
 
-	//?
-	/*
-	if (!is_visible()) {
-		return; //simple and plain
-	}
-	*/
-
 	Ref<InputEventMouseButton> mb = p_event;
-
 	if (mb.is_valid()) {
 		gui.key_event_accepted = false;
 
@@ -2000,7 +1997,6 @@ void Viewport::_gui_input_event(Ref<InputEvent> p_event) {
 	}
 
 	Ref<InputEventMouseMotion> mm = p_event;
-
 	if (mm.is_valid()) {
 		gui.key_event_accepted = false;
 		Point2 mpos = mm->get_position();
@@ -3043,7 +3039,10 @@ void Viewport::unhandled_input(const Ref<InputEvent> &p_event, bool p_local_coor
 		ev = p_event;
 	}
 
+	// Unhandled Input
 	get_tree()->_call_input_pause(unhandled_input_group, "_unhandled_input", ev, this);
+
+	// Unhandled key Input - used for performance reasons - This is called a lot less then _unhandled_input since it ignores MouseMotion, etc
 	if (!is_input_handled() && Object::cast_to<InputEventKey>(*ev) != nullptr) {
 		get_tree()->_call_input_pause(unhandled_key_input_group, "_unhandled_key_input", ev, this);
 	}
