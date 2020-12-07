@@ -970,8 +970,7 @@ Error EditorSceneImporterGLTF::_parse_meshes(GLTFState &state) {
 		return OK;
 	}
 
-	bool compress_vert_data = state.import_flags & IMPORT_USE_COMPRESSION;
-	uint32_t mesh_flags = compress_vert_data ? Mesh::ARRAY_COMPRESS_DEFAULT : 0;
+	uint32_t mesh_flags = 0;
 
 	Array meshes = state.json["meshes"];
 	for (GLTFMeshIndex i = 0; i < meshes.size(); i++) {
@@ -1113,7 +1112,7 @@ Error EditorSceneImporterGLTF::_parse_meshes(GLTFState &state) {
 
 				//ideally BLEND_SHAPE_MODE_RELATIVE since gltf2 stores in displacement
 				//but it could require a larger refactor?
-				mesh.mesh->set_blend_shape_mode(Mesh::BLEND_SHAPE_MODE_NORMALIZED);
+				mesh.mesh->set_blend_shape_mode(ArrayMesh::BLEND_SHAPE_MODE_NORMALIZED);
 
 				if (j == 0) {
 					const Array &target_names = extras.has("targetNames") ? (Array)extras["targetNames"] : Array();

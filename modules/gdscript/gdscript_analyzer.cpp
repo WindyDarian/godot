@@ -860,7 +860,12 @@ void GDScriptAnalyzer::resolve_function_signature(GDScriptParser::FunctionNode *
 			parser->push_warning(p_function->parameters[i]->identifier, GDScriptWarning::UNUSED_PARAMETER, p_function->identifier->name, p_function->parameters[i]->identifier->name);
 		}
 		is_shadowing(p_function->parameters[i]->identifier, "function parameter");
-#endif
+#endif // DEBUG_ENABLED
+#ifdef TOOLS_ENABLED
+		if (p_function->parameters[i]->default_value && p_function->parameters[i]->default_value->is_constant) {
+			p_function->default_arg_values.push_back(p_function->parameters[i]->default_value->reduced_value);
+		}
+#endif // TOOLS_ENABLED
 	}
 
 	if (p_function->identifier->name == "_init") {
@@ -1611,7 +1616,7 @@ void GDScriptAnalyzer::reduce_binary_op(GDScriptParser::BinaryOpNode *p_binary_o
 				if (p_binary_op->reduced_value.get_type() == Variant::STRING) {
 					push_error(vformat(R"(%s in operator %s.)", p_binary_op->reduced_value, Variant::get_operator_name(p_binary_op->variant_op)), p_binary_op);
 				} else {
-					push_error(vformat(R"(Invalid operands to operator %s, %s and %s.".)",
+					push_error(vformat(R"(Invalid operands to operator %s, %s and %s.)",
 									   Variant::get_operator_name(p_binary_op->variant_op),
 									   Variant::get_type_name(p_binary_op->left_operand->reduced_value.get_type()),
 									   Variant::get_type_name(p_binary_op->right_operand->reduced_value.get_type())),

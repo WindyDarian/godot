@@ -70,7 +70,7 @@
 #include "servers/physics_server_2d.h"
 #include "servers/physics_server_3d.h"
 #include "servers/register_server_types.h"
-#include "servers/rendering/rendering_server_raster.h"
+#include "servers/rendering/rendering_server_default.h"
 #include "servers/rendering/rendering_server_wrap_mt.h"
 #include "servers/text_server.h"
 #include "servers/xr_server.h"
@@ -81,8 +81,8 @@
 
 #ifdef TOOLS_ENABLED
 
-#include "editor/doc_data.h"
 #include "editor/doc_data_class_path.gen.h"
+#include "editor/doc_tools.h"
 #include "editor/editor_node.h"
 #include "editor/editor_settings.h"
 #include "editor/progress_dialog.h"
@@ -1563,7 +1563,7 @@ Error Main::setup2(Thread::ID p_main_tid_override) {
 
 	/* Initialize Visual Server */
 
-	rendering_server = memnew(RenderingServerRaster);
+	rendering_server = memnew(RenderingServerDefault);
 	if (OS::get_singleton()->get_render_thread_mode() != OS::RENDER_THREAD_UNSAFE) {
 		rendering_server = memnew(RenderingServerWrapMT(rendering_server,
 				OS::get_singleton()->get_render_thread_mode() ==
@@ -1914,10 +1914,10 @@ bool Main::start() {
 		GLOBAL_DEF("mono/project/auto_update_project", true);
 #endif
 
-		DocData doc;
+		DocTools doc;
 		doc.generate(doc_base);
 
-		DocData docsrc;
+		DocTools docsrc;
 		Map<String, String> doc_data_classes;
 		Set<String> checked_paths;
 		print_line("Loading docs...");
@@ -1957,7 +1957,7 @@ bool Main::start() {
 		doc.merge_from(docsrc);
 		for (Set<String>::Element *E = checked_paths.front(); E; E = E->next()) {
 			print_line("Erasing old docs at: " + E->get());
-			DocData::erase_classes(E->get());
+			DocTools::erase_classes(E->get());
 		}
 
 		print_line("Generating new docs...");
