@@ -168,9 +168,10 @@ void image_compress_cvtt(Image *p_image, float p_lossy_quality, Image::UsedChann
 
 	flags |= cvtt::Flags::BC7_RespectPunchThrough;
 
-	if (p_channels == Image::USED_CHANNELS_RG) { //guessing this is a normalmap
+	if (p_channels == Image::USED_CHANNELS_RG) { //guessing this is a normal map
 		flags |= cvtt::Flags::Uniform;
 	}
+	options.flags = flags;
 
 	Image::Format target_format = Image::FORMAT_BPTC_RGBA;
 

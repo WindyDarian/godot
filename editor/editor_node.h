@@ -81,7 +81,7 @@ class RunSettingsDialog;
 class ScriptCreateDialog;
 class TabContainer;
 class Tabs;
-class TextureProgress;
+class TextureProgressBar;
 class Button;
 class VSplitContainer;
 class Window;
@@ -255,7 +255,7 @@ private:
 	Control *vp_base;
 
 	HBoxContainer *menu_hb;
-	Control *viewport;
+	Control *main_control;
 	MenuButton *file_menu;
 	MenuButton *project_menu;
 	MenuButton *debug_menu;
@@ -271,7 +271,7 @@ private:
 	Button *play_scene_button;
 	Button *play_custom_scene_button;
 	Button *search_button;
-	TextureProgress *audio_vu;
+	TextureProgressBar *audio_vu;
 
 	Timer *screenshot_timer;
 
@@ -728,7 +728,7 @@ public:
 	bool is_changing_scene() const;
 
 	static EditorLog *get_log() { return singleton->log; }
-	Control *get_viewport();
+	Control *get_main_control();
 
 	void set_edited_scene(Node *p_scene);
 
@@ -830,7 +830,7 @@ public:
 	Variant drag_resource(const Ref<Resource> &p_res, Control *p_from);
 	Variant drag_files_and_dirs(const Vector<String> &p_paths, Control *p_from);
 
-	void add_tool_menu_item(const String &p_name, Object *p_handler, const String &p_callback, const Variant &p_ud = Variant());
+	void add_tool_menu_item(const String &p_name, const Callable &p_callback);
 	void add_tool_submenu_item(const String &p_name, PopupMenu *p_submenu);
 	void remove_tool_menu_item(const String &p_name);
 
@@ -903,7 +903,7 @@ public:
 	void add_plugin(EditorPlugin *p_plugin);
 	void remove_plugin(EditorPlugin *p_plugin);
 	void clear();
-	bool empty();
+	bool is_empty();
 
 	EditorPluginList();
 	~EditorPluginList();

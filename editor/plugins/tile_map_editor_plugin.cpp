@@ -262,7 +262,7 @@ Vector<int> TileMapEditor::get_selected_tiles() const {
 }
 
 void TileMapEditor::set_selected_tiles(Vector<int> p_tiles) {
-	palette->unselect_all();
+	palette->deselect_all();
 
 	for (int i = p_tiles.size() - 1; i >= 0; i--) {
 		int idx = palette->find_metadata(p_tiles[i]);
@@ -449,7 +449,7 @@ void TileMapEditor::_update_palette() {
 
 	List<int> tiles;
 	tileset->get_tile_list(&tiles);
-	if (tiles.empty()) {
+	if (tiles.is_empty()) {
 		return;
 	}
 
@@ -1779,7 +1779,7 @@ void TileMapEditor::forward_canvas_draw_over_viewport(Control *p_overlay) {
 				return;
 			}
 
-			if (paint_undo.empty()) {
+			if (paint_undo.is_empty()) {
 				return;
 			}
 
@@ -1810,7 +1810,7 @@ void TileMapEditor::forward_canvas_draw_over_viewport(Control *p_overlay) {
 				}
 			}
 		} else if (tool == TOOL_PASTING) {
-			if (copydata.empty()) {
+			if (copydata.is_empty()) {
 				return;
 			}
 
@@ -2085,7 +2085,7 @@ TileMapEditor::TileMapEditor(EditorNode *p_editor) {
 	info_message->set_align(Label::ALIGN_CENTER);
 	info_message->set_autowrap(true);
 	info_message->set_custom_minimum_size(Size2(100 * EDSCALE, 0));
-	info_message->set_anchors_and_margins_preset(PRESET_WIDE, PRESET_MODE_KEEP_SIZE, 8 * EDSCALE);
+	info_message->set_anchors_and_offsets_preset(PRESET_WIDE, PRESET_MODE_KEEP_SIZE, 8 * EDSCALE);
 	palette->add_child(info_message);
 
 	// Add autotile override palette.

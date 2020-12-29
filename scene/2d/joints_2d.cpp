@@ -90,6 +90,14 @@ void Joint2D::_update_joint(bool p_only_free) {
 	warning = String();
 	update_configuration_warning();
 
+	if (body_a) {
+		body_a->force_update_transform();
+	}
+
+	if (body_b) {
+		body_b->force_update_transform();
+	}
+
 	joint = _configure_joint(body_a, body_b);
 
 	ERR_FAIL_COND_MSG(!joint.is_valid(), "Failed to configure the joint.");
@@ -168,8 +176,8 @@ bool Joint2D::get_exclude_nodes_from_collision() const {
 String Joint2D::get_configuration_warning() const {
 	String node_warning = Node2D::get_configuration_warning();
 
-	if (!warning.empty()) {
-		if (!node_warning.empty()) {
+	if (!warning.is_empty()) {
+		if (!node_warning.is_empty()) {
 			node_warning += "\n\n";
 		}
 		node_warning += warning;

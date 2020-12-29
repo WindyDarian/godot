@@ -724,7 +724,7 @@ bool GridMapEditor::forward_spatial_input_event(Camera3D *p_camera, const Ref<In
 					return true;
 				} else {
 					selected_palette = -1;
-					mesh_library_palette->unselect_all();
+					mesh_library_palette->deselect_all();
 					update_palette();
 					_update_cursor_instance();
 					return true;
@@ -1288,7 +1288,7 @@ GridMapEditor::GridMapEditor(EditorNode *p_editor) {
 	info_message->set_align(Label::ALIGN_CENTER);
 	info_message->set_autowrap(true);
 	info_message->set_custom_minimum_size(Size2(100 * EDSCALE, 0));
-	info_message->set_anchors_and_margins_preset(PRESET_WIDE, PRESET_MODE_KEEP_SIZE, 8 * EDSCALE);
+	info_message->set_anchors_and_offsets_preset(PRESET_WIDE, PRESET_MODE_KEEP_SIZE, 8 * EDSCALE);
 	mesh_library_palette->add_child(info_message);
 
 	edit_axis = Vector3::AXIS_Y;

@@ -94,10 +94,6 @@ void PathFollow3D::_update_transform(bool p_update_xyz_rot) {
 		return;
 	}
 
-	if (delta_offset == 0) {
-		return;
-	}
-
 	float bl = c->get_baked_length();
 	if (bl == 0.0) {
 		return;
@@ -156,7 +152,7 @@ void PathFollow3D::_update_transform(bool p_update_xyz_rot) {
 
 		t.origin = pos;
 
-		if (p_update_xyz_rot) { // Only update rotation if some parameter has changed - i.e. not on addition to scene tree
+		if (p_update_xyz_rot && delta_offset != 0) { // Only update rotation if some parameter has changed - i.e. not on addition to scene tree.
 			Vector3 t_prev = (pos - c->interpolate_baked(offset - delta_offset, cubic)).normalized();
 			Vector3 t_cur = (c->interpolate_baked(offset + delta_offset, cubic) - pos).normalized();
 
@@ -253,14 +249,14 @@ String PathFollow3D::get_configuration_warning() const {
 	String warning = Node3D::get_configuration_warning();
 
 	if (!Object::cast_to<Path3D>(get_parent())) {
-		if (!warning.empty()) {
+		if (!warning.is_empty()) {
 			warning += "\n\n";
 		}
 		warning += TTR("PathFollow3D only works when set as a child of a Path3D node.");
 	} else {
 		Path3D *path = Object::cast_to<Path3D>(get_parent());
 		if (path->get_curve().is_valid() && !path->get_curve()->is_up_vector_enabled() && rotation_mode == ROTATION_ORIENTED) {
-			if (!warning.empty()) {
+			if (!warning.is_empty()) {
 				warning += "\n\n";
 			}
 			warning += TTR("PathFollow3D's ROTATION_ORIENTED requires \"Up Vector\" to be enabled in its parent Path3D's Curve resource.");
@@ -388,15 +384,4 @@ void PathFollow3D::set_loop(bool p_loop) {
 
 bool PathFollow3D::has_loop() const {
 	return loop;
-}
-
-PathFollow3D::PathFollow3D() {
-	offset = 0;
-	delta_offset = 0;
-	h_offset = 0;
-	v_offset = 0;
-	path = nullptr;
-	rotation_mode = ROTATION_XYZ;
-	cubic = true;
-	loop = true;
 }

@@ -286,7 +286,7 @@ RenameDialog::RenameDialog(SceneTreeEditor *p_scene_tree_editor, UndoRedo *p_und
 	// ---- Dialog related
 
 	set_min_size(Size2(383, 0));
-	get_ok()->set_text(TTR("Rename"));
+	get_ok_button()->set_text(TTR("Rename"));
 	Button *but_reset = add_button(TTR("Reset"));
 
 	eh.errfunc = _error_handler;
@@ -572,7 +572,7 @@ void RenameDialog::rename() {
 	// Forward recursive as opposed to the actual renaming.
 	_iterate_scene(root_node, selected_node_list, &global_count);
 
-	if (undo_redo && !to_rename.empty()) {
+	if (undo_redo && !to_rename.is_empty()) {
 		undo_redo->create_action(TTR("Batch Rename"));
 
 		// Make sure to iterate reversed so that child nodes will find parents.

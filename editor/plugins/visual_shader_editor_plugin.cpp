@@ -83,10 +83,10 @@ void VisualShaderNodePlugin::_bind_methods() {
 
 static Ref<StyleBoxEmpty> make_empty_stylebox(float p_margin_left = -1, float p_margin_top = -1, float p_margin_right = -1, float p_margin_bottom = -1) {
 	Ref<StyleBoxEmpty> style(memnew(StyleBoxEmpty));
-	style->set_default_margin(MARGIN_LEFT, p_margin_left * EDSCALE);
-	style->set_default_margin(MARGIN_RIGHT, p_margin_right * EDSCALE);
-	style->set_default_margin(MARGIN_BOTTOM, p_margin_bottom * EDSCALE);
-	style->set_default_margin(MARGIN_TOP, p_margin_top * EDSCALE);
+	style->set_default_margin(SIDE_LEFT, p_margin_left * EDSCALE);
+	style->set_default_margin(SIDE_RIGHT, p_margin_right * EDSCALE);
+	style->set_default_margin(SIDE_BOTTOM, p_margin_bottom * EDSCALE);
+	style->set_default_margin(SIDE_TOP, p_margin_top * EDSCALE);
 	return style;
 }
 
@@ -283,7 +283,7 @@ VisualShader::Type VisualShaderGraphPlugin::get_shader_type() const {
 
 void VisualShaderGraphPlugin::set_node_position(VisualShader::Type p_type, int p_id, const Vector2 &p_position) {
 	if (visual_shader->get_shader_type() == p_type && links.has(p_id)) {
-		links[p_id].graph_node->set_offset(p_position);
+		links[p_id].graph_node->set_position_offset(p_position);
 	}
 }
 
@@ -365,7 +365,7 @@ void VisualShaderGraphPlugin::add_node(VisualShader::Type p_type, int p_id) {
 		expression = expression_node->get_expression();
 	}
 
-	node->set_offset(visual_shader->get_node_position(p_type, p_id));
+	node->set_position_offset(visual_shader->get_node_position(p_type, p_id));
 	node->set_title(vsnode->get_caption());
 	node->set_name(itos(p_id));
 
@@ -1009,13 +1009,13 @@ String VisualShaderEditor::_get_description(int p_idx) {
 
 void VisualShaderEditor::_update_options_menu() {
 	node_desc->set_text("");
-	members_dialog->get_ok()->set_disabled(true);
+	members_dialog->get_ok_button()->set_disabled(true);
 
 	members->clear();
 	TreeItem *root = members->create_item();
 
 	String filter = node_filter->get_text().strip_edges();
-	bool use_filter = !filter.empty();
+	bool use_filter = !filter.is_empty();
 
 	bool is_first_item = true;
 
@@ -1580,9 +1580,9 @@ void VisualShaderEditor::_set_node_size(int p_type, int p_node, const Vector2 &p
 					box_size.x = gn->get_size().x;
 				}
 			}
-			box_size.x -= text_box->get_margin(MARGIN_LEFT);
+			box_size.x -= text_box->get_offset(SIDE_LEFT);
 			box_size.x -= 28 * EDSCALE;
-			box_size.y -= text_box->get_margin(MARGIN_TOP);
+			box_size.y -= text_box->get_offset(SIDE_TOP);
 			box_size.y -= 28 * EDSCALE;
 			text_box->set_custom_minimum_size(Size2(box_size.x, box_size.y));
 			text_box->set_size(Size2(1, 1));
@@ -2108,7 +2108,7 @@ void VisualShaderEditor::_delete_nodes_request() {
 		}
 	}
 
-	if (to_erase.empty()) {
+	if (to_erase.is_empty()) {
 		return;
 	}
 
@@ -2145,13 +2145,13 @@ void VisualShaderEditor::_graph_gui_input(const Ref<InputEvent> &p_event) {
 				}
 			}
 		}
-		if (to_change.empty() && copy_nodes_buffer.empty()) {
+		if (to_change.is_empty() && copy_nodes_buffer.is_empty()) {
 			_show_members_dialog(true);
 		} else {
-			popup_menu->set_item_disabled(NodeMenuOptions::COPY, to_change.empty());
-			popup_menu->set_item_disabled(NodeMenuOptions::PASTE, copy_nodes_buffer.empty());
-			popup_menu->set_item_disabled(NodeMenuOptions::DELETE, to_change.empty());
-			popup_menu->set_item_disabled(NodeMenuOptions::DUPLICATE, to_change.empty());
+			popup_menu->set_item_disabled(NodeMenuOptions::COPY, to_change.is_empty());
+			popup_menu->set_item_disabled(NodeMenuOptions::PASTE, copy_nodes_buffer.is_empty());
+			popup_menu->set_item_disabled(NodeMenuOptions::DELETE, to_change.is_empty());
+			popup_menu->set_item_disabled(NodeMenuOptions::DUPLICATE, to_change.is_empty());
 			menu_point = graph->get_local_mouse_position();
 			Point2 gpos = Input::get_singleton()->get_mouse_position();
 			popup_menu->set_position(gpos);
@@ -2445,7 +2445,7 @@ void VisualShaderEditor::_duplicate_nodes() {
 
 	_dup_copy_nodes(type, nodes, excluded);
 
-	if (nodes.empty()) {
+	if (nodes.is_empty()) {
 		return;
 	}
 
@@ -2463,7 +2463,7 @@ void VisualShaderEditor::_copy_nodes() {
 }
 
 void VisualShaderEditor::_paste_nodes(bool p_use_custom_position, const Vector2 &p_custom_position) {
-	if (copy_nodes_buffer.empty()) {
+	if (copy_nodes_buffer.is_empty()) {
 		return;
 	}
 
@@ -2613,12 +2613,12 @@ void VisualShaderEditor::_member_selected() {
 	TreeItem *item = members->get_selected();
 
 	if (item != nullptr && item->has_meta("id")) {
-		members_dialog->get_ok()->set_disabled(false);
+		members_dialog->get_ok_button()->set_disabled(false);
 		highend_label->set_visible(add_options[item->get_meta("id")].highend);
 		node_desc->set_text(_get_description(item->get_meta("id")));
 	} else {
 		highend_label->set_visible(false);
-		members_dialog->get_ok()->set_disabled(true);
+		members_dialog->get_ok_button()->set_disabled(true);
 		node_desc->set_text("");
 	}
 }
@@ -2997,12 +2997,12 @@ VisualShaderEditor::VisualShaderEditor() {
 
 	popup_menu = memnew(PopupMenu);
 	add_child(popup_menu);
-	popup_menu->add_item("Add Node", NodeMenuOptions::ADD);
+	popup_menu->add_item(TTR("Add Node"), NodeMenuOptions::ADD);
 	popup_menu->add_separator();
-	popup_menu->add_item("Copy", NodeMenuOptions::COPY);
-	popup_menu->add_item("Paste", NodeMenuOptions::PASTE);
-	popup_menu->add_item("Delete", NodeMenuOptions::DELETE);
-	popup_menu->add_item("Duplicate", NodeMenuOptions::DUPLICATE);
+	popup_menu->add_item(TTR("Copy"), NodeMenuOptions::COPY);
+	popup_menu->add_item(TTR("Paste"), NodeMenuOptions::PASTE);
+	popup_menu->add_item(TTR("Delete"), NodeMenuOptions::DELETE);
+	popup_menu->add_item(TTR("Duplicate"), NodeMenuOptions::DUPLICATE);
 	popup_menu->connect("id_pressed", callable_mp(this, &VisualShaderEditor::_node_menu_id_pressed));
 
 	///////////////////////////////////////
@@ -3068,9 +3068,9 @@ VisualShaderEditor::VisualShaderEditor() {
 	members_dialog->set_title(TTR("Create Shader Node"));
 	members_dialog->set_exclusive(false);
 	members_dialog->add_child(members_vb);
-	members_dialog->get_ok()->set_text(TTR("Create"));
-	members_dialog->get_ok()->connect("pressed", callable_mp(this, &VisualShaderEditor::_member_create));
-	members_dialog->get_ok()->set_disabled(true);
+	members_dialog->get_ok_button()->set_text(TTR("Create"));
+	members_dialog->get_ok_button()->connect("pressed", callable_mp(this, &VisualShaderEditor::_member_create));
+	members_dialog->get_ok_button()->set_disabled(true);
 	members_dialog->connect("cancelled", callable_mp(this, &VisualShaderEditor::_member_cancel));
 	add_child(members_dialog);
 

@@ -65,9 +65,9 @@ void OS_LinuxBSD::initialize_joypads() {
 
 String OS_LinuxBSD::get_unique_id() const {
 	static String machine_id;
-	if (machine_id.empty()) {
+	if (machine_id.is_empty()) {
 		if (FileAccess *f = FileAccess::open("/etc/machine-id", FileAccess::READ)) {
-			while (machine_id.empty() && !f->eof_reached()) {
+			while (machine_id.is_empty() && !f->eof_reached()) {
 				machine_id = f->get_line().strip_edges();
 			}
 			f->close();
@@ -246,7 +246,7 @@ void OS_LinuxBSD::run() {
 		return;
 	}
 
-	main_loop->init();
+	main_loop->initialize();
 
 	//uint64_t last_ticks=get_ticks_usec();
 
@@ -263,7 +263,7 @@ void OS_LinuxBSD::run() {
 		}
 	};
 
-	main_loop->finish();
+	main_loop->finalize();
 }
 
 void OS_LinuxBSD::disable_crash_handler() {

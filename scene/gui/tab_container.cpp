@@ -415,6 +415,11 @@ void TabContainer::_notification(int p_what) {
 					break;
 			}
 
+			if (all_tabs_in_front) {
+				// Draw the tab area.
+				panel->draw(canvas, Rect2(0, header_height, size.width, size.height - header_height));
+			}
+
 			// Draw unselected tabs in back
 			int x = 0;
 			int x_current = 0;
@@ -446,8 +451,10 @@ void TabContainer::_notification(int p_what) {
 				last_tab_cache = index;
 			}
 
-			// Draw the tab area.
-			panel->draw(canvas, Rect2(0, header_height, size.width, size.height - header_height));
+			if (!all_tabs_in_front) {
+				// Draw the tab area.
+				panel->draw(canvas, Rect2(0, header_height, size.width, size.height - header_height));
+			}
 
 			// Draw selected tab in front. only draw selected tab when it's in visible range.
 			if (tabs.size() > 0 && current - first_tab_cache < tab_widths.size() && current >= first_tab_cache) {
@@ -540,8 +547,8 @@ void TabContainer::_draw_tab(Ref<StyleBox> &p_tab_style, Color &p_font_color, in
 	Control *control = Object::cast_to<Control>(tabs[p_index]);
 	String text = control->has_meta("_tab_name") ? String(tr(String(control->get_meta("_tab_name")))) : String(tr(control->get_name()));
 
-	int x_content = tab_rect.position.x + p_tab_style->get_margin(MARGIN_LEFT);
-	int top_margin = p_tab_style->get_margin(MARGIN_TOP);
+	int x_content = tab_rect.position.x + p_tab_style->get_margin(SIDE_LEFT);
+	int top_margin = p_tab_style->get_margin(SIDE_TOP);
 	int y_center = top_margin + (tab_rect.size.y - p_tab_style->get_minimum_size().y) / 2;
 
 	// Draw the tab icon.
@@ -561,16 +568,12 @@ void TabContainer::_draw_tab(Ref<StyleBox> &p_tab_style, Color &p_font_color, in
 	text_buf[p_index]->draw(canvas, text_pos, p_font_color);
 }
 
-void TabContainer::_on_theme_changed() {
-	if (!_theme_changing) {
-		return;
-	}
-
+void TabContainer::_refresh_texts() {
 	text_buf.clear();
+	Vector<Control *> tabs = _get_tabs();
 	bool rtl = is_layout_rtl();
 	Ref<Font> font = get_theme_font("font");
 	int font_size = get_theme_font_size("font_size");
-	Vector<Control *> tabs = _get_tabs();
 	for (int i = 0; i < tabs.size(); i++) {
 		Control *control = Object::cast_to<Control>(tabs[i]);
 		String text = control->has_meta("_tab_name") ? String(tr(String(control->get_meta("_tab_name")))) : String(tr(control->get_name()));
@@ -580,6 +583,14 @@ void TabContainer::_on_theme_changed() {
 		name->add_string(text, font, font_size, Dictionary(), TranslationServer::get_singleton()->get_tool_locale());
 		text_buf.push_back(name);
 	}
+}
+
+void TabContainer::_on_theme_changed() {
+	if (!_theme_changing) {
+		return;
+	}
+
+	_refresh_texts();
 
 	minimum_size_changed();
 	if (get_tab_count() > 0) {
@@ -596,14 +607,14 @@ void TabContainer::_repaint() {
 		Control *c = tabs[i];
 		if (i == current) {
 			c->show();
-			c->set_anchors_and_margins_preset(Control::PRESET_WIDE);
+			c->set_anchors_and_offsets_preset(Control::PRESET_WIDE);
 			if (tabs_visible) {
-				c->set_margin(MARGIN_TOP, _get_top_margin());
+				c->set_offset(SIDE_TOP, _get_top_margin());
 			}
-			c->set_margin(Margin(MARGIN_TOP), c->get_margin(Margin(MARGIN_TOP)) + sb->get_margin(Margin(MARGIN_TOP)));
-			c->set_margin(Margin(MARGIN_LEFT), c->get_margin(Margin(MARGIN_LEFT)) + sb->get_margin(Margin(MARGIN_LEFT)));
-			c->set_margin(Margin(MARGIN_RIGHT), c->get_margin(Margin(MARGIN_RIGHT)) - sb->get_margin(Margin(MARGIN_RIGHT)));
-			c->set_margin(Margin(MARGIN_BOTTOM), c->get_margin(Margin(MARGIN_BOTTOM)) - sb->get_margin(Margin(MARGIN_BOTTOM)));
+			c->set_offset(Side(SIDE_TOP), c->get_offset(Side(SIDE_TOP)) + sb->get_margin(Side(SIDE_TOP)));
+			c->set_offset(Side(SIDE_LEFT), c->get_offset(Side(SIDE_LEFT)) + sb->get_margin(Side(SIDE_LEFT)));
+			c->set_offset(Side(SIDE_RIGHT), c->get_offset(Side(SIDE_RIGHT)) - sb->get_margin(Side(SIDE_RIGHT)));
+			c->set_offset(Side(SIDE_BOTTOM), c->get_offset(Side(SIDE_BOTTOM)) - sb->get_margin(Side(SIDE_BOTTOM)));
 
 		} else {
 			c->hide();
@@ -672,21 +683,7 @@ Vector<Control *> TabContainer::_get_tabs() const {
 }
 
 void TabContainer::_child_renamed_callback() {
-	text_buf.clear();
-	Vector<Control *> tabs = _get_tabs();
-	bool rtl = is_layout_rtl();
-	Ref<Font> font = get_theme_font("font");
-	int font_size = get_theme_font_size("font_size");
-	for (int i = 0; i < tabs.size(); i++) {
-		Control *control = Object::cast_to<Control>(tabs[i]);
-		String text = control->has_meta("_tab_name") ? String(tr(String(control->get_meta("_tab_name")))) : String(tr(control->get_name()));
-		Ref<TextLine> name;
-		name.instance();
-		name->set_direction(rtl ? TextServer::DIRECTION_RTL : TextServer::DIRECTION_LTR);
-		name->add_string(text, font, font_size, Dictionary(), TranslationServer::get_singleton()->get_tool_locale());
-		text_buf.push_back(name);
-	}
-
+	_refresh_texts();
 	update();
 }
 
@@ -701,20 +698,8 @@ void TabContainer::add_child_notify(Node *p_child) {
 		return;
 	}
 
-	text_buf.clear();
 	Vector<Control *> tabs = _get_tabs();
-	bool rtl = is_layout_rtl();
-	Ref<Font> font = get_theme_font("font");
-	int font_size = get_theme_font_size("font_size");
-	for (int i = 0; i < tabs.size(); i++) {
-		Control *control = Object::cast_to<Control>(tabs[i]);
-		String text = control->has_meta("_tab_name") ? String(tr(String(control->get_meta("_tab_name")))) : String(tr(control->get_name()));
-		Ref<TextLine> name;
-		name.instance();
-		name->set_direction(rtl ? TextServer::DIRECTION_RTL : TextServer::DIRECTION_LTR);
-		name->add_string(text, font, font_size, Dictionary(), TranslationServer::get_singleton()->get_tool_locale());
-		text_buf.push_back(name);
-	}
+	_refresh_texts();
 
 	bool first = false;
 
@@ -727,21 +712,27 @@ void TabContainer::add_child_notify(Node *p_child) {
 		current = 0;
 		previous = 0;
 	}
-	c->set_anchors_and_margins_preset(Control::PRESET_WIDE);
+	c->set_anchors_and_offsets_preset(Control::PRESET_WIDE);
 	if (tabs_visible) {
-		c->set_margin(MARGIN_TOP, _get_top_margin());
+		c->set_offset(SIDE_TOP, _get_top_margin());
 	}
 	Ref<StyleBox> sb = get_theme_stylebox("panel");
-	c->set_margin(Margin(MARGIN_TOP), c->get_margin(Margin(MARGIN_TOP)) + sb->get_margin(Margin(MARGIN_TOP)));
-	c->set_margin(Margin(MARGIN_LEFT), c->get_margin(Margin(MARGIN_LEFT)) + sb->get_margin(Margin(MARGIN_LEFT)));
-	c->set_margin(Margin(MARGIN_RIGHT), c->get_margin(Margin(MARGIN_RIGHT)) - sb->get_margin(Margin(MARGIN_RIGHT)));
-	c->set_margin(Margin(MARGIN_BOTTOM), c->get_margin(Margin(MARGIN_BOTTOM)) - sb->get_margin(Margin(MARGIN_BOTTOM)));
-
+	c->set_offset(Side(SIDE_TOP), c->get_offset(Side(SIDE_TOP)) + sb->get_margin(Side(SIDE_TOP)));
+	c->set_offset(Side(SIDE_LEFT), c->get_offset(Side(SIDE_LEFT)) + sb->get_margin(Side(SIDE_LEFT)));
+	c->set_offset(Side(SIDE_RIGHT), c->get_offset(Side(SIDE_RIGHT)) - sb->get_margin(Side(SIDE_RIGHT)));
+	c->set_offset(Side(SIDE_BOTTOM), c->get_offset(Side(SIDE_BOTTOM)) - sb->get_margin(Side(SIDE_BOTTOM)));
 	update();
 	p_child->connect("renamed", callable_mp(this, &TabContainer::_child_renamed_callback));
 	if (first && is_inside_tree()) {
 		emit_signal("tab_changed", current);
 	}
+}
+
+void TabContainer::move_child_notify(Node *p_child) {
+	Container::move_child_notify(p_child);
+	call_deferred("_update_current_tab");
+	_refresh_texts();
+	update();
 }
 
 int TabContainer::get_tab_count() const {
@@ -806,20 +797,8 @@ void TabContainer::remove_child_notify(Node *p_child) {
 }
 
 void TabContainer::_update_current_tab() {
-	text_buf.clear();
 	Vector<Control *> tabs = _get_tabs();
-	bool rtl = is_layout_rtl();
-	Ref<Font> font = get_theme_font("font");
-	int font_size = get_theme_font_size("font_size");
-	for (int i = 0; i < tabs.size(); i++) {
-		Control *control = Object::cast_to<Control>(tabs[i]);
-		String text = control->has_meta("_tab_name") ? String(tr(String(control->get_meta("_tab_name")))) : String(tr(control->get_name()));
-		Ref<TextLine> name;
-		name.instance();
-		name->set_direction(rtl ? TextServer::DIRECTION_RTL : TextServer::DIRECTION_LTR);
-		name->add_string(text, font, font_size, Dictionary(), TranslationServer::get_singleton()->get_tool_locale());
-		text_buf.push_back(name);
-	}
+	_refresh_texts();
 
 	int tc = tabs.size();
 	if (current >= tc) {
@@ -1003,9 +982,9 @@ void TabContainer::set_tabs_visible(bool p_visible) {
 	for (int i = 0; i < tabs.size(); i++) {
 		Control *c = tabs[i];
 		if (p_visible) {
-			c->set_margin(MARGIN_TOP, _get_top_margin());
+			c->set_offset(SIDE_TOP, _get_top_margin());
 		} else {
-			c->set_margin(MARGIN_TOP, 0);
+			c->set_offset(SIDE_TOP, 0);
 		}
 	}
 
@@ -1015,6 +994,20 @@ void TabContainer::set_tabs_visible(bool p_visible) {
 
 bool TabContainer::are_tabs_visible() const {
 	return tabs_visible;
+}
+
+void TabContainer::set_all_tabs_in_front(bool p_in_front) {
+	if (p_in_front == all_tabs_in_front) {
+		return;
+	}
+
+	all_tabs_in_front = p_in_front;
+
+	update();
+}
+
+bool TabContainer::is_all_tabs_in_front() const {
+	return all_tabs_in_front;
 }
 
 Control *TabContainer::_get_tab(int p_idx) const {
@@ -1208,6 +1201,8 @@ void TabContainer::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_tab_align"), &TabContainer::get_tab_align);
 	ClassDB::bind_method(D_METHOD("set_tabs_visible", "visible"), &TabContainer::set_tabs_visible);
 	ClassDB::bind_method(D_METHOD("are_tabs_visible"), &TabContainer::are_tabs_visible);
+	ClassDB::bind_method(D_METHOD("set_all_tabs_in_front", "is_front"), &TabContainer::set_all_tabs_in_front);
+	ClassDB::bind_method(D_METHOD("is_all_tabs_in_front"), &TabContainer::is_all_tabs_in_front);
 	ClassDB::bind_method(D_METHOD("set_tab_title", "tab_idx", "title"), &TabContainer::set_tab_title);
 	ClassDB::bind_method(D_METHOD("get_tab_title", "tab_idx"), &TabContainer::get_tab_title);
 	ClassDB::bind_method(D_METHOD("set_tab_icon", "tab_idx", "icon"), &TabContainer::set_tab_icon);
@@ -1234,6 +1229,7 @@ void TabContainer::_bind_methods() {
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "tab_align", PROPERTY_HINT_ENUM, "Left,Center,Right"), "set_tab_align", "get_tab_align");
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "current_tab", PROPERTY_HINT_RANGE, "-1,4096,1", PROPERTY_USAGE_EDITOR), "set_current_tab", "get_current_tab");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "tabs_visible"), "set_tabs_visible", "are_tabs_visible");
+	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "all_tabs_in_front"), "set_all_tabs_in_front", "is_all_tabs_in_front");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "drag_to_rearrange_enabled"), "set_drag_to_rearrange_enabled", "get_drag_to_rearrange_enabled");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "use_hidden_tabs_for_min_size"), "set_use_hidden_tabs_for_min_size", "get_use_hidden_tabs_for_min_size");
 
@@ -1253,6 +1249,7 @@ TabContainer::TabContainer() {
 	previous = 0;
 	align = ALIGN_CENTER;
 	tabs_visible = true;
+	all_tabs_in_front = false;
 	drag_to_rearrange_enabled = false;
 	tabs_rearrange_group = -1;
 	use_hidden_tabs_for_min_size = false;

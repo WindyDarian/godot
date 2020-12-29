@@ -797,9 +797,9 @@ bool Node::can_process_notification(int p_what) const {
 		case NOTIFICATION_PHYSICS_PROCESS:
 			return data.physics_process;
 		case NOTIFICATION_PROCESS:
-			return data.idle_process;
+			return data.process;
 		case NOTIFICATION_INTERNAL_PROCESS:
-			return data.idle_process_internal;
+			return data.process_internal;
 		case NOTIFICATION_INTERNAL_PHYSICS_PROCESS:
 			return data.physics_process_internal;
 	}
@@ -845,50 +845,50 @@ float Node::get_physics_process_delta_time() const {
 
 float Node::get_process_delta_time() const {
 	if (data.tree) {
-		return data.tree->get_idle_process_time();
+		return data.tree->get_process_time();
 	} else {
 		return 0;
 	}
 }
 
-void Node::set_process(bool p_idle_process) {
-	if (data.idle_process == p_idle_process) {
+void Node::set_process(bool p_process) {
+	if (data.process == p_process) {
 		return;
 	}
 
-	data.idle_process = p_idle_process;
+	data.process = p_process;
 
-	if (data.idle_process) {
-		add_to_group("idle_process", false);
+	if (data.process) {
+		add_to_group("process", false);
 	} else {
-		remove_from_group("idle_process");
+		remove_from_group("process");
 	}
 
-	_change_notify("idle_process");
+	_change_notify("process");
 }
 
 bool Node::is_processing() const {
-	return data.idle_process;
+	return data.process;
 }
 
-void Node::set_process_internal(bool p_idle_process_internal) {
-	if (data.idle_process_internal == p_idle_process_internal) {
+void Node::set_process_internal(bool p_process_internal) {
+	if (data.process_internal == p_process_internal) {
 		return;
 	}
 
-	data.idle_process_internal = p_idle_process_internal;
+	data.process_internal = p_process_internal;
 
-	if (data.idle_process_internal) {
-		add_to_group("idle_process_internal", false);
+	if (data.process_internal) {
+		add_to_group("process_internal", false);
 	} else {
-		remove_from_group("idle_process_internal");
+		remove_from_group("process_internal");
 	}
 
-	_change_notify("idle_process_internal");
+	_change_notify("process_internal");
 }
 
 bool Node::is_processing_internal() const {
-	return data.idle_process_internal;
+	return data.process_internal;
 }
 
 void Node::set_process_priority(int p_priority) {
@@ -900,11 +900,11 @@ void Node::set_process_priority(int p_priority) {
 	}
 
 	if (is_processing()) {
-		data.tree->make_group_changed("idle_process");
+		data.tree->make_group_changed("process");
 	}
 
 	if (is_processing_internal()) {
-		data.tree->make_group_changed("idle_process_internal");
+		data.tree->make_group_changed("process_internal");
 	}
 
 	if (is_physics_processing()) {
@@ -1887,7 +1887,7 @@ void Node::remove_and_skip() {
 		}
 	}
 
-	while (!children.empty()) {
+	while (!children.is_empty()) {
 		Node *c_node = children.front()->get();
 		data.parent->add_child(c_node);
 		c_node->_propagate_replace_owner(nullptr, new_owner);
@@ -2245,7 +2245,7 @@ void Node::_duplicate_signals(const Node *p_original, Node *p_copy) const {
 
 	List<const Node *> process_list;
 	process_list.push_back(this);
-	while (!process_list.empty()) {
+	while (!process_list.is_empty()) {
 		const Node *n = process_list.front()->get();
 		process_list.pop_front();
 
@@ -2925,35 +2925,6 @@ String Node::_get_name_num_separator() {
 }
 
 Node::Node() {
-	data.pos = -1;
-	data.depth = -1;
-	data.blocked = 0;
-	data.parent = nullptr;
-	data.tree = nullptr;
-	data.physics_process = false;
-	data.idle_process = false;
-	data.process_priority = 0;
-	data.physics_process_internal = false;
-	data.idle_process_internal = false;
-	data.inside_tree = false;
-	data.ready_notified = false;
-
-	data.owner = nullptr;
-	data.OW = nullptr;
-	data.input = false;
-	data.unhandled_input = false;
-	data.unhandled_key_input = false;
-	data.pause_mode = PAUSE_MODE_INHERIT;
-	data.pause_owner = nullptr;
-	data.network_master = 1; //server by default
-	data.path_cache = nullptr;
-	data.parent_owned = false;
-	data.in_constructor = true;
-	data.viewport = nullptr;
-	data.use_placeholder = false;
-	data.display_folded = false;
-	data.ready_first = true;
-
 	orphan_node_count++;
 }
 

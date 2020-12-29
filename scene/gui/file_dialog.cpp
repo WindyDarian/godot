@@ -136,7 +136,7 @@ void FileDialog::update_dir() {
 	}
 
 	// Deselect any item, to make "Select Current Folder" button text by default.
-	deselect_items();
+	deselect_all();
 }
 
 void FileDialog::_dir_entered(String p_dir) {
@@ -172,7 +172,7 @@ void FileDialog::_post_popup() {
 
 	// For open dir mode, deselect all items on file dialog open.
 	if (mode == FILE_MODE_OPEN_DIR) {
-		deselect_items();
+		deselect_all();
 		file_box->set_visible(false);
 	} else {
 		file_box->set_visible(true);
@@ -318,21 +318,21 @@ void FileDialog::_go_up() {
 	update_dir();
 }
 
-void FileDialog::deselect_items() {
+void FileDialog::deselect_all() {
 	// Clear currently selected items in file manager.
 	tree->deselect_all();
 
 	// And change get_ok title.
 	if (!tree->is_anything_selected()) {
-		get_ok()->set_disabled(_is_open_should_be_disabled());
+		get_ok_button()->set_disabled(_is_open_should_be_disabled());
 
 		switch (mode) {
 			case FILE_MODE_OPEN_FILE:
 			case FILE_MODE_OPEN_FILES:
-				get_ok()->set_text(RTR("Open"));
+				get_ok_button()->set_text(RTR("Open"));
 				break;
 			case FILE_MODE_OPEN_DIR:
-				get_ok()->set_text(RTR("Select Current Folder"));
+				get_ok_button()->set_text(RTR("Select Current Folder"));
 				break;
 			case FILE_MODE_OPEN_ANY:
 			case FILE_MODE_SAVE_FILE:
@@ -356,10 +356,10 @@ void FileDialog::_tree_selected() {
 	if (!d["dir"]) {
 		file->set_text(d["name"]);
 	} else if (mode == FILE_MODE_OPEN_DIR) {
-		get_ok()->set_text(RTR("Select This Folder"));
+		get_ok_button()->set_text(RTR("Select This Folder"));
 	}
 
-	get_ok()->set_disabled(_is_open_should_be_disabled());
+	get_ok_button()->set_disabled(_is_open_should_be_disabled());
 }
 
 void FileDialog::_tree_item_activated() {
@@ -434,7 +434,7 @@ void FileDialog::update_file_list() {
 	dirs.sort_custom<NaturalNoCaseComparator>();
 	files.sort_custom<NaturalNoCaseComparator>();
 
-	while (!dirs.empty()) {
+	while (!dirs.is_empty()) {
 		String &dir_name = dirs.front()->get();
 		TreeItem *ti = tree->create_item(root);
 		ti->set_text(0, dir_name);
@@ -478,8 +478,8 @@ void FileDialog::update_file_list() {
 
 	String base_dir = dir_access->get_current_dir();
 
-	while (!files.empty()) {
-		bool match = patterns.empty();
+	while (!files.is_empty()) {
+		bool match = patterns.is_empty();
 		String match_str;
 
 		for (List<String>::Element *E = patterns.front(); E; E = E->next()) {
@@ -646,35 +646,35 @@ void FileDialog::set_file_mode(FileMode p_mode) {
 	mode = p_mode;
 	switch (mode) {
 		case FILE_MODE_OPEN_FILE:
-			get_ok()->set_text(RTR("Open"));
+			get_ok_button()->set_text(RTR("Open"));
 			if (mode_overrides_title) {
 				set_title(RTR("Open a File"));
 			}
 			makedir->hide();
 			break;
 		case FILE_MODE_OPEN_FILES:
-			get_ok()->set_text(RTR("Open"));
+			get_ok_button()->set_text(RTR("Open"));
 			if (mode_overrides_title) {
 				set_title(RTR("Open File(s)"));
 			}
 			makedir->hide();
 			break;
 		case FILE_MODE_OPEN_DIR:
-			get_ok()->set_text(RTR("Select Current Folder"));
+			get_ok_button()->set_text(RTR("Select Current Folder"));
 			if (mode_overrides_title) {
 				set_title(RTR("Open a Directory"));
 			}
 			makedir->show();
 			break;
 		case FILE_MODE_OPEN_ANY:
-			get_ok()->set_text(RTR("Open"));
+			get_ok_button()->set_text(RTR("Open"));
 			if (mode_overrides_title) {
 				set_title(RTR("Open a File or Directory"));
 			}
 			makedir->show();
 			break;
 		case FILE_MODE_SAVE_FILE:
-			get_ok()->set_text(RTR("Save"));
+			get_ok_button()->set_text(RTR("Save"));
 			if (mode_overrides_title) {
 				set_title(RTR("Save a File"));
 			}
@@ -808,7 +808,7 @@ void FileDialog::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("_update_file_name"), &FileDialog::update_file_name);
 	ClassDB::bind_method(D_METHOD("_update_dir"), &FileDialog::update_dir);
 	ClassDB::bind_method(D_METHOD("_update_file_list"), &FileDialog::update_file_list);
-	ClassDB::bind_method(D_METHOD("deselect_items"), &FileDialog::deselect_items);
+	ClassDB::bind_method(D_METHOD("deselect_all"), &FileDialog::deselect_all);
 
 	ClassDB::bind_method(D_METHOD("invalidate"), &FileDialog::invalidate);
 
@@ -932,7 +932,7 @@ FileDialog::FileDialog() {
 	tree->connect("multi_selected", callable_mp(this, &FileDialog::_tree_multi_selected), varray(), CONNECT_DEFERRED);
 	tree->connect("cell_selected", callable_mp(this, &FileDialog::_tree_selected), varray(), CONNECT_DEFERRED);
 	tree->connect("item_activated", callable_mp(this, &FileDialog::_tree_item_activated), varray());
-	tree->connect("nothing_selected", callable_mp(this, &FileDialog::deselect_items));
+	tree->connect("nothing_selected", callable_mp(this, &FileDialog::deselect_all));
 	dir->connect("text_entered", callable_mp(this, &FileDialog::_dir_entered));
 	file->connect("text_entered", callable_mp(this, &FileDialog::_file_entered));
 	filter->connect("item_selected", callable_mp(this, &FileDialog::_filter_selected));

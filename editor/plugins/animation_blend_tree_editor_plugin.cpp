@@ -127,7 +127,7 @@ void AnimationNodeBlendTreeEditor::_update_graph() {
 
 		Ref<AnimationNode> agnode = blend_tree->get_node(E->get());
 
-		node->set_offset(blend_tree->get_node_position(E->get()) * EDSCALE);
+		node->set_position_offset(blend_tree->get_node_position(E->get()) * EDSCALE);
 
 		node->set_title(agnode->get_caption());
 		node->set_name(E->get());
@@ -416,7 +416,7 @@ void AnimationNodeBlendTreeEditor::_delete_nodes_request() {
 		}
 	}
 
-	if (to_erase.empty()) {
+	if (to_erase.is_empty()) {
 		return;
 	}
 
@@ -537,7 +537,7 @@ bool AnimationNodeBlendTreeEditor::_update_filters(const Ref<AnimationNode> &ano
 					default: {
 					} break;
 				}
-				if (!track_type_name.empty()) {
+				if (!track_type_name.is_empty()) {
 					types[track_path].insert(track_type_name);
 				}
 			}

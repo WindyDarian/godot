@@ -82,6 +82,9 @@ typedef struct {
 	void (*font_set_antialiased)(void *, godot_rid *, bool);
 	bool (*font_get_antialiased)(void *, godot_rid *);
 	godot_dictionary (*font_get_feature_list)(void *, godot_rid *);
+	godot_dictionary (*font_get_variation_list)(void *, godot_rid *);
+	void (*font_set_variation)(void *, godot_rid *, const godot_string *, double);
+	double (*font_get_variation)(void *, godot_rid *, const godot_string *);
 	void (*font_set_distance_field_hint)(void *, godot_rid *, bool);
 	bool (*font_get_distance_field_hint)(void *, godot_rid *);
 	void (*font_set_hinting)(void *, godot_rid *, godot_int);
@@ -215,7 +218,7 @@ godot_glyph GDAPI godot_packed_glyph_array_get(const godot_packed_glyph_array *p
 
 godot_int GDAPI godot_packed_glyph_array_size(const godot_packed_glyph_array *p_self);
 
-godot_bool GDAPI godot_packed_glyph_array_empty(const godot_packed_glyph_array *p_self);
+godot_bool GDAPI godot_packed_glyph_array_is_empty(const godot_packed_glyph_array *p_self);
 
 void GDAPI godot_packed_glyph_array_destroy(godot_packed_glyph_array *p_self);
 

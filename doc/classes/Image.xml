@@ -68,13 +68,13 @@
 				Blits [code]src_rect[/code] area from [code]src[/code] image to this image at the coordinates given by [code]dst[/code]. [code]src[/code] pixel is copied onto [code]dst[/code] if the corresponding [code]mask[/code] pixel's alpha value is not 0. [code]src[/code] image and [code]mask[/code] image [b]must[/b] have the same size (width and height) but they can have different formats.
 			</description>
 		</method>
-		<method name="bumpmap_to_normalmap">
+		<method name="bump_map_to_normal_map">
 			<return type="void">
 			</return>
 			<argument index="0" name="bump_scale" type="float" default="1.0">
 			</argument>
 			<description>
-				Converts a bumpmap to a normalmap. A bumpmap provides a height offset per-pixel, while a normalmap provides a normal direction per pixel.
+				Converts a bump map to a normal map. A bump map provides a height offset per-pixel, while a normal map provides a normal direction per pixel.
 			</description>
 		</method>
 		<method name="clear_mipmaps">
@@ -398,11 +398,11 @@
 				Loads an image from the binary contents of a WebP file.
 			</description>
 		</method>
-		<method name="normalmap_to_xy">
+		<method name="normal_map_to_xy">
 			<return type="void">
 			</return>
 			<description>
-				Converts the image's data to represent coordinates on a 3D plane. This is used when the image represents a normalmap. A normalmap can add lots of detail to a 3D surface without increasing the polygon count.
+				Converts the image's data to represent coordinates on a 3D plane. This is used when the image represents a normal map. A normal map can add lots of detail to a 3D surface without increasing the polygon count.
 			</description>
 		</method>
 		<method name="premultiply_alpha">
@@ -422,7 +422,7 @@
 			<argument index="2" name="interpolation" type="int" enum="Image.Interpolation" default="1">
 			</argument>
 			<description>
-				Resizes the image to the given [code]width[/code] and [code]height[/code]. New pixels are calculated using [code]interpolation[/code]. See [code]interpolation[/code] constants.
+				Resizes the image to the given [code]width[/code] and [code]height[/code]. New pixels are calculated using the [code]interpolation[/code] mode defined via [enum Interpolation] constants.
 			</description>
 		</method>
 		<method name="resize_to_po2">
@@ -430,8 +430,10 @@
 			</return>
 			<argument index="0" name="square" type="bool" default="false">
 			</argument>
+			<argument index="1" name="interpolation" type="int" enum="Image.Interpolation" default="1">
+			</argument>
 			<description>
-				Resizes the image to the nearest power of 2 for the width and height. If [code]square[/code] is [code]true[/code] then set width and height to be the same.
+				Resizes the image to the nearest power of 2 for the width and height. If [code]square[/code] is [code]true[/code] then set width and height to be the same. New pixels are calculated using the [code]interpolation[/code] mode defined via [enum Interpolation] constants.
 			</description>
 		</method>
 		<method name="rgbe_to_srgb">
@@ -636,18 +638,19 @@
 		<constant name="FORMAT_BPTC_RGBFU" value="24" enum="Format">
 			Texture format that uses [url=https://www.khronos.org/opengl/wiki/BPTC_Texture_Compression]BPTC[/url] compression with unsigned floating-point RGB components.
 		</constant>
-		<constant name="FORMAT_PVRTC2" value="25" enum="Format">
+		<constant name="FORMAT_PVRTC1_2" value="25" enum="Format">
 			Texture format used on PowerVR-supported mobile platforms, uses 2-bit color depth with no alpha. More information can be found [url=https://en.wikipedia.org/wiki/PVRTC]here[/url].
 			[b]Note:[/b] When creating an [ImageTexture], an sRGB to linear color space conversion is performed.
 		</constant>
-		<constant name="FORMAT_PVRTC2A" value="26" enum="Format">
-			Same as [url=https://en.wikipedia.org/wiki/PVRTC]PVRTC2[/url], but with an alpha component.
+		<constant name="FORMAT_PVRTC1_2A" value="26" enum="Format">
+			Same as [constant FORMAT_PVRTC1_2], but with an alpha component.
 		</constant>
-		<constant name="FORMAT_PVRTC4" value="27" enum="Format">
-			Similar to [url=https://en.wikipedia.org/wiki/PVRTC]PVRTC2[/url], but with 4-bit color depth and no alpha.
+		<constant name="FORMAT_PVRTC1_4" value="27" enum="Format">
+			Texture format used on PowerVR-supported mobile platforms, uses 4-bit color depth with no alpha. More information can be found [url=https://en.wikipedia.org/wiki/PVRTC]here[/url].
+			[b]Note:[/b] When creating an [ImageTexture], an sRGB to linear color space conversion is performed.
 		</constant>
-		<constant name="FORMAT_PVRTC4A" value="28" enum="Format">
-			Same as [url=https://en.wikipedia.org/wiki/PVRTC]PVRTC4[/url], but with an alpha component.
+		<constant name="FORMAT_PVRTC1_4A" value="28" enum="Format">
+			Same as [constant FORMAT_PVRTC1_4], but with an alpha component.
 		</constant>
 		<constant name="FORMAT_ETC" value="29" enum="Format">
 			[url=https://en.wikipedia.org/wiki/Ericsson_Texture_Compression#ETC1]Ericsson Texture Compression format 1[/url], also referred to as "ETC1", and is part of the OpenGL ES graphics standard. This format cannot store an alpha channel.
@@ -714,17 +717,17 @@
 		<constant name="COMPRESS_S3TC" value="0" enum="CompressMode">
 			Use S3TC compression.
 		</constant>
-		<constant name="COMPRESS_PVRTC2" value="1" enum="CompressMode">
-			Use PVRTC2 compression.
+		<constant name="COMPRESS_PVRTC1_4" value="1" enum="CompressMode">
+			Use PVRTC1 4-bpp compression.
 		</constant>
-		<constant name="COMPRESS_PVRTC4" value="2" enum="CompressMode">
-			Use PVRTC4 compression.
-		</constant>
-		<constant name="COMPRESS_ETC" value="3" enum="CompressMode">
+		<constant name="COMPRESS_ETC" value="2" enum="CompressMode">
 			Use ETC compression.
 		</constant>
-		<constant name="COMPRESS_ETC2" value="4" enum="CompressMode">
+		<constant name="COMPRESS_ETC2" value="3" enum="CompressMode">
 			Use ETC2 compression.
+		</constant>
+		<constant name="COMPRESS_BPTC" value="4" enum="CompressMode">
+			Use BPTC compression.
 		</constant>
 		<constant name="USED_CHANNELS_L" value="0" enum="UsedChannels">
 		</constant>

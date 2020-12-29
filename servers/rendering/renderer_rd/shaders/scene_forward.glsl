@@ -9,8 +9,14 @@ VERSION_DEFINES
 /* INPUT ATTRIBS */
 
 layout(location = 0) in vec3 vertex_attrib;
+
+//only for pure render depth when normal is not used
+
+#ifdef NORMAL_USED
 layout(location = 1) in vec3 normal_attrib;
-#if defined(TANGENT_USED) || defined(NORMALMAP_USED) || defined(LIGHT_ANISOTROPY_USED)
+#endif
+
+#if defined(TANGENT_USED) || defined(NORMAL_MAP_USED) || defined(LIGHT_ANISOTROPY_USED)
 layout(location = 2) in vec4 tangent_attrib;
 #endif
 
@@ -18,7 +24,9 @@ layout(location = 2) in vec4 tangent_attrib;
 layout(location = 3) in vec4 color_attrib;
 #endif
 
+#ifdef UV_USED
 layout(location = 4) in vec2 uv_attrib;
+#endif
 
 #if defined(UV2_USED) || defined(USE_LIGHTMAP) || defined(MODE_RENDER_MATERIAL)
 layout(location = 5) in vec2 uv2_attrib;
@@ -51,19 +59,24 @@ layout(location = 11) in vec4 weight_attrib;
 /* Varyings */
 
 layout(location = 0) out vec3 vertex_interp;
+
+#ifdef NORMAL_USED
 layout(location = 1) out vec3 normal_interp;
+#endif
 
 #if defined(COLOR_USED)
 layout(location = 2) out vec4 color_interp;
 #endif
 
+#ifdef UV_USED
 layout(location = 3) out vec2 uv_interp;
+#endif
 
 #if defined(UV2_USED) || defined(USE_LIGHTMAP)
 layout(location = 4) out vec2 uv2_interp;
 #endif
 
-#if defined(TANGENT_USED) || defined(NORMALMAP_USED) || defined(LIGHT_ANISOTROPY_USED)
+#if defined(TANGENT_USED) || defined(NORMAL_MAP_USED) || defined(LIGHT_ANISOTROPY_USED)
 layout(location = 5) out vec3 tangent_interp;
 layout(location = 6) out vec3 binormal_interp;
 #endif
@@ -138,9 +151,11 @@ void main() {
 	}
 
 	vec3 vertex = vertex_attrib;
+#ifdef NORMAL_USED
 	vec3 normal = normal_attrib * 2.0 - 1.0;
+#endif
 
-#if defined(TANGENT_USED) || defined(NORMALMAP_USED) || defined(LIGHT_ANISOTROPY_USED)
+#if defined(TANGENT_USED) || defined(NORMAL_MAP_USED) || defined(LIGHT_ANISOTROPY_USED)
 	vec3 tangent = tangent_attrib.xyz * 2.0 - 1.0;
 	float binormalf = tangent_attrib.a * 2.0 - 1.0;
 	vec3 binormal = normalize(cross(normal, tangent) * binormalf);
@@ -164,14 +179,17 @@ void main() {
 		vertex = (vec4(vertex, 1.0) * m).xyz;
 		normal = (vec4(normal, 0.0) * m).xyz;
 
-#if defined(TANGENT_USED) || defined(NORMALMAP_USED) || defined(LIGHT_ANISOTROPY_USED)
+#if defined(TANGENT_USED) || defined(NORMAL_MAP_USED) || defined(LIGHT_ANISOTROPY_USED)
 
 		tangent = (vec4(tangent, 0.0) * m).xyz;
 		binormal = (vec4(binormal, 0.0) * m).xyz;
 #endif
 	}
 #endif
+
+#ifdef UV_USED
 	uv_interp = uv_attrib;
+#endif
 
 #if defined(UV2_USED) || defined(USE_LIGHTMAP)
 	uv2_interp = uv2_attrib;
@@ -190,7 +208,7 @@ void main() {
 
 	normal = world_normal_matrix * normal;
 
-#if defined(TANGENT_USED) || defined(NORMALMAP_USED) || defined(LIGHT_ANISOTROPY_USED)
+#if defined(TANGENT_USED) || defined(NORMAL_MAP_USED) || defined(LIGHT_ANISOTROPY_USED)
 
 	tangent = world_normal_matrix * tangent;
 	binormal = world_normal_matrix * binormal;
@@ -215,10 +233,13 @@ VERTEX_SHADER_CODE
 #if !defined(SKIP_TRANSFORM_USED) && !defined(VERTEX_WORLD_COORDS_USED)
 
 	vertex = (modelview * vec4(vertex, 1.0)).xyz;
+#ifdef NORMAL_USED
 	normal = modelview_normal * normal;
 #endif
 
-#if defined(TANGENT_USED) || defined(NORMALMAP_USED) || defined(LIGHT_ANISOTROPY_USED)
+#endif
+
+#if defined(TANGENT_USED) || defined(NORMAL_MAP_USED) || defined(LIGHT_ANISOTROPY_USED)
 
 	binormal = modelview_normal * binormal;
 	tangent = modelview_normal * tangent;
@@ -230,7 +251,7 @@ VERTEX_SHADER_CODE
 	vertex = (scene_data.inv_camera_matrix * vec4(vertex, 1.0)).xyz;
 	normal = mat3(scene_data.inverse_normal_matrix) * normal;
 
-#if defined(TANGENT_USED) || defined(NORMALMAP_USED) || defined(LIGHT_ANISOTROPY_USED)
+#if defined(TANGENT_USED) || defined(NORMAL_MAP_USED) || defined(LIGHT_ANISOTROPY_USED)
 
 	binormal = mat3(scene_data.camera_inverse_binormal_matrix) * binormal;
 	tangent = mat3(scene_data.camera_inverse_tangent_matrix) * tangent;
@@ -238,9 +259,11 @@ VERTEX_SHADER_CODE
 #endif
 
 	vertex_interp = vertex;
+#ifdef NORMAL_USED
 	normal_interp = normal;
+#endif
 
-#if defined(TANGENT_USED) || defined(NORMALMAP_USED) || defined(LIGHT_ANISOTROPY_USED)
+#if defined(TANGENT_USED) || defined(NORMAL_MAP_USED) || defined(LIGHT_ANISOTROPY_USED)
 	tangent_interp = tangent;
 	binormal_interp = binormal;
 #endif
@@ -250,7 +273,6 @@ VERTEX_SHADER_CODE
 #ifdef MODE_DUAL_PARABOLOID
 
 	vertex_interp.z *= scene_data.dual_paraboloid_side;
-	normal_interp.z *= scene_data.dual_paraboloid_side;
 
 	dp_clip = vertex_interp.z; //this attempts to avoid noise caused by objects sent to the other parabolloid side due to bias
 
@@ -301,19 +323,24 @@ VERSION_DEFINES
 /* Varyings */
 
 layout(location = 0) in vec3 vertex_interp;
+
+#ifdef NORMAL_USED
 layout(location = 1) in vec3 normal_interp;
+#endif
 
 #if defined(COLOR_USED)
 layout(location = 2) in vec4 color_interp;
 #endif
 
+#ifdef UV_USED
 layout(location = 3) in vec2 uv_interp;
+#endif
 
 #if defined(UV2_USED) || defined(USE_LIGHTMAP)
 layout(location = 4) in vec2 uv2_interp;
 #endif
 
-#if defined(TANGENT_USED) || defined(NORMALMAP_USED) || defined(LIGHT_ANISOTROPY_USED)
+#if defined(TANGENT_USED) || defined(NORMAL_MAP_USED) || defined(LIGHT_ANISOTROPY_USED)
 layout(location = 5) in vec3 tangent_interp;
 layout(location = 6) in vec3 binormal_interp;
 #endif
@@ -1792,13 +1819,15 @@ void main() {
 
 	float alpha = 1.0;
 
-#if defined(TANGENT_USED) || defined(NORMALMAP_USED) || defined(LIGHT_ANISOTROPY_USED)
+#if defined(TANGENT_USED) || defined(NORMAL_MAP_USED) || defined(LIGHT_ANISOTROPY_USED)
 	vec3 binormal = normalize(binormal_interp);
 	vec3 tangent = normalize(tangent_interp);
 #else
 	vec3 binormal = vec3(0.0);
 	vec3 tangent = vec3(0.0);
 #endif
+
+#ifdef NORMAL_USED
 	vec3 normal = normalize(normal_interp);
 
 #if defined(DO_SIDE_CHECK)
@@ -1807,7 +1836,11 @@ void main() {
 	}
 #endif
 
+#endif //NORMAL_USED
+
+#ifdef UV_USED
 	vec2 uv = uv_interp;
+#endif
 
 #if defined(UV2_USED) || defined(USE_LIGHTMAP)
 	vec2 uv2 = uv2_interp;
@@ -1817,12 +1850,12 @@ void main() {
 	vec4 color = color_interp;
 #endif
 
-#if defined(NORMALMAP_USED)
+#if defined(NORMAL_MAP_USED)
 
-	vec3 normalmap = vec3(0.5);
+	vec3 normal_map = vec3(0.5);
 #endif
 
-	float normaldepth = 1.0;
+	float normal_depth = 1.0;
 
 	vec2 screen_uv = gl_FragCoord.xy * scene_data.screen_pixel_size + scene_data.screen_pixel_size * 0.5; //account for center
 
@@ -1893,12 +1926,12 @@ FRAGMENT_SHADER_CODE
 
 #endif // !USE_SHADOW_TO_OPACITY
 
-#ifdef NORMALMAP_USED
+#ifdef NORMAL_MAP_USED
 
-	normalmap.xy = normalmap.xy * 2.0 - 1.0;
-	normalmap.z = sqrt(max(0.0, 1.0 - dot(normalmap.xy, normalmap.xy))); //always ignore Z, as it can be RG packed, Z may be pos/neg, etc.
+	normal_map.xy = normal_map.xy * 2.0 - 1.0;
+	normal_map.z = sqrt(max(0.0, 1.0 - dot(normal_map.xy, normal_map.xy))); //always ignore Z, as it can be RG packed, Z may be pos/neg, etc.
 
-	normal = normalize(mix(normal, tangent * normalmap.x + binormal * normalmap.y + normal * normalmap.z, normaldepth));
+	normal = normalize(mix(normal, tangent * normal_map.x + binormal * normal_map.y + normal * normal_map.z, normal_depth));
 
 #endif
 
@@ -1994,6 +2027,7 @@ FRAGMENT_SHADER_CODE
 #endif //not render depth
 	/////////////////////// LIGHTING //////////////////////////////
 
+#ifdef NORMAL_USED
 	if (scene_data.roughness_limiter_enabled) {
 		//http://www.jp.square-enix.com/tech/library/pdf/ImprovedGeometricSpecularAA.pdf
 		float roughness2 = roughness * roughness;
@@ -2003,6 +2037,7 @@ FRAGMENT_SHADER_CODE
 		float filteredRoughness2 = min(1.0, roughness2 + kernelRoughness2);
 		roughness = sqrt(filteredRoughness2);
 	}
+#endif
 	//apply energy conservation
 
 	vec3 specular_light = vec3(0.0, 0.0, 0.0);

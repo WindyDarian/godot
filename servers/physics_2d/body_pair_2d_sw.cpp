@@ -409,7 +409,7 @@ bool BodyPair2DSW::setup(real_t p_step) {
 		kNormal += A->get_inv_inertia() * (c.rA.dot(c.rA) - rnA * rnA) + B->get_inv_inertia() * (c.rB.dot(c.rB) - rnB * rnB);
 		c.mass_normal = 1.0f / kNormal;
 
-		Vector2 tangent = c.normal.tangent();
+		Vector2 tangent = c.normal.orthogonal();
 		real_t rtA = c.rA.dot(tangent);
 		real_t rtB = c.rB.dot(tangent);
 		real_t kTangent = A->get_inv_mass() + B->get_inv_mass();
@@ -469,7 +469,7 @@ void BodyPair2DSW::solve(real_t p_step) {
 
 		real_t vn = dv.dot(c.normal);
 		real_t vbn = dbv.dot(c.normal);
-		Vector2 tangent = c.normal.tangent();
+		Vector2 tangent = c.normal.orthogonal();
 		real_t vt = dv.dot(tangent);
 
 		real_t jbn = (c.bias - vbn) * c.mass_normal;
@@ -514,6 +514,6 @@ BodyPair2DSW::BodyPair2DSW(Body2DSW *p_A, int p_shape_A, Body2DSW *p_B, int p_sh
 }
 
 BodyPair2DSW::~BodyPair2DSW() {
-	A->remove_constraint(this);
-	B->remove_constraint(this);
+	A->remove_constraint(this, 0);
+	B->remove_constraint(this, 1);
 }

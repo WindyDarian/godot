@@ -119,7 +119,7 @@ String TextEditor::get_name() {
 	if (text_file->get_path().find("local://") == -1 && text_file->get_path().find("::") == -1) {
 		name = text_file->get_path().get_file();
 		if (is_unsaved()) {
-			if (text_file->get_path().empty()) {
+			if (text_file->get_path().is_empty()) {
 				name = TTR("[unsaved]");
 			}
 			name += "(*)";
@@ -242,7 +242,7 @@ void TextEditor::apply_code() {
 bool TextEditor::is_unsaved() {
 	const bool unsaved =
 			code_editor->get_text_editor()->get_version() != code_editor->get_text_editor()->get_saved_version() ||
-			text_file->get_path().empty(); // In memory.
+			text_file->get_path().is_empty(); // In memory.
 	return unsaved;
 }
 
@@ -548,7 +548,7 @@ TextEditor::TextEditor() {
 	code_editor->add_theme_constant_override("separation", 0);
 	code_editor->connect("load_theme_settings", callable_mp(this, &TextEditor::_load_theme_settings));
 	code_editor->connect("validate_script", callable_mp(this, &TextEditor::_validate_script));
-	code_editor->set_anchors_and_margins_preset(Control::PRESET_WIDE);
+	code_editor->set_anchors_and_offsets_preset(Control::PRESET_WIDE);
 	code_editor->set_v_size_flags(Control::SIZE_EXPAND_FILL);
 
 	update_settings();

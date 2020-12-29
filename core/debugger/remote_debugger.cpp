@@ -317,7 +317,7 @@ struct RemoteDebugger::ServersProfiler {
 
 	void _send_frame_data(bool p_final) {
 		DebuggerMarshalls::ServersProfilerFrame frame;
-		frame.frame_number = Engine::get_singleton()->get_idle_frames();
+		frame.frame_number = Engine::get_singleton()->get_process_frames();
 		frame.frame_time = frame_time;
 		frame.idle_time = idle_time;
 		frame.physics_time = physics_time;
@@ -553,7 +553,7 @@ void RemoteDebugger::flush_output() {
 		for (int i = 0; i < output_strings.size(); i++) {
 			const OutputString &output_string = output_strings[i];
 			if (output_string.type == MESSAGE_TYPE_ERROR) {
-				if (!joined_log_strings.empty()) {
+				if (!joined_log_strings.is_empty()) {
 					strings.push_back(String("\n").join(joined_log_strings));
 					types.push_back(MESSAGE_TYPE_LOG);
 					joined_log_strings.clear();
@@ -565,7 +565,7 @@ void RemoteDebugger::flush_output() {
 			}
 		}
 
-		if (!joined_log_strings.empty()) {
+		if (!joined_log_strings.is_empty()) {
 			strings.push_back(String("\n").join(joined_log_strings));
 			types.push_back(MESSAGE_TYPE_LOG);
 		}

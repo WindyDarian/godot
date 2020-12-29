@@ -57,10 +57,10 @@ void CreateDialog::popup_create(bool p_dont_clear, bool p_replace_mode, const St
 
 	if (p_replace_mode) {
 		set_title(vformat(TTR("Change %s Type"), base_type));
-		get_ok()->set_text(TTR("Change"));
+		get_ok_button()->set_text(TTR("Change"));
 	} else {
 		set_title(vformat(TTR("Create New %s"), base_type));
-		get_ok()->set_text(TTR("Create"));
+		get_ok_button()->set_text(TTR("Create"));
 	}
 
 	_load_favorites_and_history();
@@ -195,7 +195,7 @@ void CreateDialog::_update_search() {
 	} else {
 		favorite->set_disabled(true);
 		help_bit->set_text("");
-		get_ok()->set_disabled(true);
+		get_ok_button()->set_disabled(true);
 		search_options->deselect_all();
 	}
 }
@@ -396,7 +396,7 @@ void CreateDialog::select_type(const String &p_type) {
 
 	favorite->set_disabled(false);
 	favorite->set_pressed(favorite_list.find(p_type) != -1);
-	get_ok()->set_disabled(false);
+	get_ok_button()->set_disabled(false);
 }
 
 String CreateDialog::get_selected_type() {
@@ -492,7 +492,7 @@ void CreateDialog::_favorite_selected() {
 	}
 
 	search_box->set_text(item->get_text(0).get_slicec(' ', 0));
-	recent->unselect_all();
+	recent->deselect_all();
 	_update_search();
 }
 

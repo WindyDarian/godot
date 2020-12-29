@@ -99,7 +99,7 @@ public:
 String OS_OSX::get_unique_id() const {
 	static String serial_number;
 
-	if (serial_number.empty()) {
+	if (serial_number.is_empty()) {
 		io_service_t platformExpert = IOServiceGetMatchingService(kIOMasterPortDefault, IOServiceMatching("IOPlatformExpertDevice"));
 		CFStringRef serialNumberAsCFString = NULL;
 		if (platformExpert) {
@@ -286,7 +286,7 @@ Error OS_OSX::shell_open(String p_uri) {
 
 String OS_OSX::get_locale() const {
 	NSString *locale_code = [[NSLocale preferredLanguages] objectAtIndex:0];
-	return [locale_code UTF8String];
+	return String([locale_code UTF8String]).replace("-", "_");
 }
 
 String OS_OSX::get_executable_path() const {
@@ -312,7 +312,7 @@ void OS_OSX::run() {
 	if (!main_loop)
 		return;
 
-	main_loop->init();
+	main_loop->initialize();
 
 	bool quit = false;
 	while (!force_quit && !quit) {
@@ -329,7 +329,7 @@ void OS_OSX::run() {
 			ERR_PRINT("NSException: " + String([exception reason].UTF8String));
 		}
 	};
-	main_loop->finish();
+	main_loop->finalize();
 }
 
 Error OS_OSX::move_to_trash(const String &p_path) {

@@ -212,6 +212,7 @@ class Node3DEditorViewport : public Control {
 		VIEW_DISPLAY_DEBUG_SDFGI,
 		VIEW_DISPLAY_DEBUG_SDFGI_PROBES,
 		VIEW_DISPLAY_DEBUG_GI_BUFFER,
+		VIEW_DISPLAY_DEBUG_DISABLE_LOD,
 		VIEW_LOCK_ROTATION,
 		VIEW_CINEMATIC_PREVIEW,
 		VIEW_AUTO_ORTHOGONAL,
@@ -288,6 +289,9 @@ private:
 
 	VBoxContainer *top_right_vbox;
 	ViewportRotationControl *rotation_control;
+	Gradient *frame_time_gradient;
+	Label *cpu_time_label;
+	Label *gpu_time_label;
 	Label *fps_label;
 
 	struct _RayResult {

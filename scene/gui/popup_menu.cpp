@@ -232,12 +232,13 @@ void PopupMenu::_submenu_timeout() {
 }
 
 void PopupMenu::_gui_input(const Ref<InputEvent> &p_event) {
-	if (p_event->is_action("ui_down") && p_event->is_pressed() && mouse_over != items.size() - 1) {
+	if (p_event->is_action("ui_down") && p_event->is_pressed()) {
 		int search_from = mouse_over + 1;
 		if (search_from >= items.size()) {
 			search_from = 0;
 		}
 
+		bool match_found = false;
 		for (int i = search_from; i < items.size(); i++) {
 			if (!items[i].separator && !items[i].disabled) {
 				mouse_over = i;
@@ -245,15 +246,31 @@ void PopupMenu::_gui_input(const Ref<InputEvent> &p_event) {
 				_scroll_to_item(i);
 				control->update();
 				set_input_as_handled();
+				match_found = true;
 				break;
 			}
 		}
-	} else if (p_event->is_action("ui_up") && p_event->is_pressed() && mouse_over != 0) {
+
+		if (!match_found) {
+			// If the last item is not selectable, try re-searching from the start.
+			for (int i = 0; i < search_from; i++) {
+				if (!items[i].separator && !items[i].disabled) {
+					mouse_over = i;
+					emit_signal("id_focused", i);
+					_scroll_to_item(i);
+					control->update();
+					set_input_as_handled();
+					break;
+				}
+			}
+		}
+	} else if (p_event->is_action("ui_up") && p_event->is_pressed()) {
 		int search_from = mouse_over - 1;
 		if (search_from < 0) {
 			search_from = items.size() - 1;
 		}
 
+		bool match_found = false;
 		for (int i = search_from; i >= 0; i--) {
 			if (!items[i].separator && !items[i].disabled) {
 				mouse_over = i;
@@ -261,7 +278,22 @@ void PopupMenu::_gui_input(const Ref<InputEvent> &p_event) {
 				_scroll_to_item(i);
 				control->update();
 				set_input_as_handled();
+				match_found = true;
 				break;
+			}
+		}
+
+		if (!match_found) {
+			// If the first item is not selectable, try re-searching from the end.
+			for (int i = items.size() - 1; i >= search_from; i--) {
+				if (!items[i].separator && !items[i].disabled) {
+					mouse_over = i;
+					emit_signal("id_focused", i);
+					_scroll_to_item(i);
+					control->update();
+					set_input_as_handled();
+					break;
+				}
 			}
 		}
 	} else if (p_event->is_action("ui_left") && p_event->is_pressed()) {
@@ -446,6 +478,7 @@ void PopupMenu::_draw_items() {
 	Color font_color_disabled = get_theme_color("font_color_disabled");
 	Color font_color_accel = get_theme_color("font_color_accel");
 	Color font_color_hover = get_theme_color("font_color_hover");
+	Color font_color_separator = get_theme_color("font_color_separator");
 
 	float scroll_width = scroll_container->get_v_scrollbar()->is_visible_in_tree() ? scroll_container->get_v_scrollbar()->get_size().width : 0;
 	float display_width = control->get_size().width - scroll_width;
@@ -538,9 +571,9 @@ void PopupMenu::_draw_items() {
 		// Submenu arrow on right hand side
 		if (items[i].submenu != "") {
 			if (rtl) {
-				submenu->draw(ci, Point2(scroll_width + style->get_margin(MARGIN_LEFT), item_ofs.y + Math::floor(h - submenu->get_height()) / 2), icon_color);
+				submenu->draw(ci, Point2(scroll_width + style->get_margin(SIDE_LEFT), item_ofs.y + Math::floor(h - submenu->get_height()) / 2), icon_color);
 			} else {
-				submenu->draw(ci, Point2(display_width - style->get_margin(MARGIN_RIGHT) - submenu->get_width(), item_ofs.y + Math::floor(h - submenu->get_height()) / 2), icon_color);
+				submenu->draw(ci, Point2(display_width - style->get_margin(SIDE_RIGHT) - submenu->get_width(), item_ofs.y + Math::floor(h - submenu->get_height()) / 2), icon_color);
 			}
 		}
 
@@ -548,7 +581,7 @@ void PopupMenu::_draw_items() {
 		if (items[i].separator) {
 			if (text != String()) {
 				int center = (display_width - items[i].text_buf->get_size().width) / 2;
-				items[i].text_buf->draw(ci, Point2(center, item_ofs.y + Math::floor((h - items[i].text_buf->get_size().y) / 2.0)), font_color_disabled);
+				items[i].text_buf->draw(ci, Point2(center, item_ofs.y + Math::floor((h - items[i].text_buf->get_size().y) / 2.0)), font_color_separator);
 			}
 		} else {
 			item_ofs.x += icon_ofs + check_ofs;
@@ -562,9 +595,9 @@ void PopupMenu::_draw_items() {
 		// Accelerator / Shortcut
 		if (items[i].accel || (items[i].shortcut.is_valid() && items[i].shortcut->is_valid())) {
 			if (rtl) {
-				item_ofs.x = scroll_width + style->get_margin(MARGIN_LEFT);
+				item_ofs.x = scroll_width + style->get_margin(SIDE_LEFT);
 			} else {
-				item_ofs.x = display_width - style->get_margin(MARGIN_RIGHT) - items[i].accel_text_buf->get_size().x;
+				item_ofs.x = display_width - style->get_margin(SIDE_RIGHT) - items[i].accel_text_buf->get_size().x;
 			}
 			items[i].accel_text_buf->draw(ci, item_ofs + Point2(0, Math::floor((h - items[i].text_buf->get_size().y) / 2.0)), i == mouse_over ? font_color_hover : font_color_accel);
 		}
@@ -712,10 +745,10 @@ void PopupMenu::_notification(int p_what) {
 
 				// Set margin on the margin container
 				Ref<StyleBox> panel_style = get_theme_stylebox("panel");
-				margin_container->add_theme_constant_override("margin_top", panel_style->get_margin(Margin::MARGIN_TOP));
-				margin_container->add_theme_constant_override("margin_bottom", panel_style->get_margin(Margin::MARGIN_BOTTOM));
-				margin_container->add_theme_constant_override("margin_left", panel_style->get_margin(Margin::MARGIN_LEFT));
-				margin_container->add_theme_constant_override("margin_right", panel_style->get_margin(Margin::MARGIN_RIGHT));
+				margin_container->add_theme_constant_override("margin_top", panel_style->get_margin(Side::SIDE_TOP));
+				margin_container->add_theme_constant_override("margin_bottom", panel_style->get_margin(Side::SIDE_BOTTOM));
+				margin_container->add_theme_constant_override("margin_left", panel_style->get_margin(Side::SIDE_LEFT));
+				margin_container->add_theme_constant_override("margin_right", panel_style->get_margin(Side::SIDE_RIGHT));
 			}
 		} break;
 	}
@@ -1316,10 +1349,10 @@ void PopupMenu::remove_item(int p_idx) {
 	child_controls_changed();
 }
 
-void PopupMenu::add_separator(const String &p_text) {
+void PopupMenu::add_separator(const String &p_text, int p_id) {
 	Item sep;
 	sep.separator = true;
-	sep.id = -1;
+	sep.id = p_id;
 	if (p_text != String()) {
 		sep.text = p_text;
 		sep.xl_text = tr(p_text);
@@ -1567,7 +1600,7 @@ void PopupMenu::_bind_methods() {
 
 	ClassDB::bind_method(D_METHOD("remove_item", "idx"), &PopupMenu::remove_item);
 
-	ClassDB::bind_method(D_METHOD("add_separator", "label"), &PopupMenu::add_separator, DEFVAL(String()));
+	ClassDB::bind_method(D_METHOD("add_separator", "label", "id"), &PopupMenu::add_separator, DEFVAL(String()), DEFVAL(-1));
 	ClassDB::bind_method(D_METHOD("clear"), &PopupMenu::clear);
 
 	ClassDB::bind_method(D_METHOD("_set_items"), &PopupMenu::_set_items);
@@ -1610,7 +1643,7 @@ void PopupMenu::popup(const Rect2 &p_bounds) {
 PopupMenu::PopupMenu() {
 	// Margin Container
 	margin_container = memnew(MarginContainer);
-	margin_container->set_anchors_and_margins_preset(Control::PRESET_WIDE);
+	margin_container->set_anchors_and_offsets_preset(Control::PRESET_WIDE);
 	add_child(margin_container);
 	margin_container->connect("draw", callable_mp(this, &PopupMenu::_draw_background));
 
@@ -1622,7 +1655,7 @@ PopupMenu::PopupMenu() {
 	// The control which will display the items
 	control = memnew(Control);
 	control->set_clip_contents(false);
-	control->set_anchors_and_margins_preset(Control::PRESET_WIDE);
+	control->set_anchors_and_offsets_preset(Control::PRESET_WIDE);
 	control->set_h_size_flags(Control::SIZE_EXPAND_FILL);
 	control->set_v_size_flags(Control::SIZE_EXPAND_FILL);
 	scroll_container->add_child(control);

@@ -912,11 +912,11 @@ bool Variant::is_zero() const {
 
 		} break;
 		case DICTIONARY: {
-			return reinterpret_cast<const Dictionary *>(_data._mem)->empty();
+			return reinterpret_cast<const Dictionary *>(_data._mem)->is_empty();
 
 		} break;
 		case ARRAY: {
-			return reinterpret_cast<const Array *>(_data._mem)->empty();
+			return reinterpret_cast<const Array *>(_data._mem)->is_empty();
 
 		} break;
 
@@ -2338,8 +2338,8 @@ Variant::operator Vector<StringName>() const {
 	return to;
 }
 
-Variant::operator Margin() const {
-	return (Margin) operator int();
+Variant::operator Side() const {
+	return (Side) operator int();
 }
 
 Variant::operator Orientation() const {

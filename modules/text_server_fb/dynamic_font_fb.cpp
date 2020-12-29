@@ -54,7 +54,7 @@ DynamicFontDataFallback::DataAtSize *DynamicFontDataFallback::get_data_for_size(
 		fds = E->get();
 	} else {
 		if (font_mem == nullptr && font_path != String()) {
-			if (!font_mem_cache.empty()) {
+			if (!font_mem_cache.is_empty()) {
 				font_mem = font_mem_cache.ptr();
 				font_mem_size = font_mem_cache.size();
 			} else {
@@ -317,8 +317,8 @@ DynamicFontDataFallback::Character DynamicFontDataFallback::bitmap_to_character(
 	}
 
 	Character chr;
-	chr.align = Vector2(xofs, -yofs) * p_data->scale_color_font / oversampling;
-	chr.advance = advance * p_data->scale_color_font / oversampling;
+	chr.align = (Vector2(xofs, -yofs) * p_data->scale_color_font / oversampling).round();
+	chr.advance = (advance * p_data->scale_color_font / oversampling).round();
 	chr.texture_idx = tex_pos.index;
 	chr.found = true;
 

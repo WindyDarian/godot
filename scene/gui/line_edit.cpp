@@ -69,7 +69,7 @@ void LineEdit::_gui_input(Ref<InputEvent> p_event) {
 		_reset_caret_blink_timer();
 		if (b->is_pressed()) {
 			accept_event(); //don't pass event further when clicked on text field
-			if (!text.empty() && is_editable() && _is_over_clear_button(b->get_position())) {
+			if (!text.is_empty() && is_editable() && _is_over_clear_button(b->get_position())) {
 				clear_button_status.press_attempt = true;
 				clear_button_status.pressing_inside = true;
 				update();
@@ -106,7 +106,7 @@ void LineEdit::_gui_input(Ref<InputEvent> p_event) {
 			update();
 
 		} else {
-			if (!text.empty() && is_editable() && clear_button_enabled) {
+			if (!text.is_empty() && is_editable() && clear_button_enabled) {
 				bool press_attempt = clear_button_status.press_attempt;
 				clear_button_status.press_attempt = false;
 				if (press_attempt && clear_button_status.pressing_inside && _is_over_clear_button(b->get_position())) {
@@ -136,7 +136,7 @@ void LineEdit::_gui_input(Ref<InputEvent> p_event) {
 	Ref<InputEventMouseMotion> m = p_event;
 
 	if (m.is_valid()) {
-		if (!text.empty() && is_editable() && clear_button_enabled) {
+		if (!text.is_empty() && is_editable() && clear_button_enabled) {
 			bool last_press_inside = clear_button_status.pressing_inside;
 			clear_button_status.pressing_inside = clear_button_status.press_attempt && _is_over_clear_button(m->get_position());
 			if (last_press_inside != clear_button_status.pressing_inside) {
@@ -653,7 +653,7 @@ void LineEdit::drop_data(const Point2 &p_point, const Variant &p_data) {
 }
 
 Control::CursorShape LineEdit::get_cursor_shape(const Point2 &p_pos) const {
-	if (!text.empty() && is_editable() && _is_over_clear_button(p_pos)) {
+	if (!text.is_empty() && is_editable() && _is_over_clear_button(p_pos)) {
 		return CURSOR_ARROW;
 	}
 	return Control::get_cursor_shape(p_pos);
@@ -735,7 +735,7 @@ void LineEdit::_notification(int p_what) {
 			}
 
 			int x_ofs = 0;
-			bool using_placeholder = text.empty() && ime_text.empty();
+			bool using_placeholder = text.is_empty() && ime_text.is_empty();
 			float text_width = TS->shaped_text_get_size(text_rid).x;
 			float text_height = TS->shaped_text_get_size(text_rid).y + font->get_spacing(Font::SPACING_TOP) + font->get_spacing(Font::SPACING_BOTTOM);
 
@@ -743,7 +743,7 @@ void LineEdit::_notification(int p_what) {
 				case ALIGN_FILL:
 				case ALIGN_LEFT: {
 					if (rtl) {
-						x_ofs = MAX(style->get_margin(MARGIN_LEFT), int(size.width - style->get_margin(MARGIN_RIGHT) - (text_width)));
+						x_ofs = MAX(style->get_margin(SIDE_LEFT), int(size.width - style->get_margin(SIDE_RIGHT) - (text_width)));
 					} else {
 						x_ofs = style->get_offset().x;
 					}
@@ -752,19 +752,19 @@ void LineEdit::_notification(int p_what) {
 					if (scroll_offset != 0) {
 						x_ofs = style->get_offset().x;
 					} else {
-						x_ofs = MAX(style->get_margin(MARGIN_LEFT), int(size.width - (text_width)) / 2);
+						x_ofs = MAX(style->get_margin(SIDE_LEFT), int(size.width - (text_width)) / 2);
 					}
 				} break;
 				case ALIGN_RIGHT: {
 					if (rtl) {
 						x_ofs = style->get_offset().x;
 					} else {
-						x_ofs = MAX(style->get_margin(MARGIN_LEFT), int(size.width - style->get_margin(MARGIN_RIGHT) - (text_width)));
+						x_ofs = MAX(style->get_margin(SIDE_LEFT), int(size.width - style->get_margin(SIDE_RIGHT) - (text_width)));
 					}
 				} break;
 			}
 
-			int ofs_max = width - style->get_margin(MARGIN_RIGHT);
+			int ofs_max = width - style->get_margin(SIDE_RIGHT);
 
 			int y_area = height - style->get_minimum_size().height;
 			int y_ofs = style->get_offset().y + (y_area - text_height) / 2;
@@ -791,14 +791,14 @@ void LineEdit::_notification(int p_what) {
 					}
 				}
 
-				r_icon->draw(ci, Point2(width - r_icon->get_width() - style->get_margin(MARGIN_RIGHT), height / 2 - r_icon->get_height() / 2), color_icon);
+				r_icon->draw(ci, Point2(width - r_icon->get_width() - style->get_margin(SIDE_RIGHT), height / 2 - r_icon->get_height() / 2), color_icon);
 
 				if (align == ALIGN_CENTER) {
 					if (scroll_offset == 0) {
-						x_ofs = MAX(style->get_margin(MARGIN_LEFT), int(size.width - text_width - r_icon->get_width() - style->get_margin(MARGIN_RIGHT) * 2) / 2);
+						x_ofs = MAX(style->get_margin(SIDE_LEFT), int(size.width - text_width - r_icon->get_width() - style->get_margin(SIDE_RIGHT) * 2) / 2);
 					}
 				} else {
-					x_ofs = MAX(style->get_margin(MARGIN_LEFT), x_ofs - r_icon->get_width() - style->get_margin(MARGIN_RIGHT));
+					x_ofs = MAX(style->get_margin(SIDE_LEFT), x_ofs - r_icon->get_width() - style->get_margin(SIDE_RIGHT));
 				}
 
 				ofs_max -= r_icon->get_width();
@@ -1088,7 +1088,7 @@ void LineEdit::set_cursor_at_pixel_pos(int p_x) {
 		case ALIGN_FILL:
 		case ALIGN_LEFT: {
 			if (rtl) {
-				x_ofs = MAX(style->get_margin(MARGIN_LEFT), int(get_size().width - style->get_margin(MARGIN_RIGHT) - (text_width)));
+				x_ofs = MAX(style->get_margin(SIDE_LEFT), int(get_size().width - style->get_margin(SIDE_RIGHT) - (text_width)));
 			} else {
 				x_ofs = style->get_offset().x;
 			}
@@ -1097,28 +1097,28 @@ void LineEdit::set_cursor_at_pixel_pos(int p_x) {
 			if (scroll_offset != 0) {
 				x_ofs = style->get_offset().x;
 			} else {
-				x_ofs = MAX(style->get_margin(MARGIN_LEFT), int(get_size().width - (text_width)) / 2);
+				x_ofs = MAX(style->get_margin(SIDE_LEFT), int(get_size().width - (text_width)) / 2);
 			}
 		} break;
 		case ALIGN_RIGHT: {
 			if (rtl) {
 				x_ofs = style->get_offset().x;
 			} else {
-				x_ofs = MAX(style->get_margin(MARGIN_LEFT), int(get_size().width - style->get_margin(MARGIN_RIGHT) - (text_width)));
+				x_ofs = MAX(style->get_margin(SIDE_LEFT), int(get_size().width - style->get_margin(SIDE_RIGHT) - (text_width)));
 			}
 		} break;
 	}
 
-	bool using_placeholder = text.empty() && ime_text.empty();
+	bool using_placeholder = text.is_empty() && ime_text.is_empty();
 	bool display_clear_icon = !using_placeholder && is_editable() && clear_button_enabled;
 	if (right_icon.is_valid() || display_clear_icon) {
 		Ref<Texture2D> r_icon = display_clear_icon ? Control::get_theme_icon("clear") : right_icon;
 		if (align == ALIGN_CENTER) {
 			if (scroll_offset == 0) {
-				x_ofs = MAX(style->get_margin(MARGIN_LEFT), int(get_size().width - text_width - r_icon->get_width() - style->get_margin(MARGIN_RIGHT) * 2) / 2);
+				x_ofs = MAX(style->get_margin(SIDE_LEFT), int(get_size().width - text_width - r_icon->get_width() - style->get_margin(SIDE_RIGHT) * 2) / 2);
 			}
 		} else {
-			x_ofs = MAX(style->get_margin(MARGIN_LEFT), x_ofs - r_icon->get_width() - style->get_margin(MARGIN_RIGHT));
+			x_ofs = MAX(style->get_margin(SIDE_LEFT), x_ofs - r_icon->get_width() - style->get_margin(SIDE_RIGHT));
 		}
 	}
 
@@ -1136,7 +1136,7 @@ Vector2i LineEdit::get_cursor_pixel_pos() {
 		case ALIGN_FILL:
 		case ALIGN_LEFT: {
 			if (rtl) {
-				x_ofs = MAX(style->get_margin(MARGIN_LEFT), int(get_size().width - style->get_margin(MARGIN_RIGHT) - (text_width)));
+				x_ofs = MAX(style->get_margin(SIDE_LEFT), int(get_size().width - style->get_margin(SIDE_RIGHT) - (text_width)));
 			} else {
 				x_ofs = style->get_offset().x;
 			}
@@ -1145,28 +1145,28 @@ Vector2i LineEdit::get_cursor_pixel_pos() {
 			if (scroll_offset != 0) {
 				x_ofs = style->get_offset().x;
 			} else {
-				x_ofs = MAX(style->get_margin(MARGIN_LEFT), int(get_size().width - (text_width)) / 2);
+				x_ofs = MAX(style->get_margin(SIDE_LEFT), int(get_size().width - (text_width)) / 2);
 			}
 		} break;
 		case ALIGN_RIGHT: {
 			if (rtl) {
 				x_ofs = style->get_offset().x;
 			} else {
-				x_ofs = MAX(style->get_margin(MARGIN_LEFT), int(get_size().width - style->get_margin(MARGIN_RIGHT) - (text_width)));
+				x_ofs = MAX(style->get_margin(SIDE_LEFT), int(get_size().width - style->get_margin(SIDE_RIGHT) - (text_width)));
 			}
 		} break;
 	}
 
-	bool using_placeholder = text.empty() && ime_text.empty();
+	bool using_placeholder = text.is_empty() && ime_text.is_empty();
 	bool display_clear_icon = !using_placeholder && is_editable() && clear_button_enabled;
 	if (right_icon.is_valid() || display_clear_icon) {
 		Ref<Texture2D> r_icon = display_clear_icon ? Control::get_theme_icon("clear") : right_icon;
 		if (align == ALIGN_CENTER) {
 			if (scroll_offset == 0) {
-				x_ofs = MAX(style->get_margin(MARGIN_LEFT), int(get_size().width - text_width - r_icon->get_width() - style->get_margin(MARGIN_RIGHT) * 2) / 2);
+				x_ofs = MAX(style->get_margin(SIDE_LEFT), int(get_size().width - text_width - r_icon->get_width() - style->get_margin(SIDE_RIGHT) * 2) / 2);
 			}
 		} else {
-			x_ofs = MAX(style->get_margin(MARGIN_LEFT), x_ofs - r_icon->get_width() - style->get_margin(MARGIN_RIGHT));
+			x_ofs = MAX(style->get_margin(SIDE_LEFT), x_ofs - r_icon->get_width() - style->get_margin(SIDE_RIGHT));
 		}
 	}
 
@@ -1460,7 +1460,7 @@ void LineEdit::set_cursor_position(int p_pos) {
 		case ALIGN_FILL:
 		case ALIGN_LEFT: {
 			if (rtl) {
-				x_ofs = MAX(style->get_margin(MARGIN_LEFT), int(get_size().width - style->get_margin(MARGIN_RIGHT) - (text_width)));
+				x_ofs = MAX(style->get_margin(SIDE_LEFT), int(get_size().width - style->get_margin(SIDE_RIGHT) - (text_width)));
 			} else {
 				x_ofs = style->get_offset().x;
 			}
@@ -1469,29 +1469,29 @@ void LineEdit::set_cursor_position(int p_pos) {
 			if (scroll_offset != 0) {
 				x_ofs = style->get_offset().x;
 			} else {
-				x_ofs = MAX(style->get_margin(MARGIN_LEFT), int(get_size().width - (text_width)) / 2);
+				x_ofs = MAX(style->get_margin(SIDE_LEFT), int(get_size().width - (text_width)) / 2);
 			}
 		} break;
 		case ALIGN_RIGHT: {
 			if (rtl) {
 				x_ofs = style->get_offset().x;
 			} else {
-				x_ofs = MAX(style->get_margin(MARGIN_LEFT), int(get_size().width - style->get_margin(MARGIN_RIGHT) - (text_width)));
+				x_ofs = MAX(style->get_margin(SIDE_LEFT), int(get_size().width - style->get_margin(SIDE_RIGHT) - (text_width)));
 			}
 		} break;
 	}
 
-	int ofs_max = get_size().width - style->get_margin(MARGIN_RIGHT);
-	bool using_placeholder = text.empty() && ime_text.empty();
+	int ofs_max = get_size().width - style->get_margin(SIDE_RIGHT);
+	bool using_placeholder = text.is_empty() && ime_text.is_empty();
 	bool display_clear_icon = !using_placeholder && is_editable() && clear_button_enabled;
 	if (right_icon.is_valid() || display_clear_icon) {
 		Ref<Texture2D> r_icon = display_clear_icon ? Control::get_theme_icon("clear") : right_icon;
 		if (align == ALIGN_CENTER) {
 			if (scroll_offset == 0) {
-				x_ofs = MAX(style->get_margin(MARGIN_LEFT), int(get_size().width - text_width - r_icon->get_width() - style->get_margin(MARGIN_RIGHT) * 2) / 2);
+				x_ofs = MAX(style->get_margin(SIDE_LEFT), int(get_size().width - text_width - r_icon->get_width() - style->get_margin(SIDE_RIGHT) * 2) / 2);
 			}
 		} else {
-			x_ofs = MAX(style->get_margin(MARGIN_LEFT), x_ofs - r_icon->get_width() - style->get_margin(MARGIN_RIGHT));
+			x_ofs = MAX(style->get_margin(SIDE_LEFT), x_ofs - r_icon->get_width() - style->get_margin(SIDE_RIGHT));
 		}
 		ofs_max -= r_icon->get_width();
 	}
@@ -1570,7 +1570,7 @@ Size2 LineEdit::get_minimum_size() const {
 	min_size.height = MAX(TS->shaped_text_get_size(text_rid).y + font->get_spacing(Font::SPACING_TOP) + font->get_spacing(Font::SPACING_BOTTOM), font->get_height(font_size));
 
 	// Take icons into account.
-	bool using_placeholder = text.empty() && ime_text.empty();
+	bool using_placeholder = text.is_empty() && ime_text.is_empty();
 	bool display_clear_icon = !using_placeholder && is_editable() && clear_button_enabled;
 	if (right_icon.is_valid() || display_clear_icon) {
 		Ref<Texture2D> r_icon = display_clear_icon ? Control::get_theme_icon("clear") : right_icon;
@@ -1994,8 +1994,8 @@ void LineEdit::_shape() {
 void LineEdit::_fit_to_width() {
 	if (align == ALIGN_FILL) {
 		Ref<StyleBox> style = get_theme_stylebox("normal");
-		int t_width = get_size().width - style->get_margin(MARGIN_RIGHT) - style->get_margin(MARGIN_LEFT);
-		bool using_placeholder = text.empty() && ime_text.empty();
+		int t_width = get_size().width - style->get_margin(SIDE_RIGHT) - style->get_margin(SIDE_LEFT);
+		bool using_placeholder = text.is_empty() && ime_text.is_empty();
 		bool display_clear_icon = !using_placeholder && is_editable() && clear_button_enabled;
 		if (right_icon.is_valid() || display_clear_icon) {
 			Ref<Texture2D> r_icon = display_clear_icon ? Control::get_theme_icon("clear") : right_icon;
