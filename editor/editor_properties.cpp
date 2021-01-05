@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2020 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2020 Godot Engine contributors (cf. AUTHORS.md).   */
+/* Copyright (c) 2007-2021 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2021 Godot Engine contributors (cf. AUTHORS.md).   */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -725,12 +725,12 @@ void EditorPropertyLayers::setup(LayerType p_layer_type) {
 	for (int i = 0; i < 20; i++) {
 		String name;
 
-		if (ProjectSettings::get_singleton()->has_setting(basename + "/layer_" + itos(i + 1))) {
-			name = ProjectSettings::get_singleton()->get(basename + "/layer_" + itos(i + 1));
+		if (ProjectSettings::get_singleton()->has_setting(basename + vformat("/layer_%d", i))) {
+			name = ProjectSettings::get_singleton()->get(basename + vformat("/layer_%d", i));
 		}
 
 		if (name == "") {
-			name = TTR("Layer") + " " + itos(i + 1);
+			name = vformat(TTR("Layer %d"), i);
 		}
 
 		names.push_back(name);
@@ -2144,10 +2144,6 @@ void EditorPropertyColor::_color_changed(const Color &p_color) {
 	emit_changed(get_edited_property(), p_color, "", true);
 }
 
-void EditorPropertyColor::_popup_closed() {
-	emit_changed(get_edited_property(), picker->get_pick_color(), "", false);
-}
-
 void EditorPropertyColor::_picker_created() {
 	// get default color picker mode from editor settings
 	int default_color_mode = EDITOR_GET("interface/inspector/default_color_picker_mode");
@@ -2191,7 +2187,6 @@ EditorPropertyColor::EditorPropertyColor() {
 	add_child(picker);
 	picker->set_flat(true);
 	picker->connect("color_changed", callable_mp(this, &EditorPropertyColor::_color_changed));
-	picker->connect("popup_closed", callable_mp(this, &EditorPropertyColor::_popup_closed));
 	picker->connect("picker_created", callable_mp(this, &EditorPropertyColor::_picker_created));
 }
 

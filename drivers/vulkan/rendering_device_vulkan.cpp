@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2020 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2020 Godot Engine contributors (cf. AUTHORS.md).   */
+/* Copyright (c) 2007-2021 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2021 Godot Engine contributors (cf. AUTHORS.md).   */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -2134,7 +2134,16 @@ RID RenderingDeviceVulkan::texture_create_shared_from_slice(const TextureView &p
 		VK_IMAGE_VIEW_TYPE_2D,
 	};
 
-	image_view_create_info.viewType = p_slice_type == TEXTURE_SLICE_CUBEMAP ? VK_IMAGE_VIEW_TYPE_CUBE : (p_slice_type == TEXTURE_SLICE_3D ? VK_IMAGE_VIEW_TYPE_3D : view_types[texture.type]);
+	image_view_create_info.viewType = view_types[texture.type];
+
+	if (p_slice_type == TEXTURE_SLICE_CUBEMAP) {
+		image_view_create_info.viewType = VK_IMAGE_VIEW_TYPE_CUBE;
+	} else if (p_slice_type == TEXTURE_SLICE_3D) {
+		image_view_create_info.viewType = VK_IMAGE_VIEW_TYPE_3D;
+	} else if (p_slice_type == TEXTURE_SLICE_2D_ARRAY) {
+		image_view_create_info.viewType = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
+	}
+
 	if (p_view.format_override == DATA_FORMAT_MAX || p_view.format_override == texture.format) {
 		image_view_create_info.format = vulkan_formats[texture.format];
 	} else {

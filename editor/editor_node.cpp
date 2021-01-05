@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2020 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2020 Godot Engine contributors (cf. AUTHORS.md).   */
+/* Copyright (c) 2007-2021 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2021 Godot Engine contributors (cf. AUTHORS.md).   */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -2313,7 +2313,7 @@ void EditorNode::_menu_option_confirm(int p_option, bool p_confirmed) {
 			int scene_idx = (p_option == FILE_SAVE_SCENE) ? -1 : tab_closing;
 
 			Node *scene = editor_data.get_edited_scene_root(scene_idx);
-			if (scene && scene->get_filename() != "") {
+			if (scene && scene->get_filename() != "" && FileAccess::exists(scene->get_filename())) {
 				if (scene_idx != editor_data.get_edited_scene()) {
 					_save_scene_with_preview(scene->get_filename(), scene_idx);
 				} else {
@@ -2358,11 +2358,12 @@ void EditorNode::_menu_option_confirm(int p_option, bool p_confirmed) {
 			}
 
 			if (scene->get_filename() != "") {
-				file->set_current_path(scene->get_filename());
+				String path = scene->get_filename();
+				file->set_current_path(path);
 				if (extensions.size()) {
-					String ext = scene->get_filename().get_extension().to_lower();
+					String ext = path.get_extension().to_lower();
 					if (extensions.find(ext) == nullptr) {
-						file->set_current_path(scene->get_filename().replacen("." + ext, "." + extensions.front()->get()));
+						file->set_current_path(path.replacen("." + ext, "." + extensions.front()->get()));
 					}
 				}
 			} else {

@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2020 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2020 Godot Engine contributors (cf. AUTHORS.md).   */
+/* Copyright (c) 2007-2021 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2021 Godot Engine contributors (cf. AUTHORS.md).   */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -387,7 +387,8 @@ private:
 
 	WindowID last_focused_window = INVALID_WINDOW_ID;
 
-	uint32_t move_timer_id;
+	uint32_t move_timer_id = 0U;
+	uint32_t focus_timer_id = 0U;
 
 	HCURSOR hCursor;
 
@@ -407,6 +408,9 @@ private:
 	bool drop_events = false;
 	bool in_dispatch_input_event = false;
 	bool console_visible = false;
+
+	WPARAM saved_wparam;
+	LPARAM saved_lparam;
 
 	WNDCLASSEXW wc;
 
