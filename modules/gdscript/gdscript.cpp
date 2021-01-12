@@ -193,12 +193,11 @@ Variant GDScript::_new(const Variant **p_args, int p_argcount, Callable::CallErr
 }
 
 bool GDScript::can_instance() const {
-	return valid;
-	//#ifdef TOOLS_ENABLED
-//	return valid && (tool || ScriptServer::is_scripting_enabled());
-//#else
-//	return valid;
-//#endif
+	#ifdef TOOLS_ENABLED
+		return valid && (tool || ScriptServer::is_scripting_enabled());
+	#else
+		return valid;
+	#endif
 }
 
 Ref<Script> GDScript::get_base_script() const {
