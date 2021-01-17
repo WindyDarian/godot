@@ -1242,7 +1242,7 @@ void RendererSceneCull::_update_instance(Instance *p_instance) {
 		scene_render->geometry_instance_set_transform(geom->geometry_instance, p_instance->transform, p_instance->aabb, p_instance->transformed_aabb);
 	}
 
-	if (p_instance->scenario == nullptr || !p_instance->visible || Math::is_zero_approx(p_instance->transform.basis.determinant())) {
+	if (p_instance->scenario == nullptr || !p_instance->visible || p_instance->transform.basis.determinant() == 0.0) {
 		p_instance->prev_transformed_aabb = p_instance->transformed_aabb;
 		return;
 	}
