@@ -931,7 +931,8 @@ public:
 	/********************/
 
 	enum InitialAction {
-		INITIAL_ACTION_CLEAR, //start rendering and clear the framebuffer (supply params)
+		INITIAL_ACTION_CLEAR, //start rendering and clear the whole framebuffer (region or not) (supply params)
+		INITIAL_ACTION_CLEAR_REGION, //start rendering and clear the framebuffer in the specified region (supply params)
 		INITIAL_ACTION_KEEP, //start rendering, but keep attached color texture contents (depth will be cleared)
 		INITIAL_ACTION_DROP, //start rendering, ignore what is there, just write above it
 		INITIAL_ACTION_CONTINUE, //continue rendering (framebuffer must have been left in "continue" state as final action previously)
@@ -1058,6 +1059,12 @@ public:
 	virtual uint64_t get_memory_usage() const = 0;
 
 	virtual RenderingDevice *create_local_device() = 0;
+
+	virtual void set_resource_name(RID p_id, const String p_name) = 0;
+
+	virtual void draw_command_begin_label(String p_label_name, const Color p_color = Color(1, 1, 1, 1)) = 0;
+	virtual void draw_command_insert_label(String p_label_name, const Color p_color = Color(1, 1, 1, 1)) = 0;
+	virtual void draw_command_end_label() = 0;
 
 	static RenderingDevice *get_singleton();
 	RenderingDevice();

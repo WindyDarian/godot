@@ -3104,6 +3104,7 @@ VkRenderPass RenderingDeviceVulkan::_render_pass_create(const Vector<AttachmentF
 		// the read.  If this is a performance issue, one could track the actual last accessor of each resource, adding only that
 		// stage
 		switch (is_depth_stencil ? p_initial_depth_action : p_initial_color_action) {
+			case INITIAL_ACTION_CLEAR_REGION:
 			case INITIAL_ACTION_CLEAR: {
 				description.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 				description.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
@@ -3116,9 +3117,9 @@ VkRenderPass RenderingDeviceVulkan::_render_pass_create(const Vector<AttachmentF
 					description.initialLayout = is_sampled ? VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL : (is_storage ? VK_IMAGE_LAYOUT_GENERAL : VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 					description.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 				} else if (p_format[i].usage_flags & TEXTURE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT) {
-					description.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-					description.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED; //don't care what is there
-					description.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+					description.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+					description.initialLayout = is_sampled ? VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL : (is_storage ? VK_IMAGE_LAYOUT_GENERAL : VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+					description.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
 					dependency_from_external.srcStageMask |= reading_stages;
 				} else {
 					description.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
@@ -5726,11 +5727,18 @@ Error RenderingDeviceVulkan::_draw_list_render_pass_begin(Framebuffer *framebuff
 	render_pass_begin.pNext = nullptr;
 	render_pass_begin.renderPass = render_pass;
 	render_pass_begin.framebuffer = vkframebuffer;
-
+	/*
+	 * Given how API works, it makes sense to always fully operate on the whole framebuffer.
+	 * This allows better continue operations for operations like shadowmapping.
 	render_pass_begin.renderArea.extent.width = viewport_size.width;
 	render_pass_begin.renderArea.extent.height = viewport_size.height;
 	render_pass_begin.renderArea.offset.x = viewport_offset.x;
 	render_pass_begin.renderArea.offset.y = viewport_offset.y;
+	*/
+	render_pass_begin.renderArea.extent.width = framebuffer->size.width;
+	render_pass_begin.renderArea.extent.height = framebuffer->size.height;
+	render_pass_begin.renderArea.offset.x = 0;
+	render_pass_begin.renderArea.offset.y = 0;
 
 	Vector<VkClearValue> clear_values;
 	clear_values.resize(framebuffer->texture_ids.size());
@@ -5879,11 +5887,11 @@ RenderingDevice::DrawListID RenderingDeviceVulkan::draw_list_begin(RID p_framebu
 		viewport_offset = regioni.position;
 		viewport_size = regioni.size;
 
-		if (p_initial_color_action == INITIAL_ACTION_CLEAR) {
+		if (p_initial_color_action == INITIAL_ACTION_CLEAR_REGION) {
 			needs_clear_color = true;
 			p_initial_color_action = INITIAL_ACTION_KEEP;
 		}
-		if (p_initial_depth_action == INITIAL_ACTION_CLEAR) {
+		if (p_initial_depth_action == INITIAL_ACTION_CLEAR_REGION) {
 			needs_clear_depth = true;
 			p_initial_depth_action = INITIAL_ACTION_KEEP;
 		}
@@ -5969,11 +5977,11 @@ Error RenderingDeviceVulkan::draw_list_begin_split(RID p_framebuffer, uint32_t p
 		viewport_offset = regioni.position;
 		viewport_size = regioni.size;
 
-		if (p_initial_color_action == INITIAL_ACTION_CLEAR) {
+		if (p_initial_color_action == INITIAL_ACTION_CLEAR_REGION) {
 			needs_clear_color = true;
 			p_initial_color_action = INITIAL_ACTION_KEEP;
 		}
-		if (p_initial_depth_action == INITIAL_ACTION_CLEAR) {
+		if (p_initial_depth_action == INITIAL_ACTION_CLEAR_REGION) {
 			needs_clear_depth = true;
 			p_initial_depth_action = INITIAL_ACTION_KEEP;
 		}
@@ -7030,6 +7038,72 @@ void RenderingDeviceVulkan::free(RID p_id) {
 
 	_free_dependencies(p_id); //recursively erase dependencies first, to avoid potential API problems
 	_free_internal(p_id);
+}
+
+// The full list of resources that can be named is in the VkObjectType enum
+// We just expose the resources that are owned and can be accessed easily.
+void RenderingDeviceVulkan::set_resource_name(RID p_id, const String p_name) {
+	if (texture_owner.owns(p_id)) {
+		Texture *texture = texture_owner.getornull(p_id);
+		if (texture->owner.is_null()) {
+			// Don't set the source texture's name when calling on a texture view
+			context->set_object_name(VK_OBJECT_TYPE_IMAGE, uint64_t(texture->image), p_name);
+		}
+		context->set_object_name(VK_OBJECT_TYPE_IMAGE_VIEW, uint64_t(texture->view), p_name + " View");
+	} else if (framebuffer_owner.owns(p_id)) {
+		//Framebuffer *framebuffer = framebuffer_owner.getornull(p_id);
+		// Not implemented for now as the relationship between Framebuffer and RenderPass is very complex
+	} else if (sampler_owner.owns(p_id)) {
+		VkSampler *sampler = sampler_owner.getornull(p_id);
+		context->set_object_name(VK_OBJECT_TYPE_SAMPLER, uint64_t(*sampler), p_name);
+	} else if (vertex_buffer_owner.owns(p_id)) {
+		Buffer *vertex_buffer = vertex_buffer_owner.getornull(p_id);
+		context->set_object_name(VK_OBJECT_TYPE_BUFFER, uint64_t(vertex_buffer->buffer), p_name);
+	} else if (index_buffer_owner.owns(p_id)) {
+		IndexBuffer *index_buffer = index_buffer_owner.getornull(p_id);
+		context->set_object_name(VK_OBJECT_TYPE_BUFFER, uint64_t(index_buffer->buffer), p_name);
+	} else if (shader_owner.owns(p_id)) {
+		Shader *shader = shader_owner.getornull(p_id);
+		context->set_object_name(VK_OBJECT_TYPE_PIPELINE_LAYOUT, uint64_t(shader->pipeline_layout), p_name + " Pipeline Layout");
+		for (int i = 0; i < shader->sets.size(); i++) {
+			context->set_object_name(VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT, uint64_t(shader->sets[i].descriptor_set_layout), p_name);
+		}
+	} else if (uniform_buffer_owner.owns(p_id)) {
+		Buffer *uniform_buffer = uniform_buffer_owner.getornull(p_id);
+		context->set_object_name(VK_OBJECT_TYPE_BUFFER, uint64_t(uniform_buffer->buffer), p_name);
+	} else if (texture_buffer_owner.owns(p_id)) {
+		TextureBuffer *texture_buffer = texture_buffer_owner.getornull(p_id);
+		context->set_object_name(VK_OBJECT_TYPE_BUFFER, uint64_t(texture_buffer->buffer.buffer), p_name);
+		context->set_object_name(VK_OBJECT_TYPE_BUFFER_VIEW, uint64_t(texture_buffer->view), p_name + " View");
+	} else if (storage_buffer_owner.owns(p_id)) {
+		Buffer *storage_buffer = storage_buffer_owner.getornull(p_id);
+		context->set_object_name(VK_OBJECT_TYPE_BUFFER, uint64_t(storage_buffer->buffer), p_name);
+	} else if (uniform_set_owner.owns(p_id)) {
+		UniformSet *uniform_set = uniform_set_owner.getornull(p_id);
+		context->set_object_name(VK_OBJECT_TYPE_DESCRIPTOR_SET, uint64_t(uniform_set->descriptor_set), p_name);
+	} else if (render_pipeline_owner.owns(p_id)) {
+		RenderPipeline *pipeline = render_pipeline_owner.getornull(p_id);
+		context->set_object_name(VK_OBJECT_TYPE_PIPELINE, uint64_t(pipeline->pipeline), p_name);
+		context->set_object_name(VK_OBJECT_TYPE_PIPELINE_LAYOUT, uint64_t(pipeline->pipeline_layout), p_name + " Layout");
+	} else if (compute_pipeline_owner.owns(p_id)) {
+		ComputePipeline *pipeline = compute_pipeline_owner.getornull(p_id);
+		context->set_object_name(VK_OBJECT_TYPE_PIPELINE, uint64_t(pipeline->pipeline), p_name);
+		context->set_object_name(VK_OBJECT_TYPE_PIPELINE_LAYOUT, uint64_t(pipeline->pipeline_layout), p_name + " Layout");
+	} else {
+		ERR_PRINT("Attempted to name invalid ID: " + itos(p_id.get_id()));
+	}
+}
+
+void RenderingDeviceVulkan::draw_command_begin_label(String p_label_name, const Color p_color) {
+	context->command_begin_label(frames[frame].draw_command_buffer, p_label_name, p_color);
+}
+
+void RenderingDeviceVulkan::draw_command_insert_label(String p_label_name, const Color p_color) {
+	context->command_insert_label(frames[frame].draw_command_buffer, p_label_name, p_color);
+}
+
+void RenderingDeviceVulkan::draw_command_end_label() {
+	context->command_end_label(frames[frame].draw_command_buffer);
 }
 
 void RenderingDeviceVulkan::_finalize_command_bufers() {
