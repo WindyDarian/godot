@@ -76,7 +76,13 @@ enum JoyButtonList {
 	JOY_BUTTON_DPAD_DOWN = 12,
 	JOY_BUTTON_DPAD_LEFT = 13,
 	JOY_BUTTON_DPAD_RIGHT = 14,
-	JOY_BUTTON_SDL_MAX = 15,
+	JOY_BUTTON_MISC1 = 15,
+	JOY_BUTTON_PADDLE1 = 16,
+	JOY_BUTTON_PADDLE2 = 17,
+	JOY_BUTTON_PADDLE3 = 18,
+	JOY_BUTTON_PADDLE4 = 19,
+	JOY_BUTTON_TOUCHPAD = 20,
+	JOY_BUTTON_SDL_MAX = 21,
 	JOY_BUTTON_MAX = 36, // Android supports up to 36 buttons.
 };
 
@@ -122,11 +128,11 @@ public:
 	void set_device(int p_device);
 	int get_device() const;
 
-	bool is_action(const StringName &p_action) const;
-	bool is_action_pressed(const StringName &p_action, bool p_allow_echo = false) const;
-	bool is_action_released(const StringName &p_action) const;
-	float get_action_strength(const StringName &p_action) const;
-	float get_action_raw_strength(const StringName &p_action) const;
+	bool is_action(const StringName &p_action, bool p_exact_match = false) const;
+	bool is_action_pressed(const StringName &p_action, bool p_allow_echo = false, bool p_exact_match = false) const;
+	bool is_action_released(const StringName &p_action, bool p_exact_match = false) const;
+	float get_action_strength(const StringName &p_action, bool p_exact_match = false) const;
+	float get_action_raw_strength(const StringName &p_action, bool p_exact_match = false) const;
 
 	// To be removed someday, since they do not make sense for all events
 	virtual bool is_pressed() const;

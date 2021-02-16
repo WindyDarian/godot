@@ -1,5 +1,5 @@
 /*************************************************************************/
-/*  thread_uwp.h                                                         */
+/*  audio_effect_capture.h                                               */
 /*************************************************************************/
 /*                       This file is part of:                           */
 /*                           GODOT ENGINE                                */
@@ -28,32 +28,55 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
 
-#ifndef THREAD_UWP_H
-#define THREAD_UWP_H
+#ifndef AUDIO_EFFECT_CAPTURE_H
+#define AUDIO_EFFECT_CAPTURE_H
 
-#ifdef UWP_ENABLED
+#include "core/config/engine.h"
+#include "core/math/audio_frame.h"
+#include "core/object/reference.h"
+#include "core/templates/vector.h"
+#include "servers/audio/audio_effect.h"
+#include "servers/audio_server.h"
 
-#include "core/os/thread.h"
+class AudioEffectCapture;
 
-#include <thread>
-
-class ThreadUWP : public Thread {
-	std::thread thread;
-
-	static Thread *create_func_uwp(ThreadCreateCallback p_callback, void *, const Settings &);
-	static ID get_thread_id_func_uwp();
-	static void wait_to_finish_func_uwp(Thread *p_thread);
-
-	ThreadUWP() {}
+class AudioEffectCaptureInstance : public AudioEffectInstance {
+	GDCLASS(AudioEffectCaptureInstance, AudioEffectInstance);
+	friend class AudioEffectCapture;
+	Ref<AudioEffectCapture> base;
 
 public:
-	virtual ID get_id() const;
-
-	static void make_default();
-
-	~ThreadUWP() {}
+	virtual void process(const AudioFrame *p_src_frames, AudioFrame *p_dst_frames, int p_frame_count) override;
+	virtual bool process_silence() const override;
 };
 
-#endif // UWP_ENABLED
+class AudioEffectCapture : public AudioEffect {
+	GDCLASS(AudioEffectCapture, AudioEffect)
+	friend class AudioEffectCaptureInstance;
 
-#endif // THREAD_UWP_H
+	RingBuffer<AudioFrame> buffer;
+	uint64_t discarded_frames = 0;
+	uint64_t pushed_frames = 0;
+	float buffer_length_seconds = 0.1f;
+	bool buffer_initialized = false;
+
+protected:
+	static void _bind_methods();
+
+public:
+	virtual Ref<AudioEffectInstance> instance() override;
+
+	void set_buffer_length(float p_buffer_length_seconds);
+	float get_buffer_length();
+
+	bool can_get_buffer(int p_frames) const;
+	PackedVector2Array get_buffer(int p_len);
+	void clear_buffer();
+
+	int get_frames_available() const;
+	int64_t get_discarded_frames() const;
+	int get_buffer_length_frames() const;
+	int64_t get_pushed_frames() const;
+};
+
+#endif // AUDIO_EFFECT_CAPTURE_H

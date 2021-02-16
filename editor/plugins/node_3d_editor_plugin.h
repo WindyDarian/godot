@@ -463,6 +463,8 @@ private:
 	bool can_drop_data_fw(const Point2 &p_point, const Variant &p_data, Control *p_from) const;
 	void drop_data_fw(const Point2 &p_point, const Variant &p_data, Control *p_from);
 
+	void _project_settings_changed();
+
 protected:
 	void _notification(int p_what);
 	static void _bind_methods();
@@ -590,7 +592,6 @@ private:
 	/////
 
 	ToolMode tool_mode;
-	bool orthogonal;
 
 	RenderingServer::ScenarioDebugMode scenario_debug;
 
@@ -623,6 +624,7 @@ private:
 	RID cursor_mesh;
 	RID cursor_instance;
 	Ref<StandardMaterial3D> indicator_mat;
+	Ref<ShaderMaterial> grid_mat[3];
 	Ref<StandardMaterial3D> cursor_material;
 
 	// Scene drag and drop support

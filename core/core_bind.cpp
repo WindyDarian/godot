@@ -86,9 +86,9 @@ RES _ResourceLoader::load_threaded_get(const String &p_path) {
 	return res;
 }
 
-RES _ResourceLoader::load(const String &p_path, const String &p_type_hint, bool p_no_cache) {
+RES _ResourceLoader::load(const String &p_path, const String &p_type_hint, CacheMode p_cache_mode) {
 	Error err = OK;
-	RES ret = ResourceLoader::load(p_path, p_type_hint, p_no_cache, &err);
+	RES ret = ResourceLoader::load(p_path, p_type_hint, ResourceFormatLoader::CacheMode(p_cache_mode), &err);
 
 	ERR_FAIL_COND_V_MSG(err != OK, ret, "Error loading resource: '" + p_path + "'.");
 	return ret;
@@ -135,7 +135,7 @@ void _ResourceLoader::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("load_threaded_get_status", "path", "progress"), &_ResourceLoader::load_threaded_get_status, DEFVAL(Array()));
 	ClassDB::bind_method(D_METHOD("load_threaded_get", "path"), &_ResourceLoader::load_threaded_get);
 
-	ClassDB::bind_method(D_METHOD("load", "path", "type_hint", "no_cache"), &_ResourceLoader::load, DEFVAL(""), DEFVAL(false));
+	ClassDB::bind_method(D_METHOD("load", "path", "type_hint", "no_cache"), &_ResourceLoader::load, DEFVAL(""), DEFVAL(CACHE_MODE_REUSE));
 	ClassDB::bind_method(D_METHOD("get_recognized_extensions_for_type", "type"), &_ResourceLoader::get_recognized_extensions_for_type);
 	ClassDB::bind_method(D_METHOD("set_abort_on_missing_resources", "abort"), &_ResourceLoader::set_abort_on_missing_resources);
 	ClassDB::bind_method(D_METHOD("get_dependencies", "path"), &_ResourceLoader::get_dependencies);
@@ -146,6 +146,10 @@ void _ResourceLoader::_bind_methods() {
 	BIND_ENUM_CONSTANT(THREAD_LOAD_IN_PROGRESS);
 	BIND_ENUM_CONSTANT(THREAD_LOAD_FAILED);
 	BIND_ENUM_CONSTANT(THREAD_LOAD_LOADED);
+
+	BIND_ENUM_CONSTANT(CACHE_MODE_IGNORE);
+	BIND_ENUM_CONSTANT(CACHE_MODE_REUSE);
+	BIND_ENUM_CONSTANT(CACHE_MODE_REPLACE);
 }
 
 ////// _ResourceSaver //////
@@ -1250,6 +1254,11 @@ Error _File::open(const String &p_path, ModeFlags p_mode_flags) {
 	return err;
 }
 
+void _File::flush() {
+	ERR_FAIL_COND_MSG(!f, "File must be opened before flushing.");
+	f->flush();
+}
+
 void _File::close() {
 	if (f) {
 		memdelete(f);
@@ -1543,6 +1552,7 @@ void _File::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("open_compressed", "path", "mode_flags", "compression_mode"), &_File::open_compressed, DEFVAL(0));
 
 	ClassDB::bind_method(D_METHOD("open", "path", "flags"), &_File::open);
+	ClassDB::bind_method(D_METHOD("flush"), &_File::flush);
 	ClassDB::bind_method(D_METHOD("close"), &_File::close);
 	ClassDB::bind_method(D_METHOD("get_path"), &_File::get_path);
 	ClassDB::bind_method(D_METHOD("get_path_absolute"), &_File::get_path_absolute);
@@ -1995,24 +2005,13 @@ Error _Thread::start(Object *p_instance, const StringName &p_method, const Varia
 
 	Thread::Settings s;
 	s.priority = (Thread::Priority)p_priority;
-	thread = Thread::create(_start_func, ud, s);
-	if (!thread) {
-		active = false;
-		target_method = StringName();
-		target_instance = nullptr;
-		userdata = Variant();
-		return ERR_CANT_CREATE;
-	}
+	thread.start(_start_func, ud, s);
 
 	return OK;
 }
 
 String _Thread::get_id() const {
-	if (!thread) {
-		return String();
-	}
-
-	return itos(thread->get_id());
+	return itos(thread.get_id());
 }
 
 bool _Thread::is_active() const {
@@ -2020,18 +2019,13 @@ bool _Thread::is_active() const {
 }
 
 Variant _Thread::wait_to_finish() {
-	ERR_FAIL_COND_V_MSG(!thread, Variant(), "Thread must exist to wait for its completion.");
 	ERR_FAIL_COND_V_MSG(!active, Variant(), "Thread must be active to wait for its completion.");
-	Thread::wait_to_finish(thread);
+	thread.wait_to_finish();
 	Variant r = ret;
 	active = false;
 	target_method = StringName();
 	target_instance = nullptr;
 	userdata = Variant();
-	if (thread) {
-		memdelete(thread);
-	}
-	thread = nullptr;
 
 	return r;
 }
@@ -2045,10 +2039,6 @@ void _Thread::_bind_methods() {
 	BIND_ENUM_CONSTANT(PRIORITY_LOW);
 	BIND_ENUM_CONSTANT(PRIORITY_NORMAL);
 	BIND_ENUM_CONSTANT(PRIORITY_HIGH);
-}
-
-_Thread::~_Thread() {
-	ERR_FAIL_COND_MSG(active, "Reference to a Thread object was lost while the thread is still running...");
 }
 
 ////// _ClassDB //////

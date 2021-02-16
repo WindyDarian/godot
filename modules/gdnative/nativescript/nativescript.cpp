@@ -1196,13 +1196,6 @@ void NativeScriptLanguage::_unload_stuff(bool p_reload) {
 
 NativeScriptLanguage::NativeScriptLanguage() {
 	NativeScriptLanguage::singleton = this;
-#ifndef NO_THREADS
-	has_objects_to_register = false;
-#endif
-
-#ifdef DEBUG_ENABLED
-	profiling = false;
-#endif
 
 	_init_call_type = "nativescript_init";
 	_init_call_name = "nativescript_init";
@@ -1735,7 +1728,7 @@ void NativeScriptLanguage::unregister_script(NativeScript *script) {
 			library_script_users.erase(S);
 
 			Map<String, Ref<GDNative>>::Element *G = library_gdnatives.find(script->lib_path);
-			if (G) {
+			if (G && G->get()->get_library()->is_reloadable()) {
 				G->get()->terminate();
 				library_gdnatives.erase(G);
 			}
@@ -1947,7 +1940,7 @@ void NativeReloadNode::_notification(int p_what) {
 #endif
 }
 
-RES ResourceFormatLoaderNativeScript::load(const String &p_path, const String &p_original_path, Error *r_error, bool p_use_sub_threads, float *r_progress, bool p_no_cache) {
+RES ResourceFormatLoaderNativeScript::load(const String &p_path, const String &p_original_path, Error *r_error, bool p_use_sub_threads, float *r_progress, CacheMode p_no_cache) {
 	return ResourceFormatLoaderText::singleton->load(p_path, p_original_path, r_error);
 }
 

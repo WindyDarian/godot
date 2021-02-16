@@ -1,5 +1,5 @@
 /*************************************************************************/
-/*  thread_dummy.h                                                       */
+/*  variant_struct.h                                                     */
 /*************************************************************************/
 /*                       This file is part of:                           */
 /*                           GODOT ENGINE                                */
@@ -28,20 +28,26 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
 
-#ifndef THREAD_DUMMY_H
-#define THREAD_DUMMY_H
+#ifndef GODOT_VARIANT_STRUCT_H
+#define GODOT_VARIANT_STRUCT_H
 
-#include "core/os/rw_lock.h"
-#include "core/os/semaphore.h"
-#include "core/os/thread.h"
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-class ThreadDummy : public Thread {
-	static Thread *create(ThreadCreateCallback p_callback, void *p_user, const Settings &p_settings = Settings());
+#include <gdnative/math_defs.h>
 
-public:
-	virtual ID get_id() const { return 0; };
+#define GODOT_VARIANT_SIZE (sizeof(godot_real_t) * 4 + sizeof(int64_t))
 
-	static void make_default();
-};
+#ifndef GODOT_CORE_API_GODOT_VARIANT_TYPE_DEFINED
+#define GODOT_CORE_API_GODOT_VARIANT_TYPE_DEFINED
+typedef struct {
+	uint8_t _dont_touch_that[GODOT_VARIANT_SIZE];
+} godot_variant;
+#endif
 
-#endif // THREAD_DUMMY_H
+#ifdef __cplusplus
+}
+#endif
+
+#endif

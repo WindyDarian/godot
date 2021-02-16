@@ -337,6 +337,10 @@ void EditorSettings::_load_defaults(Ref<ConfigFile> p_extra_config) {
 	if (DisplayServer::get_singleton()->screen_get_dpi(screen) >= 192 && DisplayServer::get_singleton()->screen_get_size(screen).y >= 1400) {
 		// hiDPI display.
 		scale = 2.0;
+	} else if (DisplayServer::get_singleton()->screen_get_size(screen).y >= 1700) {
+		// Likely a hiDPI display, but we aren't certain due to the returned DPI.
+		// Use an intermediate scale to handle this situation.
+		scale = 1.5;
 	} else if (DisplayServer::get_singleton()->screen_get_size(screen).y <= 800) {
 		// Small loDPI display. Use a smaller display scale so that editor elements fit more easily.
 		// Icons won't look great, but this is better than having editor elements overflow from its window.
@@ -392,6 +396,8 @@ void EditorSettings::_load_defaults(Ref<ConfigFile> p_extra_config) {
 	hints["interface/theme/accent_color"] = PropertyInfo(Variant::COLOR, "interface/theme/accent_color", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_DEFAULT);
 	_initial_set("interface/theme/contrast", 0.25);
 	hints["interface/theme/contrast"] = PropertyInfo(Variant::FLOAT, "interface/theme/contrast", PROPERTY_HINT_RANGE, "0.01, 1, 0.01");
+	_initial_set("interface/theme/icon_saturation", 1.0);
+	hints["interface/theme/icon_saturation"] = PropertyInfo(Variant::FLOAT, "interface/theme/icon_saturation", PROPERTY_HINT_RANGE, "0,2,0.01", PROPERTY_USAGE_DEFAULT);
 	_initial_set("interface/theme/relationship_line_opacity", 0.1);
 	hints["interface/theme/relationship_line_opacity"] = PropertyInfo(Variant::FLOAT, "interface/theme/relationship_line_opacity", PROPERTY_HINT_RANGE, "0.00, 1, 0.01");
 	_initial_set("interface/theme/highlight_tabs", false);
@@ -441,7 +447,9 @@ void EditorSettings::_load_defaults(Ref<ConfigFile> p_extra_config) {
 	_initial_set("docks/filesystem/always_show_folders", true);
 
 	// Property editor
-	_initial_set("docks/property_editor/auto_refresh_interval", 0.3);
+	_initial_set("docks/property_editor/auto_refresh_interval", 0.2); //update 5 times per second by default
+	_initial_set("docks/property_editor/subresource_hue_tint", 0.75);
+	hints["docks/property_editor/subresource_hue_tint"] = PropertyInfo(Variant::FLOAT, "docks/property_editor/subresource_hue_tint", PROPERTY_HINT_RANGE, "0,1,0.01", PROPERTY_USAGE_DEFAULT);
 
 	/* Text editor */
 
@@ -959,27 +967,16 @@ void EditorSettings::create() {
 
 		_create_script_templates(dir->get_current_dir().plus_file("script_templates"));
 
-		if (dir->change_dir("projects") != OK) {
-			dir->make_dir("projects");
-		} else {
-			dir->change_dir("..");
+		{
+			// Validate/create project-specific editor settings dir.
+			DirAccessRef da = DirAccess::create(DirAccess::ACCESS_RESOURCES);
+			if (da->change_dir(EditorSettings::PROJECT_EDITOR_SETTINGS_PATH) != OK) {
+				Error err = da->make_dir_recursive(EditorSettings::PROJECT_EDITOR_SETTINGS_PATH);
+				if (err || da->change_dir(EditorSettings::PROJECT_EDITOR_SETTINGS_PATH) != OK) {
+					ERR_FAIL_MSG("Failed to create '" + EditorSettings::PROJECT_EDITOR_SETTINGS_PATH + "' folder.");
+				}
+			}
 		}
-
-		// Validate/create project-specific config dir
-
-		dir->change_dir("projects");
-		String project_config_dir = ProjectSettings::get_singleton()->get_resource_path();
-		if (project_config_dir.ends_with("/")) {
-			project_config_dir = config_path.substr(0, project_config_dir.size() - 1);
-		}
-		project_config_dir = project_config_dir.get_file() + "-" + project_config_dir.md5_text();
-
-		if (dir->change_dir(project_config_dir) != OK) {
-			dir->make_dir(project_config_dir);
-		} else {
-			dir->change_dir("..");
-		}
-		dir->change_dir("..");
 
 		// Validate editor config file
 
@@ -1001,7 +998,6 @@ void EditorSettings::create() {
 
 		singleton->save_changed_setting = true;
 		singleton->config_file_path = config_file_path;
-		singleton->project_config_dir = project_config_dir;
 		singleton->settings_dir = config_dir;
 		singleton->data_dir = data_dir;
 		singleton->cache_dir = cache_dir;
@@ -1277,7 +1273,7 @@ String EditorSettings::get_settings_dir() const {
 }
 
 String EditorSettings::get_project_settings_dir() const {
-	return get_settings_dir().plus_file("projects").plus_file(project_config_dir);
+	return EditorSettings::PROJECT_EDITOR_SETTINGS_PATH;
 }
 
 String EditorSettings::get_text_editor_themes_dir() const {
