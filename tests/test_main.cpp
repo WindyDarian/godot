@@ -45,6 +45,7 @@
 #include "test_expression.h"
 #include "test_file_access.h"
 #include "test_geometry_2d.h"
+#include "test_geometry_3d.h"
 #include "test_gradient.h"
 #include "test_gui.h"
 #include "test_image.h"
@@ -72,6 +73,7 @@
 #include "test_text_server.h"
 #include "test_validate_testing.h"
 #include "test_variant.h"
+#include "test_xml_parser.h"
 
 #include "modules/modules_tests.gen.h"
 
