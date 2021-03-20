@@ -233,14 +233,7 @@ public:
 	FUNC2(shader_set_code, RID, const String &)
 	FUNC1RC(String, shader_get_code, RID)
 
-	//FUNC2C(shader_get_param_list, RID, List<PropertyInfo> *)
-	// workaround for https://github.com/godotengine/godot/issues/46053
-	virtual void shader_get_param_list(RID p1, List<PropertyInfo>*p2) const override {
-		if (Thread::get_caller_id() == server_thread) {
-			command_queue.flush_if_pending();
-		}
-		server_name->shader_get_param_list(p1, p2);
-	}
+	FUNC2SC(shader_get_param_list, RID, List<PropertyInfo> *)
 
 	FUNC3(shader_set_default_texture_param, RID, const StringName &, RID)
 	FUNC2RC(RID, shader_get_default_texture_param, RID, const StringName &)
