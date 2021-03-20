@@ -50,7 +50,7 @@
 			<argument index="0" name="x" type="float">
 			</argument>
 			<description>
-				Returns the arc cosine of [code]x[/code] in radians. Use to get the angle of cosine [code]x[/code].
+				Returns the arc cosine of [code]x[/code] in radians. Use to get the angle of cosine [code]x[/code]. [code]x[/code] must be between [code]-1.0[/code] and [code]1.0[/code] (inclusive), otherwise, [method acos] will return [constant @GDScript.NAN].
 				[codeblock]
 				# c is 0.523599 or 30 degrees if converted with rad2deg(c)
 				c = acos(0.866025)
@@ -63,7 +63,7 @@
 			<argument index="0" name="x" type="float">
 			</argument>
 			<description>
-				Returns the arc sine of [code]x[/code] in radians. Use to get the angle of sine [code]x[/code].
+				Returns the arc sine of [code]x[/code] in radians. Use to get the angle of sine [code]x[/code]. [code]x[/code] must be between [code]-1.0[/code] and [code]1.0[/code] (inclusive), otherwise, [method asin] will return [constant @GDScript.NAN].
 				[codeblock]
 				# s is 0.523599 or 30 degrees if converted with rad2deg(s)
 				s = asin(0.5)
@@ -777,7 +777,7 @@
 			<return type="int">
 			</return>
 			<description>
-				Returns a random unsigned 32 bit integer. Use remainder to obtain a random value in the interval [code][0, N - 1][/code] (where N is smaller than 2^32).
+				Returns a random unsigned 32-bit integer. Use remainder to obtain a random value in the interval [code][0, N - 1][/code] (where N is smaller than 2^32).
 				[codeblock]
 				randi()           # Returns random integer between 0 and 2^32 - 1
 				randi() % 20      # Returns random integer between 0 and 19
@@ -2529,6 +2529,8 @@
 		</constant>
 		<constant name="METHOD_FLAG_FROM_SCRIPT" value="64" enum="MethodFlags">
 			Deprecated method flag, unused.
+		</constant>
+		<constant name="METHOD_FLAG_STATIC" value="256" enum="MethodFlags">
 		</constant>
 		<constant name="METHOD_FLAGS_DEFAULT" value="1" enum="MethodFlags">
 			Default method flags.
