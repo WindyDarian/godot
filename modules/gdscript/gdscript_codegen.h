@@ -45,13 +45,9 @@ public:
 			CLASS,
 			MEMBER,
 			CONSTANT,
-			CLASS_CONSTANT,
-			LOCAL_CONSTANT,
 			LOCAL_VARIABLE,
 			FUNCTION_PARAMETER,
 			TEMPORARY,
-			GLOBAL,
-			NAMED_GLOBAL,
 			NIL,
 		};
 		AddressMode mode = NIL;
@@ -123,6 +119,7 @@ public:
 	virtual void write_assign_true(const Address &p_target) = 0;
 	virtual void write_assign_false(const Address &p_target) = 0;
 	virtual void write_assign_default_parameter(const Address &dst, const Address &src) = 0;
+	virtual void write_store_named_global(const Address &p_dst, const StringName &p_global) = 0;
 	virtual void write_cast(const Address &p_target, const Address &p_source, const GDScriptDataType &p_type) = 0;
 	virtual void write_call(const Address &p_target, const Address &p_base, const StringName &p_function_name, const Vector<Address> &p_arguments) = 0;
 	virtual void write_super_call(const Address &p_target, const StringName &p_function_name, const Vector<Address> &p_arguments) = 0;
@@ -137,6 +134,7 @@ public:
 	virtual void write_call_script_function(const Address &p_target, const Address &p_base, const StringName &p_function_name, const Vector<Address> &p_arguments) = 0;
 	virtual void write_construct(const Address &p_target, Variant::Type p_type, const Vector<Address> &p_arguments) = 0;
 	virtual void write_construct_array(const Address &p_target, const Vector<Address> &p_arguments) = 0;
+	virtual void write_construct_typed_array(const Address &p_target, const GDScriptDataType &p_element_type, const Vector<Address> &p_arguments) = 0;
 	virtual void write_construct_dictionary(const Address &p_target, const Vector<Address> &p_arguments) = 0;
 	virtual void write_await(const Address &p_target, const Address &p_operand) = 0;
 	virtual void write_if(const Address &p_condition) = 0;

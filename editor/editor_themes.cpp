@@ -91,7 +91,7 @@ static Ref<Texture2D> flip_icon(Ref<Texture2D> p_texture, bool p_flip_y = false,
 	}
 
 	Ref<ImageTexture> texture(memnew(ImageTexture));
-	Ref<Image> img = p_texture->get_data();
+	Ref<Image> img = p_texture->get_image();
 	img = img->duplicate();
 
 	if (p_flip_y) {
@@ -561,7 +561,9 @@ Ref<Theme> create_editor_theme(const Ref<Theme> p_theme) {
 	style_tab_disabled->set_border_color(disabled_color);
 
 	// Editor background
-	theme->set_stylebox("Background", "EditorStyles", make_flat_stylebox(background_color, default_margin_size, default_margin_size, default_margin_size, default_margin_size));
+	Color background_color_opaque = background_color;
+	background_color_opaque.a = 1.0;
+	theme->set_stylebox("Background", "EditorStyles", make_flat_stylebox(background_color_opaque, default_margin_size, default_margin_size, default_margin_size, default_margin_size));
 
 	// Focus
 	Ref<StyleBoxFlat> style_focus = style_default->duplicate();
@@ -1260,6 +1262,8 @@ Ref<Theme> create_editor_theme(const Ref<Theme> p_theme) {
 	// FileDialog
 	theme->set_icon("folder", "FileDialog", theme->get_icon("Folder", "EditorIcons"));
 	theme->set_icon("parent_folder", "FileDialog", theme->get_icon("ArrowUp", "EditorIcons"));
+	theme->set_icon("back_folder", "FileDialog", theme->get_icon("Back", "EditorIcons"));
+	theme->set_icon("forward_folder", "FileDialog", theme->get_icon("Forward", "EditorIcons"));
 	theme->set_icon("reload", "FileDialog", theme->get_icon("Reload", "EditorIcons"));
 	theme->set_icon("toggle_hidden", "FileDialog", theme->get_icon("GuiVisibilityVisible", "EditorIcons"));
 	// Use a different color for folder icons to make them easier to distinguish from files.
@@ -1278,6 +1282,7 @@ Ref<Theme> create_editor_theme(const Ref<Theme> p_theme) {
 	theme->set_icon("preset_bg", "ColorPicker", theme->get_icon("GuiMiniCheckerboard", "EditorIcons"));
 	theme->set_icon("overbright_indicator", "ColorPicker", theme->get_icon("OverbrightIndicator", "EditorIcons"));
 	theme->set_icon("bar_arrow", "ColorPicker", theme->get_icon("ColorPickerBarArrow", "EditorIcons"));
+	theme->set_icon("picker_cursor", "ColorPicker", theme->get_icon("PickerCursor", "EditorIcons"));
 
 	theme->set_icon("bg", "ColorPickerButton", theme->get_icon("GuiMiniCheckerboard", "EditorIcons"));
 
