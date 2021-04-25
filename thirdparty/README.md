@@ -186,17 +186,17 @@ Files extracted from upstream source:
 ## icu4c
 
 - Upstream: https://github.com/unicode-org/icu
-- Version: 68.2 (84e1f26ea77152936e70d53178a816dbfbf69989, 2020)
+- Version: 69.1 (0e7b4428866f3133b4abba2d932ee3faa708db1d, 2021)
 - License: Unicode
 
 Files extracted from upstream source:
 
 - the `common` folder
-- `APIChangeReport.md`, `LICENSE`
+- `LICENSE`
 
 Files generated from upstream source:
 
-- the `icudt68l.dat` built with the provided `godot_data.json` config file (see
+- the `icudt69l.dat` built with the provided `godot_data.json` config file (see
   https://github.com/unicode-org/icu/blob/master/docs/userguide/icu_data/buildtool.md
   for instructions)
 
@@ -344,7 +344,7 @@ File extracted from upstream release tarball:
 ## meshoptimizer
 
 - Upstream: https://github.com/zeux/meshoptimizer
-- Version: git (e3f53f66e7a35b9b8764bee478589d79e34fa698, 2021)
+- Version: 0.16 (95893c0566646434dd675b708d293fcb2d526d08, 2021)
 - License: MIT
 
 Files extracted from upstream repository:
