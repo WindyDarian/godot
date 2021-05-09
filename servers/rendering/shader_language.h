@@ -748,6 +748,7 @@ public:
 	static uint32_t get_type_size(DataType p_type);
 
 	static void get_keyword_list(List<String> *r_keywords);
+	static bool is_control_flow_keyword(String p_keyword);
 	static void get_builtin_funcs(List<String> *r_keywords);
 
 	struct BuiltInInfo {
@@ -891,6 +892,7 @@ private:
 	bool _propagate_function_call_sampler_builtin_reference(StringName p_name, int p_argument, const StringName &p_builtin);
 	bool _validate_varying_assign(ShaderNode::Varying &p_varying, String *r_message);
 	bool _validate_varying_using(ShaderNode::Varying &p_varying, String *r_message);
+	bool _check_node_constness(const Node *p_node) const;
 
 	Node *_parse_expression(BlockNode *p_block, const FunctionInfo &p_function_info);
 	Node *_parse_array_constructor(BlockNode *p_block, const FunctionInfo &p_function_info, DataType p_type, const StringName &p_struct_name, int p_array_size);

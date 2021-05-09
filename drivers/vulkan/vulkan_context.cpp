@@ -352,8 +352,6 @@ Error VulkanContext::_initialize_extensions() {
 	return OK;
 }
 
-typedef void(VKAPI_PTR *_vkGetPhysicalDeviceProperties2)(VkPhysicalDevice, VkPhysicalDeviceProperties2 *);
-
 uint32_t VulkanContext::SubgroupCapabilities::supported_stages_flags_rd() const {
 	uint32_t flags = 0;
 
@@ -496,20 +494,70 @@ String VulkanContext::SubgroupCapabilities::supported_operations_desc() const {
 }
 
 Error VulkanContext::_check_capabilities() {
-	// check subgroups
+	// https://www.khronos.org/registry/vulkan/specs/1.2-extensions/man/html/VK_KHR_multiview.html
 	// https://www.khronos.org/blog/vulkan-subgroup-tutorial
+
 	// for Vulkan 1.0 vkGetPhysicalDeviceProperties2 is not available, including not in the loader we compile against on Android.
-	_vkGetPhysicalDeviceProperties2 func = (_vkGetPhysicalDeviceProperties2)vkGetInstanceProcAddr(inst, "vkGetPhysicalDeviceProperties2");
-	if (func != nullptr) {
+
+	// so we check if the functions are accessible by getting their function pointers and skipping if not
+	// (note that the desktop loader does a better job here but the android loader doesn't)
+
+	// assume not supported until proven otherwise
+	multiview_capabilities.is_supported = false;
+	multiview_capabilities.max_view_count = 0;
+	multiview_capabilities.max_instance_count = 0;
+	subgroup_capabilities.size = 0;
+	subgroup_capabilities.supportedStages = 0;
+	subgroup_capabilities.supportedOperations = 0;
+	subgroup_capabilities.quadOperationsInAllStages = false;
+
+	// check for extended features
+	PFN_vkGetPhysicalDeviceFeatures2 device_features_func = (PFN_vkGetPhysicalDeviceFeatures2)vkGetInstanceProcAddr(inst, "vkGetPhysicalDeviceFeatures2");
+	if (device_features_func == nullptr) {
+		// In Vulkan 1.0 might be accessible under its original extension name
+		device_features_func = (PFN_vkGetPhysicalDeviceFeatures2)vkGetInstanceProcAddr(inst, "vkGetPhysicalDeviceFeatures2KHR");
+	}
+	if (device_features_func != nullptr) {
+		// check our extended features
+		VkPhysicalDeviceMultiviewFeatures multiview_features;
+		multiview_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_FEATURES;
+		multiview_features.pNext = NULL;
+
+		VkPhysicalDeviceFeatures2 device_features;
+		device_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+		device_features.pNext = &multiview_features;
+
+		device_features_func(gpu, &device_features);
+		multiview_capabilities.is_supported = multiview_features.multiview;
+		// For now we ignore if multiview is available in geometry and tesselation as we do not currently support those
+	}
+
+	// check extended properties
+	PFN_vkGetPhysicalDeviceProperties2 device_properties_func = (PFN_vkGetPhysicalDeviceProperties2)vkGetInstanceProcAddr(inst, "vkGetPhysicalDeviceProperties2");
+	if (device_properties_func == nullptr) {
+		// In Vulkan 1.0 might be accessible under its original extension name
+		device_properties_func = (PFN_vkGetPhysicalDeviceProperties2)vkGetInstanceProcAddr(inst, "vkGetPhysicalDeviceProperties2KHR");
+	}
+	if (device_properties_func != nullptr) {
+		VkPhysicalDeviceMultiviewProperties multiviewProperties;
 		VkPhysicalDeviceSubgroupProperties subgroupProperties;
+		VkPhysicalDeviceProperties2 physicalDeviceProperties;
+
 		subgroupProperties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_PROPERTIES;
 		subgroupProperties.pNext = nullptr;
 
-		VkPhysicalDeviceProperties2 physicalDeviceProperties;
 		physicalDeviceProperties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
-		physicalDeviceProperties.pNext = &subgroupProperties;
 
-		func(gpu, &physicalDeviceProperties);
+		if (multiview_capabilities.is_supported) {
+			multiviewProperties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_PROPERTIES;
+			multiviewProperties.pNext = &subgroupProperties;
+
+			physicalDeviceProperties.pNext = &multiviewProperties;
+		} else {
+			physicalDeviceProperties.pNext = &subgroupProperties;
+		}
+
+		device_properties_func(gpu, &physicalDeviceProperties);
 
 		subgroup_capabilities.size = subgroupProperties.subgroupSize;
 		subgroup_capabilities.supportedStages = subgroupProperties.supportedStages;
@@ -519,18 +567,30 @@ Error VulkanContext::_check_capabilities() {
 		// - supportedOperations has VK_SUBGROUP_FEATURE_QUAD_BIT
 		subgroup_capabilities.quadOperationsInAllStages = subgroupProperties.quadOperationsInAllStages;
 
-		// only output this when debugging?
-		print_line("- Vulkan subgroup size " + itos(subgroup_capabilities.size));
-		print_line("- Vulkan subgroup stages " + subgroup_capabilities.supported_stages_desc());
-		print_line("- Vulkan subgroup supported ops " + subgroup_capabilities.supported_operations_desc());
+		if (multiview_capabilities.is_supported) {
+			multiview_capabilities.max_view_count = multiviewProperties.maxMultiviewViewCount;
+			multiview_capabilities.max_instance_count = multiviewProperties.maxMultiviewInstanceIndex;
+
+#ifdef DEBUG_ENABLED
+			print_line("- Vulkan multiview supported:");
+			print_line("  max views: " + itos(multiview_capabilities.max_view_count));
+			print_line("  max instances: " + itos(multiview_capabilities.max_instance_count));
+		} else {
+			print_line("- Vulkan multiview not supported");
+#endif
+		}
+
+#ifdef DEBUG_ENABLED
+		print_line("- Vulkan subgroup:");
+		print_line("  size: " + itos(subgroup_capabilities.size));
+		print_line("  stages: " + subgroup_capabilities.supported_stages_desc());
+		print_line("  supported ops: " + subgroup_capabilities.supported_operations_desc());
 		if (subgroup_capabilities.quadOperationsInAllStages) {
-			print_line("- Vulkan subgroup quad operations in all stages");
+			print_line("  quad operations in all stages");
 		}
 	} else {
-		subgroup_capabilities.size = 0;
-		subgroup_capabilities.supportedStages = 0;
-		subgroup_capabilities.supportedOperations = 0;
-		subgroup_capabilities.quadOperationsInAllStages = false;
+		print_line("- Couldn't call vkGetPhysicalDeviceProperties2");
+#endif
 	}
 
 	return OK;
@@ -816,7 +876,7 @@ Error VulkanContext::_create_physical_device() {
 		}
 	}
 
-	/* Call with NULL data to get count */
+	/* Call with nullptr data to get count */
 	vkGetPhysicalDeviceQueueFamilyProperties(gpu, &queue_family_count, nullptr);
 	ERR_FAIL_COND_V(queue_family_count == 0, ERR_CANT_CREATE);
 
@@ -1596,13 +1656,13 @@ Error VulkanContext::prepare_buffers() {
 			if (err == VK_ERROR_OUT_OF_DATE_KHR) {
 				// swapchain is out of date (e.g. the window was resized) and
 				// must be recreated:
-				print_line("early out of data");
+				print_verbose("Vulkan: Early out of date swapchain, recreating.");
 				//resize_notify();
 				_update_swap_chain(w);
 			} else if (err == VK_SUBOPTIMAL_KHR) {
-				print_line("early suboptimal");
 				// swapchain is not as optimal as it could be, but the platform's
 				// presentation engine will still present the image correctly.
+				print_verbose("Vulkan: Early suboptimal swapchain.");
 				break;
 			} else {
 				ERR_FAIL_COND_V(err, ERR_CANT_CREATE);
@@ -1810,12 +1870,12 @@ Error VulkanContext::swap_buffers() {
 	if (err == VK_ERROR_OUT_OF_DATE_KHR) {
 		// swapchain is out of date (e.g. the window was resized) and
 		// must be recreated:
-		print_line("out of date");
+		print_verbose("Vulkan: Swapchain is out of date, recreating.");
 		resize_notify();
 	} else if (err == VK_SUBOPTIMAL_KHR) {
 		// swapchain is not as optimal as it could be, but the platform's
 		// presentation engine will still present the image correctly.
-		print_line("suboptimal");
+		print_verbose("Vulkan: Swapchain is suboptimal.");
 	} else {
 		ERR_FAIL_COND_V(err, ERR_CANT_CREATE);
 	}
@@ -1911,13 +1971,13 @@ void VulkanContext::local_device_push_command_buffers(RID p_local_device, const 
 
 	VkResult err = vkQueueSubmit(ld->queue, 1, &submit_info, VK_NULL_HANDLE);
 	if (err == VK_ERROR_OUT_OF_HOST_MEMORY) {
-		print_line("out of host memory");
+		print_line("Vulkan: Out of host memory!");
 	}
 	if (err == VK_ERROR_OUT_OF_DEVICE_MEMORY) {
-		print_line("out of device memory");
+		print_line("Vulkan: Out of device memory!");
 	}
 	if (err == VK_ERROR_DEVICE_LOST) {
-		print_line("device lost");
+		print_line("Vulkan: Device lost!");
 	}
 	ERR_FAIL_COND(err);
 

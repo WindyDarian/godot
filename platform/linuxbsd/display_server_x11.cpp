@@ -2606,7 +2606,6 @@ void DisplayServerX11::_window_changed(XEvent *event) {
 	}
 #endif
 
-	print_line("DisplayServer::_window_changed: " + itos(window_id) + " rect: " + new_rect);
 	if (!wd.rect_changed_callback.is_null()) {
 		Rect2i r = new_rect;
 
@@ -3162,14 +3161,14 @@ void DisplayServerX11::process_events() {
 							last_click_ms = 0;
 							last_click_pos = Point2i(-100, -100);
 							last_click_button_index = -1;
-							mb->set_doubleclick(true);
+							mb->set_double_click(true);
 						}
 
 					} else if (mb->get_button_index() < 4 || mb->get_button_index() > 7) {
 						last_click_button_index = mb->get_button_index();
 					}
 
-					if (!mb->is_doubleclick()) {
+					if (!mb->is_double_click()) {
 						last_click_ms += diff;
 						last_click_pos = Point2i(event.xbutton.x, event.xbutton.y);
 					}
@@ -3833,8 +3832,6 @@ DisplayServerX11::WindowID DisplayServerX11::_create_window(WindowMode p_mode, u
 		wd.position.y = xwa.y;
 		wd.size.width = xwa.width;
 		wd.size.height = xwa.height;
-
-		print_line("DisplayServer::_create_window " + itos(id) + " want rect: " + p_rect + " got rect " + Rect2i(xwa.x, xwa.y, xwa.width, xwa.height));
 	}
 
 	//set cursor

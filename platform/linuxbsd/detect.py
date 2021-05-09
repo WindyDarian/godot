@@ -325,6 +325,10 @@ def configure(env):
     if not env["builtin_pcre2"]:
         env.ParseConfig("pkg-config libpcre2-32 --cflags --libs")
 
+    if not env["builtin_embree"]:
+        # No pkgconfig file so far, hardcode expected lib name.
+        env.Append(LIBS=["embree3"])
+
     ## Flags
 
     if os.system("pkg-config --exists alsa") == 0:  # 0 means found
@@ -408,10 +412,7 @@ def configure(env):
 
     # Link those statically for portability
     if env["use_static_cpp"]:
-        # Workaround for GH-31743, Ubuntu 18.04 i386 crashes when it's used.
-        # That doesn't make any sense but it's likely a Ubuntu bug?
-        if is64 or env["bits"] == "64":
-            env.Append(LINKFLAGS=["-static-libgcc", "-static-libstdc++"])
+        env.Append(LINKFLAGS=["-static-libgcc", "-static-libstdc++"])
         if env["use_llvm"]:
             env["LINKCOM"] = env["LINKCOM"] + " -l:libatomic.a"
 

@@ -38,7 +38,7 @@
 #include "scene/main/window.h"
 #include "scene/resources/font.h"
 
-///////////////////// NULL /////////////////////////
+///////////////////// Nil /////////////////////////
 
 void EditorPropertyNil::update_property() {
 }
@@ -929,7 +929,7 @@ EditorPropertyFloat::EditorPropertyFloat() {
 void EditorPropertyEasing::_drag_easing(const Ref<InputEvent> &p_ev) {
 	const Ref<InputEventMouseButton> mb = p_ev;
 	if (mb.is_valid()) {
-		if (mb->is_doubleclick() && mb->get_button_index() == MOUSE_BUTTON_LEFT) {
+		if (mb->is_double_click() && mb->get_button_index() == MOUSE_BUTTON_LEFT) {
 			_setup_spin();
 		}
 
@@ -3254,6 +3254,8 @@ EditorPropertyResource::EditorPropertyResource() {
 	preview->set_offset(SIDE_TOP, 1);
 	preview->set_offset(SIDE_BOTTOM, -1);
 	preview->set_offset(SIDE_RIGHT, -1);
+	// This is required to draw the focus outline in front of the preview, rather than behind.
+	preview->set_draw_behind_parent(true);
 	assign->add_child(preview);
 	assign->connect("gui_input", callable_mp(this, &EditorPropertyResource::_button_input));
 

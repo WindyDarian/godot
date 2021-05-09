@@ -493,6 +493,58 @@ static _FORCE_INLINE_ void vc_ptrcall(void (*method)(T *, P...), void *p_base, c
 		}                                                                                                                                                         \
 	};
 
+#define VARARG_CLASS1(m_class, m_method_name, m_method_ptr, m_arg_type)                                                                                           \
+	struct Method_##m_class##_##m_method_name {                                                                                                                   \
+		static void call(Variant *base, const Variant **p_args, int p_argcount, Variant &r_ret, const Vector<Variant> &p_defvals, Callable::CallError &r_error) { \
+			m_method_ptr(base, p_args, p_argcount, r_ret, r_error);                                                                                               \
+		}                                                                                                                                                         \
+		static void validated_call(Variant *base, const Variant **p_args, int p_argcount, Variant *r_ret) {                                                       \
+			Callable::CallError ce;                                                                                                                               \
+			m_method_ptr(base, p_args, p_argcount, *r_ret, ce);                                                                                                   \
+		}                                                                                                                                                         \
+		static void ptrcall(void *p_base, const void **p_args, void *r_ret, int p_argcount) {                                                                     \
+			LocalVector<Variant> vars;                                                                                                                            \
+			vars.resize(p_argcount);                                                                                                                              \
+			LocalVector<const Variant *> vars_ptrs;                                                                                                               \
+			vars_ptrs.resize(p_argcount);                                                                                                                         \
+			for (int i = 0; i < p_argcount; i++) {                                                                                                                \
+				vars[i] = PtrToArg<Variant>::convert(p_args[i]);                                                                                                  \
+				vars_ptrs[i] = &vars[i];                                                                                                                          \
+			}                                                                                                                                                     \
+			Variant base = PtrToArg<m_class>::convert(p_base);                                                                                                    \
+			Variant ret;                                                                                                                                          \
+			Callable::CallError ce;                                                                                                                               \
+			m_method_ptr(&base, (const Variant **)&vars_ptrs[0], p_argcount, ret, ce);                                                                            \
+		}                                                                                                                                                         \
+		static int get_argument_count() {                                                                                                                         \
+			return 1;                                                                                                                                             \
+		}                                                                                                                                                         \
+		static Variant::Type get_argument_type(int p_arg) {                                                                                                       \
+			return m_arg_type;                                                                                                                                    \
+		}                                                                                                                                                         \
+		static Variant::Type get_return_type() {                                                                                                                  \
+			return Variant::NIL;                                                                                                                                  \
+		}                                                                                                                                                         \
+		static bool has_return_type() {                                                                                                                           \
+			return false;                                                                                                                                         \
+		}                                                                                                                                                         \
+		static bool is_const() {                                                                                                                                  \
+			return true;                                                                                                                                          \
+		}                                                                                                                                                         \
+		static bool is_static() {                                                                                                                                 \
+			return false;                                                                                                                                         \
+		}                                                                                                                                                         \
+		static bool is_vararg() {                                                                                                                                 \
+			return true;                                                                                                                                          \
+		}                                                                                                                                                         \
+		static Variant::Type get_base_type() {                                                                                                                    \
+			return GetTypeInfo<m_class>::VARIANT_TYPE;                                                                                                            \
+		}                                                                                                                                                         \
+		static StringName get_name() {                                                                                                                            \
+			return #m_method_name;                                                                                                                                \
+		}                                                                                                                                                         \
+	};
+
 struct _VariantCall {
 	static String func_PackedByteArray_get_string_from_ascii(PackedByteArray *p_instance) {
 		String s;
@@ -500,7 +552,7 @@ struct _VariantCall {
 			const uint8_t *r = p_instance->ptr();
 			CharString cs;
 			cs.resize(p_instance->size() + 1);
-			copymem(cs.ptrw(), r, p_instance->size());
+			memcpy(cs.ptrw(), r, p_instance->size());
 			cs[p_instance->size()] = 0;
 
 			s = cs.get_data();
@@ -790,6 +842,27 @@ struct _VariantCall {
 	static void func_Callable_call_deferred(Variant *v, const Variant **p_args, int p_argcount, Variant &r_ret, Callable::CallError &r_error) {
 		Callable *callable = VariantGetInternalPtr<Callable>::get_ptr(v);
 		callable->call_deferred(p_args, p_argcount);
+	}
+
+	static void func_Callable_rpc(Variant *v, const Variant **p_args, int p_argcount, Variant &r_ret, Callable::CallError &r_error) {
+		Callable *callable = VariantGetInternalPtr<Callable>::get_ptr(v);
+		callable->rpc(0, p_args, p_argcount, r_error);
+	}
+
+	static void func_Callable_rpc_id(Variant *v, const Variant **p_args, int p_argcount, Variant &r_ret, Callable::CallError &r_error) {
+		if (p_argcount == 0) {
+			r_error.error = Callable::CallError::CALL_ERROR_TOO_FEW_ARGUMENTS;
+			r_error.argument = 0;
+			r_error.expected = 1;
+
+		} else if (p_args[0]->get_type() != Variant::INT) {
+			r_error.error = Callable::CallError::CALL_ERROR_INVALID_ARGUMENT;
+			r_error.argument = 0;
+			r_error.expected = Variant::INT;
+		} else {
+			Callable *callable = VariantGetInternalPtr<Callable>::get_ptr(v);
+			callable->rpc(*p_args[0], &p_args[1], p_argcount - 1, r_error);
+		}
 	}
 
 	static void func_Callable_bind(Variant *v, const Variant **p_args, int p_argcount, Variant &r_ret, Callable::CallError &r_error) {
@@ -1219,6 +1292,10 @@ Variant Variant::get_constant_value(Variant::Type p_type, const StringName &p_va
 	VARARG_CLASS(m_type, m_name, m_method, m_has_return, m_ret_type)    \
 	register_builtin_method<Method_##m_type##_##m_name>(sarray(), Vector<Variant>());
 
+#define bind_custom1(m_type, m_name, m_method, m_arg_type, m_arg_name) \
+	VARARG_CLASS1(m_type, m_name, m_method, m_arg_type)                \
+	register_builtin_method<Method_##m_type##_##m_name>(sarray(m_arg_name), Vector<Variant>());
+
 static void _register_variant_builtin_methods() {
 	_VariantCall::constant_data = memnew_arr(_VariantCall::ConstantData, Variant::VARIANT_MAX);
 	builtin_method_info = memnew_arr(BuiltinMethodMap, Variant::VARIANT_MAX);
@@ -1532,6 +1609,8 @@ static void _register_variant_builtin_methods() {
 
 	bind_custom(Callable, call, _VariantCall::func_Callable_call, true, Variant);
 	bind_custom(Callable, call_deferred, _VariantCall::func_Callable_call_deferred, false, Variant);
+	bind_custom(Callable, rpc, _VariantCall::func_Callable_rpc, false, Variant);
+	bind_custom1(Callable, rpc_id, _VariantCall::func_Callable_rpc_id, Variant::INT, "peer_id");
 	bind_custom(Callable, bind, _VariantCall::func_Callable_bind, true, Callable);
 
 	/* Signal */
@@ -1647,6 +1726,7 @@ static void _register_variant_builtin_methods() {
 	bind_method(Array, resize, sarray("size"), varray());
 	bind_method(Array, insert, sarray("position", "value"), varray());
 	bind_method(Array, remove, sarray("position"), varray());
+	bind_method(Array, fill, sarray("value"), varray());
 	bind_method(Array, erase, sarray("value"), varray());
 	bind_method(Array, front, sarray(), varray());
 	bind_method(Array, back, sarray(), varray());
@@ -1665,6 +1745,9 @@ static void _register_variant_builtin_methods() {
 	bind_method(Array, reverse, sarray(), varray());
 	bind_method(Array, duplicate, sarray("deep"), varray(false));
 	bind_method(Array, slice, sarray("begin", "end", "step", "deep"), varray(1, false));
+	bind_method(Array, filter, sarray("method"), varray());
+	bind_method(Array, map, sarray("method"), varray());
+	bind_method(Array, reduce, sarray("method", "accum"), varray(Variant()));
 	bind_method(Array, max, sarray(), varray());
 	bind_method(Array, min, sarray(), varray());
 
@@ -1677,6 +1760,7 @@ static void _register_variant_builtin_methods() {
 	bind_method(PackedByteArray, append_array, sarray("array"), varray());
 	bind_method(PackedByteArray, remove, sarray("index"), varray());
 	bind_method(PackedByteArray, insert, sarray("at_index", "value"), varray());
+	bind_method(PackedByteArray, fill, sarray("value"), varray());
 	bind_method(PackedByteArray, resize, sarray("new_size"), varray());
 	bind_method(PackedByteArray, has, sarray("value"), varray());
 	bind_method(PackedByteArray, reverse, sarray(), varray());
@@ -1731,6 +1815,7 @@ static void _register_variant_builtin_methods() {
 	bind_method(PackedInt32Array, append_array, sarray("array"), varray());
 	bind_method(PackedInt32Array, remove, sarray("index"), varray());
 	bind_method(PackedInt32Array, insert, sarray("at_index", "value"), varray());
+	bind_method(PackedInt32Array, fill, sarray("value"), varray());
 	bind_method(PackedInt32Array, resize, sarray("new_size"), varray());
 	bind_method(PackedInt32Array, has, sarray("value"), varray());
 	bind_method(PackedInt32Array, reverse, sarray(), varray());
@@ -1749,6 +1834,7 @@ static void _register_variant_builtin_methods() {
 	bind_method(PackedInt64Array, append_array, sarray("array"), varray());
 	bind_method(PackedInt64Array, remove, sarray("index"), varray());
 	bind_method(PackedInt64Array, insert, sarray("at_index", "value"), varray());
+	bind_method(PackedInt64Array, fill, sarray("value"), varray());
 	bind_method(PackedInt64Array, resize, sarray("new_size"), varray());
 	bind_method(PackedInt64Array, has, sarray("value"), varray());
 	bind_method(PackedInt64Array, reverse, sarray(), varray());
@@ -1767,6 +1853,7 @@ static void _register_variant_builtin_methods() {
 	bind_method(PackedFloat32Array, append_array, sarray("array"), varray());
 	bind_method(PackedFloat32Array, remove, sarray("index"), varray());
 	bind_method(PackedFloat32Array, insert, sarray("at_index", "value"), varray());
+	bind_method(PackedFloat32Array, fill, sarray("value"), varray());
 	bind_method(PackedFloat32Array, resize, sarray("new_size"), varray());
 	bind_method(PackedFloat32Array, has, sarray("value"), varray());
 	bind_method(PackedFloat32Array, reverse, sarray(), varray());
@@ -1785,6 +1872,7 @@ static void _register_variant_builtin_methods() {
 	bind_method(PackedFloat64Array, append_array, sarray("array"), varray());
 	bind_method(PackedFloat64Array, remove, sarray("index"), varray());
 	bind_method(PackedFloat64Array, insert, sarray("at_index", "value"), varray());
+	bind_method(PackedFloat64Array, fill, sarray("value"), varray());
 	bind_method(PackedFloat64Array, resize, sarray("new_size"), varray());
 	bind_method(PackedFloat64Array, has, sarray("value"), varray());
 	bind_method(PackedFloat64Array, reverse, sarray(), varray());
@@ -1803,6 +1891,7 @@ static void _register_variant_builtin_methods() {
 	bind_method(PackedStringArray, append_array, sarray("array"), varray());
 	bind_method(PackedStringArray, remove, sarray("index"), varray());
 	bind_method(PackedStringArray, insert, sarray("at_index", "value"), varray());
+	bind_method(PackedStringArray, fill, sarray("value"), varray());
 	bind_method(PackedStringArray, resize, sarray("new_size"), varray());
 	bind_method(PackedStringArray, has, sarray("value"), varray());
 	bind_method(PackedStringArray, reverse, sarray(), varray());
@@ -1821,6 +1910,7 @@ static void _register_variant_builtin_methods() {
 	bind_method(PackedVector2Array, append_array, sarray("array"), varray());
 	bind_method(PackedVector2Array, remove, sarray("index"), varray());
 	bind_method(PackedVector2Array, insert, sarray("at_index", "value"), varray());
+	bind_method(PackedVector2Array, fill, sarray("value"), varray());
 	bind_method(PackedVector2Array, resize, sarray("new_size"), varray());
 	bind_method(PackedVector2Array, has, sarray("value"), varray());
 	bind_method(PackedVector2Array, reverse, sarray(), varray());
@@ -1839,6 +1929,7 @@ static void _register_variant_builtin_methods() {
 	bind_method(PackedVector3Array, append_array, sarray("array"), varray());
 	bind_method(PackedVector3Array, remove, sarray("index"), varray());
 	bind_method(PackedVector3Array, insert, sarray("at_index", "value"), varray());
+	bind_method(PackedVector3Array, fill, sarray("value"), varray());
 	bind_method(PackedVector3Array, resize, sarray("new_size"), varray());
 	bind_method(PackedVector3Array, has, sarray("value"), varray());
 	bind_method(PackedVector3Array, reverse, sarray(), varray());
@@ -1857,6 +1948,7 @@ static void _register_variant_builtin_methods() {
 	bind_method(PackedColorArray, append_array, sarray("array"), varray());
 	bind_method(PackedColorArray, remove, sarray("index"), varray());
 	bind_method(PackedColorArray, insert, sarray("at_index", "value"), varray());
+	bind_method(PackedColorArray, fill, sarray("value"), varray());
 	bind_method(PackedColorArray, resize, sarray("new_size"), varray());
 	bind_method(PackedColorArray, has, sarray("value"), varray());
 	bind_method(PackedColorArray, reverse, sarray(), varray());
