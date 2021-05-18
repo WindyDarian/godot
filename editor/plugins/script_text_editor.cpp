@@ -292,7 +292,7 @@ void ScriptTextEditor::_show_warnings_panel(bool p_show) {
 
 void ScriptTextEditor::_warning_clicked(Variant p_line) {
 	if (p_line.get_type() == Variant::INT) {
-		code_editor->get_text_editor()->cursor_set_line(p_line.operator int64_t());
+		goto_line_centered(p_line.operator int64_t());
 	} else if (p_line.get_type() == Variant::DICTIONARY) {
 		Dictionary meta = p_line.operator Dictionary();
 		code_editor->get_text_editor()->insert_at("# warning-ignore:" + meta["code"].operator String(), meta["line"].operator int64_t() - 1);
@@ -1400,6 +1400,10 @@ void ScriptTextEditor::set_tooltip_request_func(String p_method, Object *p_obj) 
 }
 
 void ScriptTextEditor::set_debugger_active(bool p_active) {
+}
+
+Control *ScriptTextEditor::get_base_editor() const {
+	return code_editor->get_text_editor();
 }
 
 Variant ScriptTextEditor::get_drag_data_fw(const Point2 &p_point, Control *p_from) {

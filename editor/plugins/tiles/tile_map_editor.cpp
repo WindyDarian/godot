@@ -154,10 +154,10 @@ void TileMapEditorTilesPlugin::_update_tile_set_sources_list() {
 			if (texture.is_valid()) {
 				sources_list->add_item(vformat("%s - (id:%d)", texture->get_path().get_file(), source_id), texture);
 			} else {
-				sources_list->add_item(vformat("No texture atlas source - (id:%d)", source_id), missing_texture_texture);
+				sources_list->add_item(vformat("No Texture Atlas Source - (id:%d)", source_id), missing_texture_texture);
 			}
 		} else {
-			sources_list->add_item(vformat("Unknown type source - (id:%d)", source_id), missing_texture_texture);
+			sources_list->add_item(vformat("Unknown Type Source - (id:%d)", source_id), missing_texture_texture);
 		}
 		sources_list->set_item_metadata(i, source_id);
 	}
@@ -357,7 +357,7 @@ bool TileMapEditorTilesPlugin::forward_canvas_gui_input(const Ref<InputEvent> &p
 				// Pressed
 				if (tool_buttons_group->get_pressed_button() == select_tool_button) {
 					drag_start_mouse_pos = mpos;
-					if (tile_map_selection.has(tile_map->world_to_map(drag_start_mouse_pos)) && !mb->get_shift()) {
+					if (tile_map_selection.has(tile_map->world_to_map(drag_start_mouse_pos)) && !mb->is_shift_pressed()) {
 						// Move the selection
 						drag_type = DRAG_TYPE_MOVE;
 						drag_modified.clear();
@@ -460,7 +460,7 @@ void TileMapEditorTilesPlugin::forward_canvas_draw_over_viewport(Control *p_over
 	// Draw the selection.
 	if (is_visible_in_tree() && tool_buttons_group->get_pressed_button() == select_tool_button) {
 		// In select mode, we only draw the current selection if we are modifying it (pressing control or shift).
-		if (drag_type == DRAG_TYPE_MOVE || (drag_type == DRAG_TYPE_SELECT && !Input::get_singleton()->is_key_pressed(KEY_CONTROL) && !Input::get_singleton()->is_key_pressed(KEY_SHIFT))) {
+		if (drag_type == DRAG_TYPE_MOVE || (drag_type == DRAG_TYPE_SELECT && !Input::get_singleton()->is_key_pressed(KEY_CTRL) && !Input::get_singleton()->is_key_pressed(KEY_SHIFT))) {
 			// Do nothing
 		} else {
 			tile_map->draw_cells_outline(p_overlay, tile_map_selection, Color(0.0, 0.0, 1.0), xform);
@@ -930,14 +930,14 @@ void TileMapEditorTilesPlugin::_stop_dragging() {
 			undo_redo->create_action(TTR("Change selection"));
 			undo_redo->add_undo_method(this, "_set_tile_map_selection", _get_tile_map_selection());
 
-			if (!Input::get_singleton()->is_key_pressed(KEY_SHIFT) && !Input::get_singleton()->is_key_pressed(KEY_CONTROL)) {
+			if (!Input::get_singleton()->is_key_pressed(KEY_SHIFT) && !Input::get_singleton()->is_key_pressed(KEY_CTRL)) {
 				tile_map_selection.clear();
 			}
 			Rect2i rect = Rect2i(tile_map->world_to_map(drag_start_mouse_pos), tile_map->world_to_map(mpos) - tile_map->world_to_map(drag_start_mouse_pos)).abs();
 			for (int x = rect.position.x; x <= rect.get_end().x; x++) {
 				for (int y = rect.position.y; y <= rect.get_end().y; y++) {
 					Vector2i coords = Vector2i(x, y);
-					if (Input::get_singleton()->is_key_pressed(KEY_CONTROL)) {
+					if (Input::get_singleton()->is_key_pressed(KEY_CTRL)) {
 						if (tile_map_selection.has(coords)) {
 							tile_map_selection.erase(coords);
 						}
@@ -1369,12 +1369,12 @@ void TileMapEditorTilesPlugin::_tile_atlas_control_gui_input(const Ref<InputEven
 		if (mb->is_pressed()) { // Pressed
 			tile_set_dragging_selection = true;
 			tile_set_drag_start_mouse_pos = tile_atlas_control->get_local_mouse_position();
-			if (!mb->get_shift()) {
+			if (!mb->is_shift_pressed()) {
 				tile_set_selection.clear();
 			}
 
 			if (hovered_tile.get_atlas_coords() != TileSetAtlasSource::INVALID_ATLAS_COORDS && hovered_tile.alternative_tile == 0) {
-				if (mb->get_shift() && tile_set_selection.has(TileMapCell(source_id, hovered_tile.get_atlas_coords(), 0))) {
+				if (mb->is_shift_pressed() && tile_set_selection.has(TileMapCell(source_id, hovered_tile.get_atlas_coords(), 0))) {
 					tile_set_selection.erase(TileMapCell(source_id, hovered_tile.get_atlas_coords(), 0));
 				} else {
 					tile_set_selection.insert(TileMapCell(source_id, hovered_tile.get_atlas_coords(), 0));
@@ -1383,7 +1383,7 @@ void TileMapEditorTilesPlugin::_tile_atlas_control_gui_input(const Ref<InputEven
 			_update_selection_pattern_from_tileset_selection();
 		} else { // Released
 			if (tile_set_dragging_selection) {
-				if (!mb->get_shift()) {
+				if (!mb->is_shift_pressed()) {
 					tile_set_selection.clear();
 				}
 				// Compute the covered area.
@@ -1395,7 +1395,7 @@ void TileMapEditorTilesPlugin::_tile_atlas_control_gui_input(const Ref<InputEven
 
 					// To update the selection, we copy the selected/not selected status of the tiles we drag from.
 					Vector2i start_coords = atlas->get_tile_at_coords(start_tile);
-					if (mb->get_shift() && start_coords != TileSetAtlasSource::INVALID_ATLAS_COORDS && !tile_set_selection.has(TileMapCell(source_id, start_coords, 0))) {
+					if (mb->is_shift_pressed() && start_coords != TileSetAtlasSource::INVALID_ATLAS_COORDS && !tile_set_selection.has(TileMapCell(source_id, start_coords, 0))) {
 						// Remove from the selection.
 						for (int x = region.position.x; x < region.get_end().x; x++) {
 							for (int y = region.position.y; y < region.get_end().y; y++) {
@@ -1526,12 +1526,12 @@ void TileMapEditorTilesPlugin::_tile_alternatives_control_gui_input(const Ref<In
 	if (mb.is_valid() && mb->get_button_index() == MOUSE_BUTTON_LEFT) {
 		if (mb->is_pressed()) { // Pressed
 			// Left click pressed.
-			if (!mb->get_shift()) {
+			if (!mb->is_shift_pressed()) {
 				tile_set_selection.clear();
 			}
 
 			if (coords != TileSetAtlasSource::INVALID_ATLAS_COORDS && alternative != TileSetAtlasSource::INVALID_TILE_ALTERNATIVE) {
-				if (mb->get_shift() && tile_set_selection.has(TileMapCell(source_id, hovered_tile.get_atlas_coords(), hovered_tile.alternative_tile))) {
+				if (mb->is_shift_pressed() && tile_set_selection.has(TileMapCell(source_id, hovered_tile.get_atlas_coords(), hovered_tile.alternative_tile))) {
 					tile_set_selection.erase(TileMapCell(source_id, hovered_tile.get_atlas_coords(), hovered_tile.alternative_tile));
 				} else {
 					tile_set_selection.insert(TileMapCell(source_id, hovered_tile.get_atlas_coords(), hovered_tile.alternative_tile));
@@ -1671,7 +1671,7 @@ TileMapEditorTilesPlugin::TileMapEditorTilesPlugin() {
 	// Random tile checkbox.
 	random_tile_checkbox = memnew(CheckBox);
 	random_tile_checkbox->set_flat(true);
-	random_tile_checkbox->set_text(TTR("Place random tile"));
+	random_tile_checkbox->set_text(TTR("Place Random Tile"));
 	random_tile_checkbox->connect("toggled", callable_mp(this, &TileMapEditorTilesPlugin::_on_random_tile_checkbox_toggled));
 	tools_settings->add_child(random_tile_checkbox);
 
@@ -2798,15 +2798,15 @@ void TileMapEditorTerrainsPlugin::_update_terrains_tree() {
 		String matches;
 		if (tile_set->get_terrain_set_mode(terrain_set_index) == TileSet::TERRAIN_MODE_MATCH_CORNERS_AND_SIDES) {
 			terrain_set_tree_item->set_icon(0, get_theme_icon("TerrainMatchCornersAndSides", "EditorIcons"));
-			matches = String(TTR("Matches corners and sides"));
+			matches = String(TTR("Matches Corners and Sides"));
 		} else if (tile_set->get_terrain_set_mode(terrain_set_index) == TileSet::TERRAIN_MODE_MATCH_CORNERS) {
 			terrain_set_tree_item->set_icon(0, get_theme_icon("TerrainMatchCorners", "EditorIcons"));
-			matches = String(TTR("Matches corners only"));
+			matches = String(TTR("Matches Corners Only"));
 		} else {
 			terrain_set_tree_item->set_icon(0, get_theme_icon("TerrainMatchSides", "EditorIcons"));
-			matches = String(TTR("Matches sides only"));
+			matches = String(TTR("Matches Sides Only"));
 		}
-		terrain_set_tree_item->set_text(0, vformat("Terrain set %d (%s)", terrain_set_index, matches));
+		terrain_set_tree_item->set_text(0, vformat("Terrain Set %d (%s)", terrain_set_index, matches));
 		terrain_set_tree_item->set_selectable(0, false);
 
 		for (int terrain_index = 0; terrain_index < tile_set->get_terrains_count(terrain_set_index); terrain_index++) {

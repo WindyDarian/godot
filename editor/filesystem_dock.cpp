@@ -1986,6 +1986,20 @@ void FileSystemDock::_resource_created() {
 	editor->save_resource_as(RES(r), fpath);
 }
 
+void FileSystemDock::_focus_current_search_box() {
+	LineEdit *current_search_box = nullptr;
+	if (display_mode == DISPLAY_MODE_TREE_ONLY) {
+		current_search_box = tree_search_box;
+	} else if (display_mode == DISPLAY_MODE_SPLIT) {
+		current_search_box = file_list_search_box;
+	}
+
+	if (current_search_box) {
+		current_search_box->grab_focus();
+		current_search_box->select_all();
+	}
+}
+
 void FileSystemDock::_search_changed(const String &p_text, const Control *p_from) {
 	if (searched_string.length() == 0) {
 		// Register the uncollapsed paths before they change.
@@ -2250,7 +2264,7 @@ void FileSystemDock::drop_data_fw(const Point2 &p_point, const Variant &p_data, 
 				}
 			}
 			if (!to_move.is_empty()) {
-				if (Input::get_singleton()->is_key_pressed(KEY_CONTROL)) {
+				if (Input::get_singleton()->is_key_pressed(KEY_CTRL)) {
 					for (int i = 0; i < to_move.size(); i++) {
 						String new_path;
 						String new_path_base;
@@ -2576,6 +2590,8 @@ void FileSystemDock::_tree_gui_input(Ref<InputEvent> p_event) {
 			_tree_rmb_option(FILE_REMOVE);
 		} else if (ED_IS_SHORTCUT("filesystem_dock/rename", p_event)) {
 			_tree_rmb_option(FILE_RENAME);
+		} else if (ED_IS_SHORTCUT("editor/open_search", p_event)) {
+			_focus_current_search_box();
 		} else {
 			return;
 		}
@@ -2595,6 +2611,8 @@ void FileSystemDock::_file_list_gui_input(Ref<InputEvent> p_event) {
 			_file_list_rmb_option(FILE_REMOVE);
 		} else if (ED_IS_SHORTCUT("filesystem_dock/rename", p_event)) {
 			_file_list_rmb_option(FILE_RENAME);
+		} else if (ED_IS_SHORTCUT("editor/open_search", p_event)) {
+			_focus_current_search_box();
 		} else {
 			return;
 		}
@@ -2717,12 +2735,12 @@ MenuButton *FileSystemDock::_create_file_menu_button() {
 
 	PopupMenu *p = button->get_popup();
 	p->connect("id_pressed", callable_mp(this, &FileSystemDock::_file_sort_popup));
-	p->add_radio_check_item("Sort by Name (Ascending)", FILE_SORT_NAME);
-	p->add_radio_check_item("Sort by Name (Descending)", FILE_SORT_NAME_REVERSE);
-	p->add_radio_check_item("Sort by Type (Ascending)", FILE_SORT_TYPE);
-	p->add_radio_check_item("Sort by Type (Descending)", FILE_SORT_TYPE_REVERSE);
-	p->add_radio_check_item("Sort by Last Modified", FILE_SORT_MODIFIED_TIME);
-	p->add_radio_check_item("Sort by First Modified", FILE_SORT_MODIFIED_TIME_REVERSE);
+	p->add_radio_check_item(TTR("Sort by Name (Ascending)"), FILE_SORT_NAME);
+	p->add_radio_check_item(TTR("Sort by Name (Descending)"), FILE_SORT_NAME_REVERSE);
+	p->add_radio_check_item(TTR("Sort by Type (Ascending)"), FILE_SORT_TYPE);
+	p->add_radio_check_item(TTR("Sort by Type (Descending)"), FILE_SORT_TYPE_REVERSE);
+	p->add_radio_check_item(TTR("Sort by Last Modified"), FILE_SORT_MODIFIED_TIME);
+	p->add_radio_check_item(TTR("Sort by First Modified"), FILE_SORT_MODIFIED_TIME_REVERSE);
 	p->set_item_checked(file_sort, true);
 	return button;
 }
