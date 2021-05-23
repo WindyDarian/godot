@@ -339,13 +339,13 @@ void ScriptEditorQuickOpen::_update_search() {
 		if ((search_box->get_text() == "" || file.findn(search_box->get_text()) != -1)) {
 			TreeItem *ti = search_options->create_item(root);
 			ti->set_text(0, file);
-			if (root->get_children() == ti) {
+			if (root->get_first_child() == ti) {
 				ti->select(0);
 			}
 		}
 	}
 
-	get_ok_button()->set_disabled(root->get_children() == nullptr);
+	get_ok_button()->set_disabled(root->get_first_child() == nullptr);
 }
 
 void ScriptEditorQuickOpen::_confirmed() {
@@ -1503,6 +1503,9 @@ void ScriptEditor::_notification(int p_what) {
 			filename->add_theme_style_override("normal", editor->get_gui_base()->get_theme_stylebox("normal", "LineEdit"));
 
 			recent_scripts->set_as_minsize();
+
+			_update_script_colors();
+			_update_script_names();
 		} break;
 
 		case NOTIFICATION_READY: {
@@ -1677,7 +1680,7 @@ struct _ScriptEditorItemData {
 			if (sort_key == id.sort_key) {
 				return index < id.index;
 			} else {
-				return sort_key < id.sort_key;
+				return sort_key.naturalnocasecmp_to(id.sort_key) < 0;
 			}
 		} else {
 			return category < id.category;
@@ -2281,8 +2284,7 @@ bool ScriptEditor::edit(const RES &p_resource, int p_line, int p_col, bool p_gra
 
 void ScriptEditor::save_current_script() {
 	ScriptEditorBase *current = _get_current_editor();
-
-	if (_test_script_times_on_disk()) {
+	if (!current || _test_script_times_on_disk()) {
 		return;
 	}
 

@@ -234,7 +234,9 @@ void EditorLog::_add_log_line(LogMessage &p_message, bool p_replace_previous) {
 
 	if (p_replace_previous) {
 		// Remove last line if replacing, as it will be replace by the next added line.
-		log->remove_line(log->get_line_count() - 1);
+		// Why - 2? RichTextLabel is weird. When you add a line, it also adds a NEW line, which is null,
+		// but it still counts as a line. So if you remove the last line (count - 1) you are actually removing nothing...
+		log->remove_line(log->get_line_count() - 2);
 		log->increment_line_count();
 	}
 
@@ -376,7 +378,7 @@ EditorLog::EditorLog() {
 	collapse_button = memnew(Button);
 	collapse_button->set_flat(true);
 	collapse_button->set_focus_mode(FOCUS_NONE);
-	collapse_button->set_tooltip(TTR("Collapse duplicate messages into one log entry. Shows number of occurences."));
+	collapse_button->set_tooltip(TTR("Collapse duplicate messages into one log entry. Shows number of occurrences."));
 	collapse_button->set_toggle_mode(true);
 	collapse_button->set_pressed(false);
 	collapse_button->connect("toggled", callable_mp(this, &EditorLog::_set_collapse));

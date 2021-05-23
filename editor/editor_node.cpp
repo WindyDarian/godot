@@ -3167,7 +3167,7 @@ void EditorNode::set_addon_plugin_enabled(const String &p_addon, bool p_enabled,
 
 		// Errors in the script cause the base_type to be an empty string.
 		if (String(script->get_instance_base_type()) == "") {
-			show_warning(vformat(TTR("Unable to load addon script from path: '%s'. This might be due to a code error in that script. \nDisabling the addon at '%s' to prevent further errors."), script_path, p_addon));
+			show_warning(vformat(TTR("Unable to load addon script from path: '%s'. This might be due to a code error in that script.\nDisabling the addon at '%s' to prevent further errors."), script_path, p_addon));
 			_remove_plugin_from_enabled(p_addon);
 			return;
 		}
@@ -3760,6 +3760,7 @@ void EditorNode::register_editor_types() {
 	ClassDB::register_class<EditorFeatureProfile>();
 	ClassDB::register_class<EditorSpinSlider>();
 	ClassDB::register_class<EditorResourcePicker>();
+	ClassDB::register_class<EditorScriptPicker>();
 	ClassDB::register_class<EditorSceneImporterMesh>();
 	ClassDB::register_class<EditorSceneImporterMeshNode3D>();
 
@@ -5291,7 +5292,7 @@ void EditorNode::_file_access_close_error_notify(const String &p_str) {
 
 void EditorNode::reload_scene(const String &p_path) {
 	/*
-	 * No longer necesary since scenes now reset and reload their internal resource if needed.
+	 * No longer necessary since scenes now reset and reload their internal resource if needed.
 	//first of all, reload internal textures, materials, meshes, etc. as they might have changed on disk
 
 	List<Ref<Resource>> cached;

@@ -1809,12 +1809,12 @@ void EditorInspector::update_tree() {
 			basename = group + "/" + basename;
 		}
 
-		String name = (basename.find("/") != -1) ? basename.right(basename.rfind("/") + 1) : basename;
+		String name = (basename.find("/") != -1) ? basename.substr(basename.rfind("/") + 1) : basename;
 
 		if (capitalize_paths) {
 			int dot = name.find(".");
 			if (dot != -1) {
-				String ov = name.right(dot);
+				String ov = name.substr(dot);
 				name = name.substr(0, dot);
 				name = name.capitalize();
 				name += ov;
@@ -1824,7 +1824,13 @@ void EditorInspector::update_tree() {
 			}
 		}
 
-		String path = basename.left(basename.rfind("/"));
+		String path;
+		{
+			int idx = basename.rfind("/");
+			if (idx > -1) {
+				path = basename.left(idx);
+			}
+		}
 
 		if (use_filter && filter != "") {
 			String cat = path;

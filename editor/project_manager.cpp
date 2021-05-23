@@ -100,7 +100,6 @@ private:
 	FileDialog *fdialog_install;
 	String zip_path;
 	String zip_title;
-	String zip_root;
 	AcceptDialog *dialog_error;
 	String fav_dir;
 
@@ -201,9 +200,7 @@ private:
 						char fname[16384];
 						ret = unzGetCurrentFileInfo(pkg, &info, fname, 16384, nullptr, 0, nullptr, 0);
 
-						String fname_str = String(fname);
-						if (fname_str.ends_with("project.godot")) {
-							zip_root = fname_str.substr(0, fname_str.rfind("project.godot"));
+						if (String(fname).ends_with("project.godot")) {
 							break;
 						}
 
@@ -524,7 +521,24 @@ private:
 						return;
 					}
 
+					// Find the zip_root
+					String zip_root;
 					int ret = unzGoToFirstFile(pkg);
+					while (ret == UNZ_OK) {
+						unz_file_info info;
+						char fname[16384];
+						unzGetCurrentFileInfo(pkg, &info, fname, 16384, nullptr, 0, nullptr, 0);
+
+						String name = fname;
+						if (name.ends_with("project.godot")) {
+							zip_root = name.substr(0, name.rfind("project.godot"));
+							break;
+						}
+
+						ret = unzGoToNextFile(pkg);
+					}
+
+					ret = unzGoToFirstFile(pkg);
 
 					Vector<String> failed_files;
 
@@ -2124,8 +2138,8 @@ void ProjectManager::_run_project_confirm() {
 		const String &selected = selected_list[i].project_key;
 		String path = EditorSettings::get_singleton()->get("projects/" + selected);
 
-		// `.right(6)` on `IMPORTED_FILES_PATH` strips away the leading "res://".
-		if (!DirAccess::exists(path.plus_file(ProjectSettings::IMPORTED_FILES_PATH.right(6)))) {
+		// `.substr(6)` on `IMPORTED_FILES_PATH` strips away the leading "res://".
+		if (!DirAccess::exists(path.plus_file(ProjectSettings::IMPORTED_FILES_PATH.substr(6)))) {
 			run_error_diag->set_text(TTR("Can't run project: Assets need to be imported.\nPlease edit the project to trigger the initial import."));
 			run_error_diag->popup_centered();
 			continue;
