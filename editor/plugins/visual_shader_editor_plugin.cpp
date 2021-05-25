@@ -349,6 +349,8 @@ void VisualShaderGraphPlugin::add_node(VisualShader::Type p_type, int p_id) {
 	Ref<VisualShaderNodeGroupBase> group_node = Object::cast_to<VisualShaderNodeGroupBase>(vsnode.ptr());
 	bool is_group = !group_node.is_null();
 
+	bool is_comment = false;
+
 	Ref<VisualShaderNodeExpression> expression_node = Object::cast_to<VisualShaderNodeExpression>(group_node.ptr());
 	bool is_expression = !expression_node.is_null();
 	String expression = "";
@@ -392,13 +394,13 @@ void VisualShaderGraphPlugin::add_node(VisualShader::Type p_type, int p_id) {
 	if (is_resizable) {
 		Ref<VisualShaderNodeComment> comment_node = Object::cast_to<VisualShaderNodeComment>(vsnode.ptr());
 		if (comment_node.is_valid()) {
+			is_comment = true;
 			node->set_comment(true);
 
 			Label *comment_label = memnew(Label);
 			node->add_child(comment_label);
 			comment_label->set_h_size_flags(Control::SIZE_EXPAND_FILL);
 			comment_label->set_v_size_flags(Control::SIZE_EXPAND_FILL);
-			comment_label->set_mouse_filter(Control::MouseFilter::MOUSE_FILTER_STOP);
 			comment_label->set_text(comment_node->get_description());
 		}
 	}
@@ -773,6 +775,9 @@ void VisualShaderGraphPlugin::add_node(VisualShader::Type p_type, int p_id) {
 
 	if (!uniform.is_valid()) {
 		VisualShaderEditor::get_singleton()->graph->add_child(node);
+		if (is_comment) {
+			VisualShaderEditor::get_singleton()->graph->move_child(node, 0); // to prevents a bug where comment node overlaps its content
+		}
 		VisualShaderEditor::get_singleton()->_update_created_node(node);
 		if (is_resizable) {
 			VisualShaderEditor::get_singleton()->call_deferred("_set_node_size", (int)p_type, p_id, size);
@@ -1812,47 +1817,6 @@ void VisualShaderEditor::_edit_port_default_input(Object *p_button, int p_node, 
 	editing_port = p_port;
 }
 
-void VisualShaderEditor::_add_custom_node(const String &p_path) {
-	int idx = -1;
-
-	for (int i = custom_node_option_idx; i < add_options.size(); i++) {
-		if (add_options[i].script.is_valid()) {
-			if (add_options[i].script->get_path() == p_path) {
-				idx = i;
-				break;
-			}
-		}
-	}
-	if (idx != -1) {
-		_add_node(idx);
-	}
-}
-
-void VisualShaderEditor::_add_cubemap_node(const String &p_path) {
-	VisualShaderNodeCubemap *cubemap = (VisualShaderNodeCubemap *)_add_node(cubemap_node_option_idx, -1);
-	cubemap->set_cube_map(ResourceLoader::load(p_path));
-}
-
-void VisualShaderEditor::_add_texture2d_node(const String &p_path) {
-	VisualShaderNodeTexture *texture2d = (VisualShaderNodeTexture *)_add_node(texture2d_node_option_idx, -1);
-	texture2d->set_texture(ResourceLoader::load(p_path));
-}
-
-void VisualShaderEditor::_add_texture2d_array_node(const String &p_path) {
-	VisualShaderNodeTexture2DArray *texture2d_array = (VisualShaderNodeTexture2DArray *)_add_node(texture2d_array_node_option_idx, -1);
-	texture2d_array->set_texture_array(ResourceLoader::load(p_path));
-}
-
-void VisualShaderEditor::_add_texture3d_node(const String &p_path) {
-	VisualShaderNodeTexture3D *texture3d = (VisualShaderNodeTexture3D *)_add_node(texture3d_node_option_idx, -1);
-	texture3d->set_texture(ResourceLoader::load(p_path));
-}
-
-void VisualShaderEditor::_add_curve_node(const String &p_path) {
-	VisualShaderNodeCurveTexture *curve = (VisualShaderNodeCurveTexture *)_add_node(curve_node_option_idx, -1);
-	curve->set_texture(ResourceLoader::load(p_path));
-}
-
 void VisualShaderEditor::_setup_node(VisualShaderNode *p_node, int p_op_idx) {
 	// FLOAT_OP
 	{
@@ -2041,8 +2005,8 @@ void VisualShaderEditor::_setup_node(VisualShaderNode *p_node, int p_op_idx) {
 	}
 }
 
-VisualShaderNode *VisualShaderEditor::_add_node(int p_idx, int p_op_idx) {
-	ERR_FAIL_INDEX_V(p_idx, add_options.size(), nullptr);
+void VisualShaderEditor::_add_node(int p_idx, int p_op_idx, String p_resource_path, int p_node_idx) {
+	ERR_FAIL_INDEX(p_idx, add_options.size());
 
 	Ref<VisualShaderNode> vsnode;
 
@@ -2050,7 +2014,7 @@ VisualShaderNode *VisualShaderEditor::_add_node(int p_idx, int p_op_idx) {
 
 	if (!is_custom && add_options[p_idx].type != String()) {
 		VisualShaderNode *vsn = Object::cast_to<VisualShaderNode>(ClassDB::instance(add_options[p_idx].type));
-		ERR_FAIL_COND_V(!vsn, nullptr);
+		ERR_FAIL_COND(!vsn);
 
 		VisualShaderNodeFloatConstant *constant = Object::cast_to<VisualShaderNodeFloatConstant>(vsn);
 
@@ -2072,10 +2036,10 @@ VisualShaderNode *VisualShaderEditor::_add_node(int p_idx, int p_op_idx) {
 
 		vsnode = Ref<VisualShaderNode>(vsn);
 	} else {
-		ERR_FAIL_COND_V(add_options[p_idx].script.is_null(), nullptr);
+		ERR_FAIL_COND(add_options[p_idx].script.is_null());
 		String base_type = add_options[p_idx].script->get_instance_base_type();
 		VisualShaderNode *vsn = Object::cast_to<VisualShaderNode>(ClassDB::instance(base_type));
-		ERR_FAIL_COND_V(!vsn, nullptr);
+		ERR_FAIL_COND(!vsn);
 		vsnode = Ref<VisualShaderNode>(vsn);
 		vsnode->set_script(add_options[p_idx].script);
 	}
@@ -2094,7 +2058,11 @@ VisualShaderNode *VisualShaderEditor::_add_node(int p_idx, int p_op_idx) {
 
 	int id_to_use = visual_shader->get_valid_node_id(type);
 
-	undo_redo->create_action(TTR("Add Node to Visual Shader"));
+	if (p_resource_path.is_empty()) {
+		undo_redo->create_action(TTR("Add Node to Visual Shader"));
+	} else {
+		id_to_use += p_node_idx;
+	}
 	undo_redo->add_do_method(visual_shader.ptr(), "add_node", type, vsnode, position, id_to_use);
 	undo_redo->add_undo_method(visual_shader.ptr(), "remove_node", type, id_to_use);
 	undo_redo->add_do_method(graph_plugin.ptr(), "add_node", type, id_to_use);
@@ -2209,8 +2177,30 @@ VisualShaderNode *VisualShaderEditor::_add_node(int p_idx, int p_op_idx) {
 		graph_plugin->call_deferred("update_curve", id_to_use);
 	}
 
-	undo_redo->commit_action();
-	return vsnode.ptr();
+	if (p_resource_path.is_empty()) {
+		undo_redo->commit_action();
+	} else {
+		//post-initialization
+
+		VisualShaderNodeTexture *texture2d = Object::cast_to<VisualShaderNodeTexture>(vsnode.ptr());
+		VisualShaderNodeTexture3D *texture3d = Object::cast_to<VisualShaderNodeTexture3D>(vsnode.ptr());
+
+		if (texture2d || texture3d || curve) {
+			undo_redo->add_do_method(vsnode.ptr(), "set_texture", ResourceLoader::load(p_resource_path));
+			return;
+		}
+
+		VisualShaderNodeCubemap *cubemap = Object::cast_to<VisualShaderNodeCubemap>(vsnode.ptr());
+		if (cubemap) {
+			undo_redo->add_do_method(vsnode.ptr(), "set_cube_map", ResourceLoader::load(p_resource_path));
+			return;
+		}
+
+		VisualShaderNodeTexture2DArray *texture2d_array = Object::cast_to<VisualShaderNodeTexture2DArray>(vsnode.ptr());
+		if (texture2d_array) {
+			undo_redo->add_do_method(vsnode.ptr(), "set_texture_array", ResourceLoader::load(p_resource_path));
+		}
+	}
 }
 
 void VisualShaderEditor::_node_dragged(const Vector2 &p_from, const Vector2 &p_to, int p_node) {
@@ -3333,47 +3323,56 @@ void VisualShaderEditor::drop_data_fw(const Point2 &p_point, const Variant &p_da
 			saved_node_pos_dirty = true;
 			_add_node(idx, add_options[idx].sub_func);
 		} else if (d.has("files")) {
+			undo_redo->create_action(TTR("Add Node(s) to Visual Shader"));
+
 			if (d["files"].get_type() == Variant::PACKED_STRING_ARRAY) {
-				int j = 0;
 				PackedStringArray arr = d["files"];
 				for (int i = 0; i < arr.size(); i++) {
 					String type = ResourceLoader::get_resource_type(arr[i]);
 					if (type == "GDScript") {
 						Ref<Script> script = ResourceLoader::load(arr[i]);
 						if (script->get_instance_base_type() == "VisualShaderNodeCustom") {
-							saved_node_pos = p_point + Vector2(0, j * 210 * EDSCALE);
+							saved_node_pos = p_point + Vector2(0, i * 250 * EDSCALE);
 							saved_node_pos_dirty = true;
-							_add_custom_node(arr[i]);
-							j++;
+
+							int idx = -1;
+
+							for (int j = custom_node_option_idx; j < add_options.size(); j++) {
+								if (add_options[j].script.is_valid()) {
+									if (add_options[j].script->get_path() == arr[i]) {
+										idx = j;
+										break;
+									}
+								}
+							}
+							if (idx != -1) {
+								_add_node(idx, -1, arr[i], i);
+							}
 						}
 					} else if (type == "CurveTexture") {
-						saved_node_pos = p_point + Vector2(0, j * 210 * EDSCALE);
+						saved_node_pos = p_point + Vector2(0, i * 250 * EDSCALE);
 						saved_node_pos_dirty = true;
-						_add_curve_node(arr[i]);
-						j++;
+						_add_node(curve_node_option_idx, -1, arr[i], i);
 					} else if (ClassDB::get_parent_class(type) == "Texture2D") {
-						saved_node_pos = p_point + Vector2(0, j * 210 * EDSCALE);
+						saved_node_pos = p_point + Vector2(0, i * 250 * EDSCALE);
 						saved_node_pos_dirty = true;
-						_add_texture2d_node(arr[i]);
-						j++;
+						_add_node(texture2d_node_option_idx, -1, arr[i], i);
 					} else if (type == "Texture2DArray") {
-						saved_node_pos = p_point + Vector2(0, j * 210 * EDSCALE);
+						saved_node_pos = p_point + Vector2(0, i * 250 * EDSCALE);
 						saved_node_pos_dirty = true;
-						_add_texture2d_array_node(arr[i]);
-						j++;
+						_add_node(texture2d_array_node_option_idx, -1, arr[i], i);
 					} else if (ClassDB::get_parent_class(type) == "Texture3D") {
-						saved_node_pos = p_point + Vector2(0, j * 210 * EDSCALE);
+						saved_node_pos = p_point + Vector2(0, i * 250 * EDSCALE);
 						saved_node_pos_dirty = true;
-						_add_texture3d_node(arr[i]);
-						j++;
+						_add_node(texture3d_node_option_idx, -1, arr[i], i);
 					} else if (type == "Cubemap") {
-						saved_node_pos = p_point + Vector2(0, j * 210 * EDSCALE);
+						saved_node_pos = p_point + Vector2(0, i * 250 * EDSCALE);
 						saved_node_pos_dirty = true;
-						_add_cubemap_node(arr[i]);
-						j++;
+						_add_node(cubemap_node_option_idx, -1, arr[i], i);
 					}
 				}
 			}
+			undo_redo->commit_action();
 		}
 	}
 }
