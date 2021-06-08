@@ -1225,7 +1225,7 @@ Error _File::open(const String &p_path, ModeFlags p_mode_flags) {
 	Error err;
 	f = FileAccess::open(p_path, p_mode_flags, &err);
 	if (f) {
-		f->set_endian_swap(eswap);
+		f->set_big_endian(big_endian);
 	}
 	return err;
 }
@@ -1381,15 +1381,15 @@ Vector<String> _File::get_csv_line(const String &p_delim) const {
  * These flags get reset to false (little endian) on each open
  */
 
-void _File::set_endian_swap(bool p_swap) {
-	eswap = p_swap;
+void _File::set_big_endian(bool p_big_endian) {
+	big_endian = p_big_endian;
 	if (f) {
-		f->set_endian_swap(p_swap);
+		f->set_big_endian(p_big_endian);
 	}
 }
 
-bool _File::get_endian_swap() {
-	return eswap;
+bool _File::is_big_endian() {
+	return big_endian;
 }
 
 Error _File::get_error() const {
@@ -1551,8 +1551,8 @@ void _File::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_as_text"), &_File::get_as_text);
 	ClassDB::bind_method(D_METHOD("get_md5", "path"), &_File::get_md5);
 	ClassDB::bind_method(D_METHOD("get_sha256", "path"), &_File::get_sha256);
-	ClassDB::bind_method(D_METHOD("get_endian_swap"), &_File::get_endian_swap);
-	ClassDB::bind_method(D_METHOD("set_endian_swap", "enable"), &_File::set_endian_swap);
+	ClassDB::bind_method(D_METHOD("is_big_endian"), &_File::is_big_endian);
+	ClassDB::bind_method(D_METHOD("set_big_endian", "big_endian"), &_File::set_big_endian);
 	ClassDB::bind_method(D_METHOD("get_error"), &_File::get_error);
 	ClassDB::bind_method(D_METHOD("get_var", "allow_objects"), &_File::get_var, DEFVAL(false));
 
@@ -1575,7 +1575,7 @@ void _File::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("file_exists", "path"), &_File::file_exists);
 	ClassDB::bind_method(D_METHOD("get_modified_time", "file"), &_File::get_modified_time);
 
-	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "endian_swap"), "set_endian_swap", "get_endian_swap");
+	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "big_endian"), "set_big_endian", "is_big_endian");
 
 	BIND_ENUM_CONSTANT(READ);
 	BIND_ENUM_CONSTANT(WRITE);
@@ -1616,11 +1616,11 @@ bool _Directory::is_open() const {
 	return d && dir_open;
 }
 
-Error _Directory::list_dir_begin(bool p_skip_navigational, bool p_skip_hidden) {
+Error _Directory::list_dir_begin(bool p_show_navigational, bool p_show_hidden) {
 	ERR_FAIL_COND_V_MSG(!is_open(), ERR_UNCONFIGURED, "Directory must be opened before use.");
 
-	_list_skip_navigational = p_skip_navigational;
-	_list_skip_hidden = p_skip_hidden;
+	_list_skip_navigational = !p_show_navigational;
+	_list_skip_hidden = !p_show_hidden;
 
 	return d->list_dir_begin();
 }
@@ -1758,7 +1758,7 @@ Error _Directory::remove(String p_name) {
 
 void _Directory::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("open", "path"), &_Directory::open);
-	ClassDB::bind_method(D_METHOD("list_dir_begin", "skip_navigational", "skip_hidden"), &_Directory::list_dir_begin, DEFVAL(false), DEFVAL(false));
+	ClassDB::bind_method(D_METHOD("list_dir_begin", "show_navigational", "show_hidden"), &_Directory::list_dir_begin, DEFVAL(false), DEFVAL(false));
 	ClassDB::bind_method(D_METHOD("get_next"), &_Directory::get_next);
 	ClassDB::bind_method(D_METHOD("current_is_dir"), &_Directory::current_is_dir);
 	ClassDB::bind_method(D_METHOD("list_dir_end"), &_Directory::list_dir_end);

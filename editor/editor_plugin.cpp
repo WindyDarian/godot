@@ -32,6 +32,7 @@
 
 #include "editor/editor_export.h"
 #include "editor/editor_node.h"
+#include "editor/editor_paths.h"
 #include "editor/editor_settings.h"
 #include "editor/filesystem_dock.h"
 #include "editor/project_settings_editor.h"
@@ -59,7 +60,7 @@ Array EditorInterface::_make_mesh_previews(const Array &p_meshes, int p_preview_
 	return ret;
 }
 
-Vector<Ref<Texture2D>> EditorInterface::make_mesh_previews(const Vector<Ref<Mesh>> &p_meshes, Vector<Transform> *p_transforms, int p_preview_size) {
+Vector<Ref<Texture2D>> EditorInterface::make_mesh_previews(const Vector<Ref<Mesh>> &p_meshes, Vector<Transform3D> *p_transforms, int p_preview_size) {
 	int size = p_preview_size;
 
 	RID scenario = RS::get_singleton()->scenario_create();
@@ -93,7 +94,7 @@ Vector<Ref<Texture2D>> EditorInterface::make_mesh_previews(const Vector<Ref<Mesh
 			continue;
 		}
 
-		Transform mesh_xform;
+		Transform3D mesh_xform;
 		if (p_transforms != nullptr) {
 			mesh_xform = (*p_transforms)[i];
 		}
@@ -104,7 +105,7 @@ Vector<Ref<Texture2D>> EditorInterface::make_mesh_previews(const Vector<Ref<Mesh
 		AABB aabb = mesh->get_aabb();
 		Vector3 ofs = aabb.position + aabb.size * 0.5;
 		aabb.position -= ofs;
-		Transform xform;
+		Transform3D xform;
 		xform.basis = Basis().rotated(Vector3(0, 1, 0), -Math_PI / 6);
 		xform.basis = Basis().rotated(Vector3(1, 0, 0), Math_PI / 6) * xform.basis;
 		AABB rot_aabb = xform.xform(aabb);
@@ -118,11 +119,11 @@ Vector<Ref<Texture2D>> EditorInterface::make_mesh_previews(const Vector<Ref<Mesh
 		xform.invert();
 		xform = mesh_xform * xform;
 
-		RS::get_singleton()->camera_set_transform(camera, xform * Transform(Basis(), Vector3(0, 0, 3)));
+		RS::get_singleton()->camera_set_transform(camera, xform * Transform3D(Basis(), Vector3(0, 0, 3)));
 		RS::get_singleton()->camera_set_orthogonal(camera, m * 2, 0.01, 1000.0);
 
-		RS::get_singleton()->instance_set_transform(light_instance, xform * Transform().looking_at(Vector3(-2, -1, -1), Vector3(0, 1, 0)));
-		RS::get_singleton()->instance_set_transform(light_instance2, xform * Transform().looking_at(Vector3(+1, -1, -2), Vector3(0, 1, 0)));
+		RS::get_singleton()->instance_set_transform(light_instance, xform * Transform3D().looking_at(Vector3(-2, -1, -1), Vector3(0, 1, 0)));
+		RS::get_singleton()->instance_set_transform(light_instance2, xform * Transform3D().looking_at(Vector3(+1, -1, -2), Vector3(0, 1, 0)));
 
 		ep.step(TTR("Thumbnail..."), i);
 		Main::iteration();
@@ -257,6 +258,9 @@ EditorSelection *EditorInterface::get_selection() {
 Ref<EditorSettings> EditorInterface::get_editor_settings() {
 	return EditorSettings::get_singleton();
 }
+EditorPaths *EditorInterface::get_editor_paths() {
+	return EditorPaths::get_singleton();
+}
 
 EditorResourcePreview *EditorInterface::get_resource_previewer() {
 	return EditorResourcePreview::get_singleton();
@@ -335,6 +339,7 @@ void EditorInterface::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_selected_path"), &EditorInterface::get_selected_path);
 	ClassDB::bind_method(D_METHOD("get_current_path"), &EditorInterface::get_current_path);
 	ClassDB::bind_method(D_METHOD("get_file_system_dock"), &EditorInterface::get_file_system_dock);
+	ClassDB::bind_method(D_METHOD("get_editor_paths"), &EditorInterface::get_editor_paths);
 
 	ClassDB::bind_method(D_METHOD("set_plugin_enabled", "plugin", "enabled"), &EditorInterface::set_plugin_enabled);
 	ClassDB::bind_method(D_METHOD("is_plugin_enabled", "plugin"), &EditorInterface::is_plugin_enabled);

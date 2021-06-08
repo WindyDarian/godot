@@ -1484,16 +1484,7 @@ Vector<ProjectList::Item> ProjectList::get_selected_projects() const {
 
 void ProjectList::ensure_project_visible(int p_index) {
 	const Item &item = _projects[p_index];
-
-	int item_top = item.control->get_position().y;
-	int item_bottom = item.control->get_position().y + item.control->get_size().y;
-
-	if (item_top < get_v_scroll()) {
-		set_v_scroll(item_top);
-
-	} else if (item_bottom > get_v_scroll() + get_size().y) {
-		set_v_scroll(item_bottom - get_size().y);
-	}
+	ensure_control_visible(item.control);
 }
 
 int ProjectList::get_single_selected_index() const {
@@ -2499,7 +2490,7 @@ ProjectManager::ProjectManager() {
 	tabs->connect("tab_changed", callable_mp(this, &ProjectManager::_on_tab_changed));
 
 	HBoxContainer *projects_hb = memnew(HBoxContainer);
-	projects_hb->set_name(TTR("Projects"));
+	projects_hb->set_name(TTR("Local Projects"));
 	tabs->add_child(projects_hb);
 
 	{
@@ -2681,7 +2672,7 @@ ProjectManager::ProjectManager() {
 
 	if (StreamPeerSSL::is_available()) {
 		asset_library = memnew(EditorAssetLibrary(true));
-		asset_library->set_name(TTR("Templates"));
+		asset_library->set_name(TTR("Asset Library Projects"));
 		tabs->add_child(asset_library);
 		asset_library->connect("install_asset", callable_mp(this, &ProjectManager::_install_project));
 	} else {

@@ -60,6 +60,20 @@ Variant VisualShaderNode::get_input_port_default_value(int p_port) const {
 	return Variant();
 }
 
+void VisualShaderNode::remove_input_port_default_value(int p_port) {
+	if (default_input_values.has(p_port)) {
+		default_input_values.erase(p_port);
+		emit_changed();
+	}
+}
+
+void VisualShaderNode::clear_default_input_values() {
+	if (!default_input_values.is_empty()) {
+		default_input_values.clear();
+		emit_changed();
+	}
+}
+
 bool VisualShaderNode::is_port_separator(int p_index) const {
 	return false;
 }
@@ -152,6 +166,14 @@ bool VisualShaderNode::is_use_prop_slots() const {
 	return false;
 }
 
+bool VisualShaderNode::is_disabled() const {
+	return disabled;
+}
+
+void VisualShaderNode::set_disabled(bool p_disabled) {
+	disabled = p_disabled;
+}
+
 Vector<VisualShader::DefaultTextureParam> VisualShaderNode::get_default_texture_parameters(VisualShader::Type p_type, int p_id) const {
 	return Vector<VisualShader::DefaultTextureParam>();
 }
@@ -211,6 +233,9 @@ void VisualShaderNode::_bind_methods() {
 
 	ClassDB::bind_method(D_METHOD("set_input_port_default_value", "port", "value"), &VisualShaderNode::set_input_port_default_value);
 	ClassDB::bind_method(D_METHOD("get_input_port_default_value", "port"), &VisualShaderNode::get_input_port_default_value);
+
+	ClassDB::bind_method(D_METHOD("remove_input_port_default_value", "port"), &VisualShaderNode::remove_input_port_default_value);
+	ClassDB::bind_method(D_METHOD("clear_default_input_values"), &VisualShaderNode::clear_default_input_values);
 
 	ClassDB::bind_method(D_METHOD("set_default_input_values", "values"), &VisualShaderNode::set_default_input_values);
 	ClassDB::bind_method(D_METHOD("get_default_input_values"), &VisualShaderNode::get_default_input_values);
@@ -362,6 +387,18 @@ void VisualShaderNodeCustom::set_input_port_default_value(int p_port, const Vari
 void VisualShaderNodeCustom::set_default_input_values(const Array &p_values) {
 	if (!is_initialized) {
 		VisualShaderNode::set_default_input_values(p_values);
+	}
+}
+
+void VisualShaderNodeCustom::remove_input_port_default_value(int p_port) {
+	if (!is_initialized) {
+		VisualShaderNode::remove_input_port_default_value(p_port);
+	}
+}
+
+void VisualShaderNodeCustom::clear_default_input_values() {
+	if (!is_initialized) {
+		VisualShaderNode::clear_default_input_values();
 	}
 }
 
@@ -1260,6 +1297,12 @@ void VisualShader::_get_property_list(List<PropertyInfo> *p_list) const {
 Error VisualShader::_write_node(Type type, StringBuilder &global_code, StringBuilder &global_code_per_node, Map<Type, StringBuilder> &global_code_per_func, StringBuilder &code, Vector<VisualShader::DefaultTextureParam> &def_tex_params, const VMap<ConnectionKey, const List<Connection>::Element *> &input_connections, const VMap<ConnectionKey, const List<Connection>::Element *> &output_connections, int node, Set<int> &processed, bool for_preview, Set<StringName> &r_classes) const {
 	const Ref<VisualShaderNode> vsnode = graph[type].nodes[node].node;
 
+	if (vsnode->is_disabled()) {
+		code += "// " + vsnode->get_caption() + ":" + itos(node) + "\n";
+		code += "\t// Node is disabled and code is not generated.\n";
+		return OK;
+	}
+
 	//check inputs recursively first
 	int input_count = vsnode->get_input_port_count();
 	for (int i = 0; i < input_count; i++) {
@@ -1328,6 +1371,11 @@ Error VisualShader::_write_node(Type type, StringBuilder &global_code, StringBui
 		if (input_connections.has(ck)) {
 			//connected to something, use that output
 			int from_node = input_connections[ck]->get().from_node;
+
+			if (graph[type].nodes[from_node].node->is_disabled()) {
+				continue;
+			}
+
 			int from_port = input_connections[ck]->get().from_port;
 
 			VisualShaderNode::PortType in_type = vsnode->get_input_port_type(i);
@@ -1393,8 +1441,8 @@ Error VisualShader::_write_node(Type type, StringBuilder &global_code, StringBui
 				Vector3 val = defval;
 				inputs[i] = "n_in" + itos(node) + "p" + itos(i);
 				code += "\tvec3 " + inputs[i] + " = " + vformat("vec3(%.5f, %.5f, %.5f);\n", val.x, val.y, val.z);
-			} else if (defval.get_type() == Variant::TRANSFORM) {
-				Transform val = defval;
+			} else if (defval.get_type() == Variant::TRANSFORM3D) {
+				Transform3D val = defval;
 				val.basis.transpose();
 				inputs[i] = "n_in" + itos(node) + "p" + itos(i);
 				Array values;
@@ -2531,6 +2579,8 @@ const VisualShaderNodeOutput::Port VisualShaderNodeOutput::ports[] = {
 	{ Shader::MODE_SPATIAL, VisualShader::TYPE_VERTEX, VisualShaderNode::PORT_TYPE_VECTOR, "color", "COLOR.rgb" },
 	{ Shader::MODE_SPATIAL, VisualShader::TYPE_VERTEX, VisualShaderNode::PORT_TYPE_SCALAR, "alpha", "COLOR.a" },
 	{ Shader::MODE_SPATIAL, VisualShader::TYPE_VERTEX, VisualShaderNode::PORT_TYPE_SCALAR, "roughness", "ROUGHNESS" },
+	{ Shader::MODE_SPATIAL, VisualShader::TYPE_VERTEX, VisualShaderNode::PORT_TYPE_TRANSFORM, "model_view_matrix", "MODELVIEW_MATRIX" },
+
 	// Spatial, Fragment
 
 	{ Shader::MODE_SPATIAL, VisualShader::TYPE_FRAGMENT, VisualShaderNode::PORT_TYPE_VECTOR, "albedo", "ALBEDO" },
@@ -2670,9 +2720,13 @@ String VisualShaderNodeOutput::get_output_port_name(int p_port) const {
 }
 
 bool VisualShaderNodeOutput::is_port_separator(int p_index) const {
+	if (shader_mode == Shader::MODE_SPATIAL && shader_type == VisualShader::TYPE_VERTEX) {
+		String name = get_input_port_name(p_index);
+		return bool(name == "Model View Matrix");
+	}
 	if (shader_mode == Shader::MODE_SPATIAL && shader_type == VisualShader::TYPE_FRAGMENT) {
 		String name = get_input_port_name(p_index);
-		return (name == "Normal" || name == "Rim" || name == "Alpha Scissor Threshold");
+		return bool(name == "Normal" || name == "Rim" || name == "Alpha Scissor Threshold");
 	}
 	return false;
 }
