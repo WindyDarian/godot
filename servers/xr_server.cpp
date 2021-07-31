@@ -119,7 +119,7 @@ void XRServer::center_on_hmd(RotationMode p_rotation_mode, bool p_keep_height) {
 		reference_frame = Transform3D();
 
 		// requesting our EYE_MONO transform should return our current HMD position
-		Transform3D new_reference_frame = primary_interface->get_transform_for_eye(XRInterface::EYE_MONO, Transform3D());
+		Transform3D new_reference_frame = primary_interface->get_camera_transform();
 
 		// remove our tilt
 		if (p_rotation_mode == 1) {
@@ -148,7 +148,7 @@ void XRServer::center_on_hmd(RotationMode p_rotation_mode, bool p_keep_height) {
 Transform3D XRServer::get_hmd_transform() {
 	Transform3D hmd_transform;
 	if (primary_interface != nullptr) {
-		hmd_transform = primary_interface->get_transform_for_eye(XRInterface::EYE_MONO, hmd_transform);
+		hmd_transform = primary_interface->get_camera_transform();
 	};
 	return hmd_transform;
 };
@@ -164,7 +164,7 @@ void XRServer::add_interface(const Ref<XRInterface> &p_interface) {
 	};
 
 	interfaces.push_back(p_interface);
-	emit_signal("interface_added", p_interface->get_name());
+	emit_signal(SNAME("interface_added"), p_interface->get_name());
 };
 
 void XRServer::remove_interface(const Ref<XRInterface> &p_interface) {
@@ -182,7 +182,7 @@ void XRServer::remove_interface(const Ref<XRInterface> &p_interface) {
 
 	print_verbose("XR: Removed interface" + p_interface->get_name());
 
-	emit_signal("interface_removed", p_interface->get_name());
+	emit_signal(SNAME("interface_removed"), p_interface->get_name());
 	interfaces.remove(idx);
 };
 
@@ -269,7 +269,7 @@ void XRServer::add_tracker(Ref<XRPositionalTracker> p_tracker) {
 	ERR_FAIL_COND(p_tracker.is_null());
 
 	trackers.push_back(p_tracker);
-	emit_signal("tracker_added", p_tracker->get_tracker_name(), p_tracker->get_tracker_type(), p_tracker->get_tracker_id());
+	emit_signal(SNAME("tracker_added"), p_tracker->get_tracker_name(), p_tracker->get_tracker_type(), p_tracker->get_tracker_id());
 };
 
 void XRServer::remove_tracker(Ref<XRPositionalTracker> p_tracker) {
@@ -285,7 +285,7 @@ void XRServer::remove_tracker(Ref<XRPositionalTracker> p_tracker) {
 
 	ERR_FAIL_COND(idx == -1);
 
-	emit_signal("tracker_removed", p_tracker->get_tracker_name(), p_tracker->get_tracker_type(), p_tracker->get_tracker_id());
+	emit_signal(SNAME("tracker_removed"), p_tracker->get_tracker_name(), p_tracker->get_tracker_type(), p_tracker->get_tracker_id());
 	trackers.remove(idx);
 };
 

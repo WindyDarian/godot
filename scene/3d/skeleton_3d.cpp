@@ -264,8 +264,8 @@ void Skeleton3D::_notification(int p_what) {
 					b.global_pose_override_amount = 0.0;
 				}
 
-				for (List<ObjectID>::Element *E = b.nodes_bound.front(); E; E = E->next()) {
-					Object *obj = ObjectDB::get_instance(E->get());
+				for (const ObjectID &E : b.nodes_bound) {
+					Object *obj = ObjectDB::get_instance(E);
 					ERR_CONTINUE(!obj);
 					Node3D *node_3d = Object::cast_to<Node3D>(obj);
 					ERR_CONTINUE(!node_3d);
@@ -404,7 +404,7 @@ void Skeleton3D::add_bone(const String &p_name) {
 	process_order_dirty = true;
 	version++;
 	_make_dirty();
-	update_gizmo();
+	update_gizmos();
 }
 
 int Skeleton3D::find_bone(const String &p_name) const {
@@ -524,8 +524,8 @@ void Skeleton3D::bind_child_node_to_bone(int p_bone, Node *p_node) {
 
 	ObjectID id = p_node->get_instance_id();
 
-	for (const List<ObjectID>::Element *E = bones[p_bone].nodes_bound.front(); E; E = E->next()) {
-		if (E->get() == id) {
+	for (const ObjectID &E : bones[p_bone].nodes_bound) {
+		if (E == id) {
 			return; // already here
 		}
 	}
@@ -544,8 +544,8 @@ void Skeleton3D::unbind_child_node_from_bone(int p_bone, Node *p_node) {
 void Skeleton3D::get_bound_child_nodes_to_bone(int p_bone, List<Node *> *p_bound) const {
 	ERR_FAIL_INDEX(p_bone, bones.size());
 
-	for (const List<ObjectID>::Element *E = bones[p_bone].nodes_bound.front(); E; E = E->next()) {
-		Object *obj = ObjectDB::get_instance(E->get());
+	for (const ObjectID &E : bones[p_bone].nodes_bound) {
+		Object *obj = ObjectDB::get_instance(E);
 		ERR_CONTINUE(!obj);
 		p_bound->push_back(Object::cast_to<Node>(obj));
 	}
@@ -797,7 +797,7 @@ Ref<SkinReference> Skeleton3D::register_skin(const Ref<Skin> &p_skin) {
 		//when skeletons did not support skins. It is also used by gizmo
 		//to display the skeleton.
 
-		skin.instance();
+		skin.instantiate();
 		skin->set_bind_count(bones.size());
 		_update_process_order(); //just in case
 
@@ -826,7 +826,7 @@ Ref<SkinReference> Skeleton3D::register_skin(const Ref<Skin> &p_skin) {
 	ERR_FAIL_COND_V(skin.is_null(), Ref<SkinReference>());
 
 	Ref<SkinReference> skin_ref;
-	skin_ref.instance();
+	skin_ref.instantiate();
 
 	skin_ref->skeleton_node = this;
 	skin_ref->bind_count = 0;

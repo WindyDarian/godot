@@ -335,7 +335,7 @@ void PhysicsServer3DSW::area_set_shape_disabled(RID p_area, int p_shape_idx, boo
 	ERR_FAIL_COND(!area);
 	ERR_FAIL_INDEX(p_shape_idx, area->get_shape_count());
 	FLUSH_QUERY_CHECK(area);
-	area->set_shape_as_disabled(p_shape_idx, p_disabled);
+	area->set_shape_disabled(p_shape_idx, p_disabled);
 }
 
 void PhysicsServer3DSW::area_attach_object_instance_id(RID p_area, ObjectID p_id) {
@@ -537,7 +537,7 @@ void PhysicsServer3DSW::body_set_shape_disabled(RID p_body, int p_shape_idx, boo
 	ERR_FAIL_INDEX(p_shape_idx, body->get_shape_count());
 	FLUSH_QUERY_CHECK(body);
 
-	body->set_shape_as_disabled(p_shape_idx, p_disabled);
+	body->set_shape_disabled(p_shape_idx, p_disabled);
 }
 
 Transform3D PhysicsServer3DSW::body_get_shape_transform(RID p_body, int p_shape_idx) const {
@@ -1582,6 +1582,10 @@ void PhysicsServer3DSW::free(RID p_rid) {
 
 void PhysicsServer3DSW::set_active(bool p_active) {
 	active = p_active;
+};
+
+void PhysicsServer3DSW::set_collision_iterations(int p_iterations) {
+	iterations = p_iterations;
 };
 
 void PhysicsServer3DSW::init() {

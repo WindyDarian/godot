@@ -36,17 +36,17 @@
 #include <stdlib.h>
 
 static _FORCE_INLINE_ void get_uv_and_normal(const Vector3 &p_pos, const Vector3 *p_vtx, const Vector2 *p_uv, const Vector3 *p_normal, Vector2 &r_uv, Vector3 &r_normal) {
-	if (p_pos.distance_squared_to(p_vtx[0]) < CMP_EPSILON2) {
+	if (p_pos.is_equal_approx(p_vtx[0])) {
 		r_uv = p_uv[0];
 		r_normal = p_normal[0];
 		return;
 	}
-	if (p_pos.distance_squared_to(p_vtx[1]) < CMP_EPSILON2) {
+	if (p_pos.is_equal_approx(p_vtx[1])) {
 		r_uv = p_uv[1];
 		r_normal = p_normal[1];
 		return;
 	}
-	if (p_pos.distance_squared_to(p_vtx[2]) < CMP_EPSILON2) {
+	if (p_pos.is_equal_approx(p_vtx[2])) {
 		r_uv = p_uv[2];
 		r_normal = p_normal[2];
 		return;
@@ -931,14 +931,14 @@ void Voxelizer::_debug_mesh(int p_idx, int p_level, const AABB &p_aabb, Ref<Mult
 Ref<MultiMesh> Voxelizer::create_debug_multimesh() {
 	Ref<MultiMesh> mm;
 
-	mm.instance();
+	mm.instantiate();
 
 	mm->set_transform_format(MultiMesh::TRANSFORM_3D);
 	mm->set_use_colors(true);
 	mm->set_instance_count(leaf_voxel_count);
 
 	Ref<ArrayMesh> mesh;
-	mesh.instance();
+	mesh.instantiate();
 
 	{
 		Array arr;
@@ -985,7 +985,7 @@ Ref<MultiMesh> Voxelizer::create_debug_multimesh() {
 
 	{
 		Ref<StandardMaterial3D> fsm;
-		fsm.instance();
+		fsm.instantiate();
 		fsm->set_flag(StandardMaterial3D::FLAG_SRGB_VERTEX_COLOR, true);
 		fsm->set_flag(StandardMaterial3D::FLAG_ALBEDO_FROM_VERTEX_COLOR, true);
 		fsm->set_shading_mode(StandardMaterial3D::SHADING_MODE_UNSHADED);

@@ -30,13 +30,13 @@
 
 #include "test_math.h"
 
+#include "core/io/file_access.h"
 #include "core/math/basis.h"
 #include "core/math/camera_matrix.h"
 #include "core/math/delaunay_3d.h"
 #include "core/math/geometry_2d.h"
 #include "core/math/math_funcs.h"
 #include "core/math/transform_3d.h"
-#include "core/os/file_access.h"
 #include "core/os/keyboard.h"
 #include "core/os/os.h"
 #include "core/string/print_string.h"
@@ -549,8 +549,8 @@ MainLoop *test() {
 		List<StringName> tl;
 		ClassDB::get_class_list(&tl);
 
-		for (List<StringName>::Element *E = tl.front(); E; E = E->next()) {
-			Vector<uint8_t> m5b = E->get().operator String().md5_buffer();
+		for (const StringName &E : tl) {
+			Vector<uint8_t> m5b = E.operator String().md5_buffer();
 			hashes.push_back(hashes.size());
 		}
 

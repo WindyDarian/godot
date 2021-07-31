@@ -48,6 +48,7 @@ public:
 		DEPENDENCY_CHANGED_SKELETON_DATA,
 		DEPENDENCY_CHANGED_SKELETON_BONES,
 		DEPENDENCY_CHANGED_LIGHT,
+		DEPENDENCY_CHANGED_LIGHT_SOFT_SHADOW_AND_PROJECTOR,
 		DEPENDENCY_CHANGED_REFLECTION_PROBE,
 	};
 
@@ -130,7 +131,6 @@ public:
 	virtual void texture_3d_initialize(RID p_texture, Image::Format, int p_width, int p_height, int p_depth, bool p_mipmaps, const Vector<Ref<Image>> &p_data) = 0;
 	virtual void texture_proxy_initialize(RID p_texture, RID p_base) = 0; //all slices, then all the mipmaps, must be coherent
 
-	virtual void texture_2d_update_immediate(RID p_texture, const Ref<Image> &p_image, int p_layer = 0) = 0; //mostly used for video and streaming
 	virtual void texture_2d_update(RID p_texture, const Ref<Image> &p_image, int p_layer = 0) = 0;
 	virtual void texture_3d_update(RID p_texture, const Vector<Ref<Image>> &p_data) = 0;
 	virtual void texture_proxy_update(RID p_proxy, RID p_base) = 0;
@@ -230,7 +230,9 @@ public:
 	virtual void mesh_set_blend_shape_mode(RID p_mesh, RS::BlendShapeMode p_mode) = 0;
 	virtual RS::BlendShapeMode mesh_get_blend_shape_mode(RID p_mesh) const = 0;
 
-	virtual void mesh_surface_update_region(RID p_mesh, int p_surface, int p_offset, const Vector<uint8_t> &p_data) = 0;
+	virtual void mesh_surface_update_vertex_region(RID p_mesh, int p_surface, int p_offset, const Vector<uint8_t> &p_data) = 0;
+	virtual void mesh_surface_update_attribute_region(RID p_mesh, int p_surface, int p_offset, const Vector<uint8_t> &p_data) = 0;
+	virtual void mesh_surface_update_skin_region(RID p_mesh, int p_surface, int p_offset, const Vector<uint8_t> &p_data) = 0;
 
 	virtual void mesh_surface_set_material(RID p_mesh, int p_surface, RID p_material) = 0;
 	virtual RID mesh_surface_get_material(RID p_mesh, int p_surface) const = 0;
@@ -288,24 +290,6 @@ public:
 
 	virtual AABB multimesh_get_aabb(RID p_multimesh) const = 0;
 
-	/* IMMEDIATE API */
-
-	virtual RID immediate_allocate() = 0;
-	virtual void immediate_initialize(RID p_rid) = 0;
-
-	virtual void immediate_begin(RID p_immediate, RS::PrimitiveType p_rimitive, RID p_texture = RID()) = 0;
-	virtual void immediate_vertex(RID p_immediate, const Vector3 &p_vertex) = 0;
-	virtual void immediate_normal(RID p_immediate, const Vector3 &p_normal) = 0;
-	virtual void immediate_tangent(RID p_immediate, const Plane &p_tangent) = 0;
-	virtual void immediate_color(RID p_immediate, const Color &p_color) = 0;
-	virtual void immediate_uv(RID p_immediate, const Vector2 &tex_uv) = 0;
-	virtual void immediate_uv2(RID p_immediate, const Vector2 &tex_uv) = 0;
-	virtual void immediate_end(RID p_immediate) = 0;
-	virtual void immediate_clear(RID p_immediate) = 0;
-	virtual void immediate_set_material(RID p_immediate, RID p_material) = 0;
-	virtual RID immediate_get_material(RID p_immediate) const = 0;
-	virtual AABB immediate_get_aabb(RID p_immediate) const = 0;
-
 	/* SKELETON API */
 
 	virtual RID skeleton_allocate() = 0;
@@ -348,13 +332,13 @@ public:
 	virtual bool light_directional_get_blend_splits(RID p_light) const = 0;
 	virtual void light_directional_set_sky_only(RID p_light, bool p_sky_only) = 0;
 	virtual bool light_directional_is_sky_only(RID p_light) const = 0;
-	virtual void light_directional_set_shadow_depth_range_mode(RID p_light, RS::LightDirectionalShadowDepthRangeMode p_range_mode) = 0;
-	virtual RS::LightDirectionalShadowDepthRangeMode light_directional_get_shadow_depth_range_mode(RID p_light) const = 0;
 
 	virtual RS::LightDirectionalShadowMode light_directional_get_shadow_mode(RID p_light) = 0;
 	virtual RS::LightOmniShadowMode light_omni_get_shadow_mode(RID p_light) = 0;
 
 	virtual bool light_has_shadow(RID p_light) const = 0;
+
+	virtual bool light_has_projector(RID p_light) const = 0;
 
 	virtual RS::LightType light_get_type(RID p_light) const = 0;
 	virtual AABB light_get_aabb(RID p_light) const = 0;
@@ -437,12 +421,6 @@ public:
 
 	virtual void voxel_gi_set_energy(RID p_voxel_gi, float p_energy) = 0;
 	virtual float voxel_gi_get_energy(RID p_voxel_gi) const = 0;
-
-	virtual void voxel_gi_set_ao(RID p_voxel_gi, float p_ao) = 0;
-	virtual float voxel_gi_get_ao(RID p_voxel_gi) const = 0;
-
-	virtual void voxel_gi_set_ao_size(RID p_voxel_gi, float p_strength) = 0;
-	virtual float voxel_gi_get_ao_size(RID p_voxel_gi) const = 0;
 
 	virtual void voxel_gi_set_bias(RID p_voxel_gi, float p_bias) = 0;
 	virtual float voxel_gi_get_bias(RID p_voxel_gi) const = 0;
@@ -557,6 +535,14 @@ public:
 	virtual bool particles_collision_is_heightfield(RID p_particles_collision) const = 0;
 	virtual RID particles_collision_get_heightfield_framebuffer(RID p_particles_collision) const = 0;
 
+	virtual RID visibility_notifier_allocate() = 0;
+	virtual void visibility_notifier_initialize(RID p_notifier) = 0;
+	virtual void visibility_notifier_set_aabb(RID p_notifier, const AABB &p_aabb) = 0;
+	virtual void visibility_notifier_set_callbacks(RID p_notifier, const Callable &p_enter_callbable, const Callable &p_exit_callable) = 0;
+
+	virtual AABB visibility_notifier_get_aabb(RID p_notifier) const = 0;
+	virtual void visibility_notifier_call(RID p_notifier, bool p_enter, bool p_deferred) = 0;
+
 	//used from 2D and 3D
 	virtual RID particles_collision_instance_create(RID p_collision) = 0;
 	virtual void particles_collision_instance_set_transform(RID p_collision_instance, const Transform3D &p_transform) = 0;
@@ -590,7 +576,7 @@ public:
 
 	virtual RID render_target_create() = 0;
 	virtual void render_target_set_position(RID p_render_target, int p_x, int p_y) = 0;
-	virtual void render_target_set_size(RID p_render_target, int p_width, int p_height) = 0;
+	virtual void render_target_set_size(RID p_render_target, int p_width, int p_height, uint32_t p_view_count) = 0;
 	virtual RID render_target_get_texture(RID p_render_target) = 0;
 	virtual void render_target_set_external_texture(RID p_render_target, unsigned int p_texture_id) = 0;
 	virtual void render_target_set_flag(RID p_render_target, RenderTargetFlags p_flag, bool p_value) = 0;
@@ -616,11 +602,9 @@ public:
 
 	virtual void set_debug_generate_wireframes(bool p_generate) = 0;
 
-	virtual void render_info_begin_capture() = 0;
-	virtual void render_info_end_capture() = 0;
-	virtual int get_captured_render_info(RS::RenderInfo p_info) = 0;
+	virtual void update_memory_info() = 0;
 
-	virtual uint64_t get_render_info(RS::RenderInfo p_info) = 0;
+	virtual uint64_t get_rendering_info(RS::RenderingInfo p_info) = 0;
 	virtual String get_video_adapter_name() const = 0;
 	virtual String get_video_adapter_vendor() const = 0;
 

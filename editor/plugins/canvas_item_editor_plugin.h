@@ -206,6 +206,7 @@ private:
 		DRAG_ANCHOR_BOTTOM_RIGHT,
 		DRAG_ANCHOR_BOTTOM_LEFT,
 		DRAG_ANCHOR_ALL,
+		DRAG_QUEUED,
 		DRAG_MOVE,
 		DRAG_MOVE_X,
 		DRAG_MOVE_Y,
@@ -229,6 +230,10 @@ private:
 	HScrollBar *h_scroll;
 	VScrollBar *v_scroll;
 	HBoxContainer *hb;
+	// Used for secondary menu items which are displayed depending on the currently selected node
+	// (such as MeshInstance's "Mesh" menu).
+	PanelContainer *context_menu_container;
+	HBoxContainer *hbc_context_menu;
 
 	Map<Control *, Timer *> popup_temporarily_timers;
 
@@ -379,6 +384,7 @@ private:
 	Control *top_ruler;
 	Control *left_ruler;
 
+	Point2 drag_start_origin;
 	DragType drag_type;
 	Point2 drag_from;
 	Point2 drag_to;
@@ -533,6 +539,7 @@ private:
 	HSplitContainer *palette_split;
 	VSplitContainer *bottom_split;
 
+	void _update_context_menu_stylebox();
 	void _popup_warning_temporarily(Control *p_control, const float p_duration);
 	void _popup_warning_depop(Control *p_control);
 

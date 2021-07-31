@@ -45,7 +45,7 @@ private:
 		return drivers;
 	}
 
-	static DisplayServer *create_func(const String &p_rendering_driver, DisplayServer::WindowMode p_mode, uint32_t p_flags, const Vector2i &p_resolution, Error &r_error) {
+	static DisplayServer *create_func(const String &p_rendering_driver, DisplayServer::WindowMode p_mode, DisplayServer::VSyncMode p_vsync_mode, uint32_t p_flags, const Vector2i &p_resolution, Error &r_error) {
 		r_error = OK;
 		RasterizerDummy::make_current();
 		return memnew(DisplayServerHeadless());
@@ -54,8 +54,6 @@ private:
 public:
 	bool has_feature(Feature p_feature) const override { return false; }
 	String get_name() const override { return "headless"; }
-
-	void alert(const String &p_alert, const String &p_title = "ALERT!") override {}
 
 	int get_screen_count() const override { return 0; }
 	Point2i screen_get_position(int p_screen = SCREEN_OF_MAIN_WINDOW) const override { return Point2i(); }

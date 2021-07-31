@@ -221,7 +221,7 @@ void GridMap::set_cell_size(const Vector3 &p_size) {
 	ERR_FAIL_COND(p_size.x < 0.001 || p_size.y < 0.001 || p_size.z < 0.001);
 	cell_size = p_size;
 	_recreate_octant_data();
-	emit_signal("cell_size_changed", cell_size);
+	emit_signal(SNAME("cell_size_changed"), cell_size);
 }
 
 Vector3 GridMap::get_cell_size() const {
@@ -519,14 +519,14 @@ bool GridMap::_octant_update(const OctantKey &p_key) {
 			RS::get_singleton()->multimesh_set_mesh(mm, mesh_library->get_item_mesh(E->key())->get_rid());
 
 			int idx = 0;
-			for (List<Pair<Transform3D, IndexKey>>::Element *F = E->get().front(); F; F = F->next()) {
-				RS::get_singleton()->multimesh_instance_set_transform(mm, idx, F->get().first);
+			for (const Pair<Transform3D, IndexKey> &F : E->get()) {
+				RS::get_singleton()->multimesh_instance_set_transform(mm, idx, F.first);
 #ifdef TOOLS_ENABLED
 
 				Octant::MultimeshInstance::Item it;
 				it.index = idx;
-				it.transform = F->get().first;
-				it.key = F->get().second;
+				it.transform = F.first;
+				it.key = F.second;
 				mmi.items.push_back(it);
 #endif
 
@@ -780,7 +780,7 @@ void GridMap::_update_octants_callback() {
 
 	while (to_delete.front()) {
 		octant_map.erase(to_delete.front()->get());
-		to_delete.pop_back();
+		to_delete.pop_front();
 	}
 
 	_update_visibility();
@@ -1012,7 +1012,7 @@ void GridMap::make_baked_meshes(bool p_gen_lightmap_uv, float p_lightmap_uv_texe
 			Ref<Material> surf_mat = mesh->surface_get_material(i);
 			if (!mat_map.has(surf_mat)) {
 				Ref<SurfaceTool> st;
-				st.instance();
+				st.instantiate();
 				st->begin(Mesh::PRIMITIVE_TRIANGLES);
 				st->set_material(surf_mat);
 				mat_map[surf_mat] = st;
@@ -1024,7 +1024,7 @@ void GridMap::make_baked_meshes(bool p_gen_lightmap_uv, float p_lightmap_uv_texe
 
 	for (Map<OctantKey, Map<Ref<Material>, Ref<SurfaceTool>>>::Element *E = surface_map.front(); E; E = E->next()) {
 		Ref<ArrayMesh> mesh;
-		mesh.instance();
+		mesh.instantiate();
 		for (Map<Ref<Material>, Ref<SurfaceTool>>::Element *F = E->get().front(); F; F = F->next()) {
 			F->get()->commit(mesh);
 		}

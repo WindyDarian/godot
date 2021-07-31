@@ -176,8 +176,8 @@ void AnimationPlayer::_get_property_list(List<PropertyInfo> *p_list) const {
 
 	anim_names.sort();
 
-	for (List<PropertyInfo>::Element *E = anim_names.front(); E; E = E->next()) {
-		p_list->push_back(E->get());
+	for (const PropertyInfo &E : anim_names) {
+		p_list->push_back(E);
 	}
 
 	p_list->push_back(PropertyInfo(Variant::ARRAY, "blend_times", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NOEDITOR | PROPERTY_USAGE_INTERNAL));
@@ -485,8 +485,8 @@ void AnimationPlayer::_animation_process_animation(AnimationData *p_anim, float 
 					List<int> indices;
 					a->value_track_get_key_indices(i, p_time, p_delta, &indices);
 
-					for (List<int>::Element *F = indices.front(); F; F = F->next()) {
-						Variant value = a->track_get_key_value(i, F->get());
+					for (int &F : indices) {
+						Variant value = a->track_get_key_value(i, F);
 						switch (pa->special) {
 							case SP_NONE: {
 								bool valid;
@@ -513,7 +513,7 @@ void AnimationPlayer::_animation_process_animation(AnimationData *p_anim, float 
 								}
 #endif
 
-								static_cast<Node2D *>(pa->object)->set_rotation(Math::deg2rad((double)value));
+								static_cast<Node2D *>(pa->object)->set_rotation((double)value);
 							} break;
 							case SP_NODE2D_SCALE: {
 #ifdef DEBUG_ENABLED
@@ -544,9 +544,9 @@ void AnimationPlayer::_animation_process_animation(AnimationData *p_anim, float 
 
 				a->method_track_get_key_indices(i, p_time, p_delta, &indices);
 
-				for (List<int>::Element *E = indices.front(); E; E = E->next()) {
-					StringName method = a->method_track_get_name(i, E->get());
-					Vector<Variant> params = a->method_track_get_params(i, E->get());
+				for (int &E : indices) {
+					StringName method = a->method_track_get_name(i, E);
+					Vector<Variant> params = a->method_track_get_params(i, E);
 
 					int s = params.size();
 
@@ -557,6 +557,7 @@ void AnimationPlayer::_animation_process_animation(AnimationData *p_anim, float 
 					}
 #endif
 
+					static_assert(VARIANT_ARG_MAX == 8, "This code needs to be updated if VARIANT_ARG_MAX != 8");
 					if (can_call) {
 						if (method_call_mode == ANIMATION_METHOD_CALL_DEFERRED) {
 							MessageQueue::get_singleton()->push_call(
@@ -566,7 +567,10 @@ void AnimationPlayer::_animation_process_animation(AnimationData *p_anim, float 
 									s >= 2 ? params[1] : Variant(),
 									s >= 3 ? params[2] : Variant(),
 									s >= 4 ? params[3] : Variant(),
-									s >= 5 ? params[4] : Variant());
+									s >= 5 ? params[4] : Variant(),
+									s >= 6 ? params[5] : Variant(),
+									s >= 7 ? params[6] : Variant(),
+									s >= 8 ? params[7] : Variant());
 						} else {
 							nc->node->call(
 									method,
@@ -574,7 +578,10 @@ void AnimationPlayer::_animation_process_animation(AnimationData *p_anim, float 
 									s >= 2 ? params[1] : Variant(),
 									s >= 3 ? params[2] : Variant(),
 									s >= 4 ? params[3] : Variant(),
-									s >= 5 ? params[4] : Variant());
+									s >= 5 ? params[4] : Variant(),
+									s >= 6 ? params[5] : Variant(),
+									s >= 7 ? params[6] : Variant(),
+									s >= 8 ? params[7] : Variant());
 						}
 					}
 				}
@@ -1069,8 +1076,8 @@ void AnimationPlayer::get_animation_list(List<StringName> *p_animations) const {
 
 	anims.sort();
 
-	for (List<String>::Element *E = anims.front(); E; E = E->next()) {
-		p_animations->push_back(E->get());
+	for (const String &E : anims) {
+		p_animations->push_back(E);
 	}
 }
 
@@ -1111,8 +1118,8 @@ void AnimationPlayer::queue(const StringName &p_name) {
 
 Vector<String> AnimationPlayer::get_queue() {
 	Vector<String> ret;
-	for (List<StringName>::Element *E = queued.front(); E; E = E->next()) {
-		ret.push_back(E->get());
+	for (const StringName &E : queued) {
+		ret.push_back(E);
 	}
 
 	return ret;
@@ -1325,7 +1332,7 @@ float AnimationPlayer::get_current_animation_length() const {
 
 void AnimationPlayer::_animation_changed() {
 	clear_caches();
-	emit_signal("caches_cleared");
+	emit_signal(SNAME("caches_cleared"));
 	if (is_playing()) {
 		playback.seeked = true; //need to restart stuff, like audio
 	}
@@ -1495,8 +1502,8 @@ void AnimationPlayer::get_argument_options(const StringName &p_function, int p_i
 	if (p_idx == 0 && (p_function == "play" || p_function == "play_backwards" || p_function == "remove_animation" || p_function == "has_animation" || p_function == "queue")) {
 		List<StringName> al;
 		get_animation_list(&al);
-		for (List<StringName>::Element *E = al.front(); E; E = E->next()) {
-			r_options->push_back(quote_style + String(E->get()) + quote_style);
+		for (const StringName &E : al) {
+			r_options->push_back(quote_style + String(E) + quote_style);
 		}
 	}
 	Node::get_argument_options(p_function, p_idx, r_options);
@@ -1511,7 +1518,7 @@ Ref<AnimatedValuesBackup> AnimationPlayer::backup_animated_values(Node *p_root_o
 
 	_ensure_node_caches(playback.current.from, p_root_override);
 
-	backup.instance();
+	backup.instantiate();
 	for (int i = 0; i < playback.current.from->node_cache.size(); i++) {
 		TrackNodeCache *nc = playback.current.from->node_cache[i];
 		if (!nc) {
@@ -1657,16 +1664,16 @@ void AnimationPlayer::_bind_methods() {
 
 	ADD_PROPERTY(PropertyInfo(Variant::NODE_PATH, "root_node"), "set_root", "get_root");
 	ADD_PROPERTY(PropertyInfo(Variant::STRING_NAME, "current_animation", PROPERTY_HINT_ENUM, "", PROPERTY_USAGE_EDITOR | PROPERTY_USAGE_ANIMATE_AS_TRIGGER), "set_current_animation", "get_current_animation");
-	ADD_PROPERTY(PropertyInfo(Variant::STRING_NAME, "assigned_animation", PROPERTY_HINT_NONE, "", 0), "set_assigned_animation", "get_assigned_animation");
+	ADD_PROPERTY(PropertyInfo(Variant::STRING_NAME, "assigned_animation", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NONE), "set_assigned_animation", "get_assigned_animation");
 	ADD_PROPERTY(PropertyInfo(Variant::STRING_NAME, "autoplay", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NOEDITOR), "set_autoplay", "get_autoplay");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "reset_on_save", PROPERTY_HINT_NONE, ""), "set_reset_on_save_enabled", "is_reset_on_save_enabled");
-	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "current_animation_length", PROPERTY_HINT_NONE, "", 0), "", "get_current_animation_length");
-	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "current_animation_position", PROPERTY_HINT_NONE, "", 0), "", "get_current_animation_position");
+	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "current_animation_length", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NONE), "", "get_current_animation_length");
+	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "current_animation_position", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NONE), "", "get_current_animation_position");
 
 	ADD_GROUP("Playback Options", "playback_");
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "playback_process_mode", PROPERTY_HINT_ENUM, "Physics,Idle,Manual"), "set_process_callback", "get_process_callback");
 	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "playback_default_blend_time", PROPERTY_HINT_RANGE, "0,4096,0.01"), "set_default_blend_time", "get_default_blend_time");
-	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "playback_active", PROPERTY_HINT_NONE, "", 0), "set_active", "is_active");
+	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "playback_active", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NONE), "set_active", "is_active");
 	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "playback_speed", PROPERTY_HINT_RANGE, "-64,64,0.01"), "set_speed_scale", "get_speed_scale");
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "method_call_mode", PROPERTY_HINT_ENUM, "Deferred,Immediate"), "set_method_call_mode", "get_method_call_mode");
 

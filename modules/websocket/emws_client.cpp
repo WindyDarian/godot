@@ -79,7 +79,7 @@ Error EMWSClient::connect_to_host(String p_host, String p_path, uint16_t p_port,
 	String str = "ws://";
 
 	if (p_custom_headers.size()) {
-		WARN_PRINT_ONCE("Custom headers are not supported in in HTML5 platform.");
+		WARN_PRINT_ONCE("Custom headers are not supported in HTML5 platform.");
 	}
 	if (p_ssl) {
 		str = "wss://";
@@ -107,7 +107,7 @@ Ref<WebSocketPeer> EMWSClient::get_peer(int p_peer_id) const {
 	return _peer;
 }
 
-NetworkedMultiplayerPeer::ConnectionStatus EMWSClient::get_connection_status() const {
+MultiplayerPeer::ConnectionStatus EMWSClient::get_connection_status() const {
 	if (_peer->is_connected_to_host()) {
 		if (_is_connecting)
 			return CONNECTION_CONNECTING;

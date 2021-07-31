@@ -139,7 +139,7 @@ TEST_CASE("[Object] Metadata") {
 			Color(object.get_meta(meta_path)).is_equal_approx(Color(0, 1, 0)),
 			"The returned object metadata after setting should match the expected value.");
 
-	List<String> meta_list;
+	List<StringName> meta_list;
 	object.get_meta_list(&meta_list);
 	CHECK_MESSAGE(
 			meta_list.size() == 1,
@@ -154,7 +154,7 @@ TEST_CASE("[Object] Metadata") {
 			"The returned object metadata after removing should match the expected value.");
 	ERR_PRINT_ON;
 
-	List<String> meta_list2;
+	List<StringName> meta_list2;
 	object.get_meta_list(&meta_list2);
 	CHECK_MESSAGE(
 			meta_list2.size() == 0,
@@ -165,8 +165,8 @@ TEST_CASE("[Object] Construction") {
 	Object object;
 
 	CHECK_MESSAGE(
-			!object.is_reference(),
-			"Object is not a Reference.");
+			!object.is_ref_counted(),
+			"Object is not a RefCounted.");
 
 	Object *p_db = ObjectDB::get_instance(object.get_instance_id());
 	CHECK_MESSAGE(
@@ -206,7 +206,7 @@ TEST_CASE("[Object] Script instance property getter") {
 }
 
 TEST_CASE("[Object] Built-in property setter") {
-	ClassDB::register_class<_TestDerivedObject>();
+	GDREGISTER_CLASS(_TestDerivedObject);
 	_TestDerivedObject derived_object;
 
 	bool valid = false;
@@ -218,7 +218,7 @@ TEST_CASE("[Object] Built-in property setter") {
 }
 
 TEST_CASE("[Object] Built-in property getter") {
-	ClassDB::register_class<_TestDerivedObject>();
+	GDREGISTER_CLASS(_TestDerivedObject);
 	_TestDerivedObject derived_object;
 	derived_object.set_property(100);
 

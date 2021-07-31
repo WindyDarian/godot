@@ -51,9 +51,11 @@ public:
 		TYPE_VERTEX,
 		TYPE_FRAGMENT,
 		TYPE_LIGHT,
-		TYPE_EMIT,
+		TYPE_START,
 		TYPE_PROCESS,
-		TYPE_END,
+		TYPE_COLLIDE,
+		TYPE_START_CUSTOM,
+		TYPE_PROCESS_CUSTOM,
 		TYPE_SKY,
 		TYPE_MAX
 	};
@@ -348,6 +350,10 @@ class VisualShaderNodeInput : public VisualShaderNode {
 
 	String input_name = "[None]";
 
+public:
+	void set_shader_type(VisualShader::Type p_shader_type);
+	void set_shader_mode(Shader::Mode p_shader_mode);
+
 protected:
 	static void _bind_methods();
 	void _validate_property(PropertyInfo &property) const override;
@@ -511,6 +517,7 @@ public:
 	String get_uniform_name_by_index(int p_idx) const;
 	UniformType get_uniform_type_by_name(const String &p_name) const;
 	UniformType get_uniform_type_by_index(int p_idx) const;
+	PortType get_port_type_by_index(int p_idx) const;
 
 	virtual Vector<StringName> get_editable_properties() const override;
 

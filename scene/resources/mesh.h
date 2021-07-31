@@ -149,7 +149,7 @@ public:
 	void generate_debug_mesh_indices(Vector<Vector3> &r_points);
 
 	Ref<Shape3D> create_trimesh_shape() const;
-	Ref<Shape3D> create_convex_shape() const;
+	Ref<Shape3D> create_convex_shape(bool p_clean = true, bool p_simplify = false) const;
 
 	Ref<Mesh> create_outline(float p_margin) const;
 
@@ -159,11 +159,11 @@ public:
 	Size2i get_lightmap_size_hint() const;
 	void clear_cache() const;
 
-	typedef Vector<Vector<Face3>> (*ConvexDecompositionFunc)(const Vector<Face3> &);
+	typedef Vector<Vector<Face3>> (*ConvexDecompositionFunc)(const Vector<Face3> &p_faces, int p_max_convex_hulls);
 
 	static ConvexDecompositionFunc convex_composition_function;
 
-	Vector<Ref<Shape3D>> convex_decompose() const;
+	Vector<Ref<Shape3D>> convex_decompose(int p_max_convex_hulls = -1) const;
 
 	virtual int get_builtin_bind_pose_count() const;
 	virtual Transform3D get_builtin_bind_pose(int p_index) const;
@@ -233,7 +233,9 @@ public:
 	void set_blend_shape_mode(BlendShapeMode p_mode);
 	BlendShapeMode get_blend_shape_mode() const;
 
-	void surface_update_region(int p_surface, int p_offset, const Vector<uint8_t> &p_data);
+	void surface_update_vertex_region(int p_surface, int p_offset, const Vector<uint8_t> &p_data);
+	void surface_update_attribute_region(int p_surface, int p_offset, const Vector<uint8_t> &p_data);
+	void surface_update_skin_region(int p_surface, int p_offset, const Vector<uint8_t> &p_data);
 
 	int get_surface_count() const override;
 

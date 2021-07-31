@@ -63,8 +63,8 @@ void ShaderTextEditor::set_edited_shader(const Ref<Shader> &p_shader) {
 
 	get_text_editor()->set_text(p_shader->get_code());
 	get_text_editor()->clear_undo_history();
-	get_text_editor()->call_deferred("set_h_scroll", 0);
-	get_text_editor()->call_deferred("set_v_scroll", 0);
+	get_text_editor()->call_deferred(SNAME("set_h_scroll"), 0);
+	get_text_editor()->call_deferred(SNAME("set_v_scroll"), 0);
 
 	_validate_script();
 	_line_col_changed();
@@ -118,11 +118,11 @@ void ShaderTextEditor::_load_theme_settings() {
 	const Color keyword_color = EDITOR_GET("text_editor/highlighting/keyword_color");
 	const Color control_flow_keyword_color = EDITOR_GET("text_editor/highlighting/control_flow_keyword_color");
 
-	for (List<String>::Element *E = keywords.front(); E; E = E->next()) {
-		if (ShaderLanguage::is_control_flow_keyword(E->get())) {
-			syntax_highlighter->add_keyword_color(E->get(), control_flow_keyword_color);
+	for (const String &E : keywords) {
+		if (ShaderLanguage::is_control_flow_keyword(E)) {
+			syntax_highlighter->add_keyword_color(E, control_flow_keyword_color);
 		} else {
-			syntax_highlighter->add_keyword_color(E->get(), keyword_color);
+			syntax_highlighter->add_keyword_color(E, keyword_color);
 		}
 	}
 
@@ -144,8 +144,8 @@ void ShaderTextEditor::_load_theme_settings() {
 
 	const Color member_variable_color = EDITOR_GET("text_editor/highlighting/member_variable_color");
 
-	for (List<String>::Element *E = built_ins.front(); E; E = E->next()) {
-		syntax_highlighter->add_keyword_color(E->get(), member_variable_color);
+	for (const String &E : built_ins) {
+		syntax_highlighter->add_keyword_color(E, member_variable_color);
 	}
 
 	// Colorize comments.
@@ -160,8 +160,8 @@ void ShaderTextEditor::_load_theme_settings() {
 
 	if (warnings_panel) {
 		// Warnings panel
-		warnings_panel->add_theme_font_override("normal_font", EditorNode::get_singleton()->get_gui_base()->get_theme_font("main", "EditorFonts"));
-		warnings_panel->add_theme_font_size_override("normal_font_size", EditorNode::get_singleton()->get_gui_base()->get_theme_font_size("main_size", "EditorFonts"));
+		warnings_panel->add_theme_font_override("normal_font", EditorNode::get_singleton()->get_gui_base()->get_theme_font(SNAME("main"), SNAME("EditorFonts")));
+		warnings_panel->add_theme_font_size_override("normal_font_size", EditorNode::get_singleton()->get_gui_base()->get_theme_font_size(SNAME("main_size"), SNAME("EditorFonts")));
 	}
 }
 
@@ -240,9 +240,9 @@ void ShaderTextEditor::_validate_script() {
 		warnings.sort_custom<WarningsComparator>();
 		_update_warning_panel();
 	} else {
-		set_warning_nb(0);
+		set_warning_count(0);
 	}
-	emit_signal("script_changed");
+	emit_signal(SNAME("script_changed"));
 }
 
 void ShaderTextEditor::_update_warning_panel() {
@@ -266,7 +266,7 @@ void ShaderTextEditor::_update_warning_panel() {
 		// First cell.
 		warnings_panel->push_cell();
 		warnings_panel->push_meta(w.get_line() - 1);
-		warnings_panel->push_color(warnings_panel->get_theme_color("warning_color", "Editor"));
+		warnings_panel->push_color(warnings_panel->get_theme_color(SNAME("warning_color"), SNAME("Editor")));
 		warnings_panel->add_text(TTR("Line") + " " + itos(w.get_line()));
 		warnings_panel->add_text(" (" + w.get_name() + "):");
 		warnings_panel->pop(); // Color.
@@ -280,14 +280,14 @@ void ShaderTextEditor::_update_warning_panel() {
 	}
 	warnings_panel->pop(); // Table.
 
-	set_warning_nb(warning_count);
+	set_warning_count(warning_count);
 }
 
 void ShaderTextEditor::_bind_methods() {
 }
 
 ShaderTextEditor::ShaderTextEditor() {
-	syntax_highlighter.instance();
+	syntax_highlighter.instantiate();
 	get_text_editor()->set_syntax_highlighter(syntax_highlighter);
 }
 
@@ -323,25 +323,19 @@ void ShaderEditor::_menu_option(int p_option) {
 			if (shader.is_null()) {
 				return;
 			}
-
-			CodeEdit *tx = shader_editor->get_text_editor();
-			tx->indent_selected_lines_left();
-
+			shader_editor->get_text_editor()->unindent_lines();
 		} break;
 		case EDIT_INDENT_RIGHT: {
 			if (shader.is_null()) {
 				return;
 			}
-
-			CodeEdit *tx = shader_editor->get_text_editor();
-			tx->indent_selected_lines_right();
-
+			shader_editor->get_text_editor()->indent_lines();
 		} break;
 		case EDIT_DELETE_LINE: {
 			shader_editor->delete_lines();
 		} break;
-		case EDIT_CLONE_DOWN: {
-			shader_editor->clone_lines_down();
+		case EDIT_DUPLICATE_SELECTION: {
+			shader_editor->duplicate_selection();
 		} break;
 		case EDIT_TOGGLE_COMMENT: {
 			if (shader.is_null()) {
@@ -386,7 +380,7 @@ void ShaderEditor::_menu_option(int p_option) {
 		} break;
 	}
 	if (p_option != SEARCH_FIND && p_option != SEARCH_REPLACE && p_option != SEARCH_GOTO_LINE) {
-		shader_editor->get_text_editor()->call_deferred("grab_focus");
+		shader_editor->get_text_editor()->call_deferred(SNAME("grab_focus"));
 	}
 }
 
@@ -490,7 +484,7 @@ void ShaderEditor::_check_for_external_edit() {
 		if (use_autoreload) {
 			_reload_shader_from_disk();
 		} else {
-			disk_changed->call_deferred("popup_centered");
+			disk_changed->call_deferred(SNAME("popup_centered"));
 		}
 	}
 }
@@ -698,7 +692,7 @@ ShaderEditor::ShaderEditor(EditorNode *p_node) {
 	edit_menu->get_popup()->add_shortcut(ED_GET_SHORTCUT("script_text_editor/indent_right"), EDIT_INDENT_RIGHT);
 	edit_menu->get_popup()->add_shortcut(ED_GET_SHORTCUT("script_text_editor/delete_line"), EDIT_DELETE_LINE);
 	edit_menu->get_popup()->add_shortcut(ED_GET_SHORTCUT("script_text_editor/toggle_comment"), EDIT_TOGGLE_COMMENT);
-	edit_menu->get_popup()->add_shortcut(ED_GET_SHORTCUT("script_text_editor/clone_down"), EDIT_CLONE_DOWN);
+	edit_menu->get_popup()->add_shortcut(ED_GET_SHORTCUT("script_text_editor/duplicate_selection"), EDIT_DUPLICATE_SELECTION);
 	edit_menu->get_popup()->add_separator();
 	edit_menu->get_popup()->add_shortcut(ED_GET_SHORTCUT("ui_text_completion_query"), EDIT_COMPLETE);
 	edit_menu->get_popup()->connect("id_pressed", callable_mp(this, &ShaderEditor::_menu_option));
@@ -734,7 +728,7 @@ ShaderEditor::ShaderEditor(EditorNode *p_node) {
 	help_menu = memnew(MenuButton);
 	help_menu->set_text(TTR("Help"));
 	help_menu->set_switch_on_hover(true);
-	help_menu->get_popup()->add_icon_item(p_node->get_gui_base()->get_theme_icon("Instance", "EditorIcons"), TTR("Online Docs"), HELP_DOCS);
+	help_menu->get_popup()->add_icon_item(p_node->get_gui_base()->get_theme_icon(SNAME("Instance"), SNAME("EditorIcons")), TTR("Online Docs"), HELP_DOCS);
 	help_menu->get_popup()->connect("id_pressed", callable_mp(this, &ShaderEditor::_menu_option));
 
 	add_child(main_container);
@@ -743,13 +737,18 @@ ShaderEditor::ShaderEditor(EditorNode *p_node) {
 	hbc->add_child(edit_menu);
 	hbc->add_child(goto_menu);
 	hbc->add_child(help_menu);
-	hbc->add_theme_style_override("panel", p_node->get_gui_base()->get_theme_stylebox("ScriptEditorPanel", "EditorStyles"));
+	hbc->add_theme_style_override("panel", p_node->get_gui_base()->get_theme_stylebox(SNAME("ScriptEditorPanel"), SNAME("EditorStyles")));
 
 	VSplitContainer *editor_box = memnew(VSplitContainer);
 	main_container->add_child(editor_box);
 	editor_box->set_anchors_and_offsets_preset(Control::PRESET_WIDE);
 	editor_box->set_v_size_flags(SIZE_EXPAND_FILL);
 	editor_box->add_child(shader_editor);
+
+	FindReplaceBar *bar = memnew(FindReplaceBar);
+	main_container->add_child(bar);
+	bar->hide();
+	shader_editor->set_find_replace_bar(bar);
 
 	warnings_panel = memnew(RichTextLabel);
 	warnings_panel->set_custom_minimum_size(Size2(0, 100 * EDSCALE));
@@ -771,7 +770,7 @@ ShaderEditor::ShaderEditor(EditorNode *p_node) {
 	disk_changed->add_child(vbc);
 
 	Label *dl = memnew(Label);
-	dl->set_text(TTR("This shader has been modified on on disk.\nWhat action should be taken?"));
+	dl->set_text(TTR("This shader has been modified on disk.\nWhat action should be taken?"));
 	vbc->add_child(dl);
 
 	disk_changed->connect("confirmed", callable_mp(this, &ShaderEditor::_reload_shader_from_disk));

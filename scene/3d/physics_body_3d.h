@@ -53,7 +53,7 @@ protected:
 	Ref<KinematicCollision3D> _move(const Vector3 &p_motion, bool p_infinite_inertia = true, bool p_exclude_raycast_shapes = true, bool p_test_only = false, real_t p_margin = 0.001);
 
 public:
-	bool move_and_collide(const Vector3 &p_motion, bool p_infinite_inertia, PhysicsServer3D::MotionResult &r_result, real_t p_margin, bool p_exclude_raycast_shapes = true, bool p_test_only = false);
+	bool move_and_collide(const Vector3 &p_motion, bool p_infinite_inertia, PhysicsServer3D::MotionResult &r_result, real_t p_margin, bool p_exclude_raycast_shapes = true, bool p_test_only = false, bool p_cancel_sliding = true);
 	bool test_move(const Transform3D &p_from, const Vector3 &p_motion, bool p_infinite_inertia = true, bool p_exclude_raycast_shapes = true, const Ref<KinematicCollision3D> &r_collision = Ref<KinematicCollision3D>(), real_t p_margin = 0.001);
 
 	void set_axis_lock(PhysicsServer3D::BodyAxis p_axis, bool p_lock);
@@ -82,12 +82,15 @@ class StaticBody3D : public PhysicsBody3D {
 	Ref<PhysicsMaterial> physics_material_override;
 
 	bool kinematic_motion = false;
+	bool sync_to_physics = false;
+
+	Transform3D last_valid_transform;
+
+	void _direct_state_changed(Object *p_state);
 
 protected:
 	void _notification(int p_what);
 	static void _bind_methods();
-
-	void _direct_state_changed(Object *p_state);
 
 public:
 	void set_physics_material_override(const Ref<PhysicsMaterial> &p_physics_material_override);
@@ -102,6 +105,8 @@ public:
 	virtual Vector3 get_linear_velocity() const override;
 	virtual Vector3 get_angular_velocity() const override;
 
+	virtual TypedArray<String> get_configuration_warnings() const override;
+
 	StaticBody3D();
 
 private:
@@ -111,6 +116,9 @@ private:
 
 	void set_kinematic_motion_enabled(bool p_enabled);
 	bool is_kinematic_motion_enabled() const;
+
+	void set_sync_to_physics(bool p_enable);
+	bool is_sync_to_physics_enabled() const;
 };
 
 class RigidBody3D : public PhysicsBody3D {
@@ -251,7 +259,7 @@ public:
 	void apply_impulse(const Vector3 &p_impulse, const Vector3 &p_position = Vector3());
 	void apply_torque_impulse(const Vector3 &p_impulse);
 
-	TypedArray<String> get_configuration_warnings() const override;
+	virtual TypedArray<String> get_configuration_warnings() const override;
 
 	RigidBody3D();
 	~RigidBody3D();
@@ -305,7 +313,7 @@ private:
 	void set_max_slides(int p_max_slides);
 
 	real_t get_floor_max_angle() const;
-	void set_floor_max_angle(real_t p_floor_max_angle);
+	void set_floor_max_angle(real_t p_radians);
 
 	const Vector3 &get_snap() const;
 	void set_snap(const Vector3 &p_snap);
@@ -336,8 +344,8 @@ public:
 	~CharacterBody3D();
 };
 
-class KinematicCollision3D : public Reference {
-	GDCLASS(KinematicCollision3D, Reference);
+class KinematicCollision3D : public RefCounted {
+	GDCLASS(KinematicCollision3D, RefCounted);
 
 	PhysicsBody3D *owner = nullptr;
 	friend class PhysicsBody3D;
@@ -355,6 +363,7 @@ public:
 	Object *get_local_shape() const;
 	Object *get_collider() const;
 	ObjectID get_collider_id() const;
+	RID get_collider_rid() const;
 	Object *get_collider_shape() const;
 	int get_collider_shape_index() const;
 	Vector3 get_collider_velocity() const;
@@ -546,9 +555,6 @@ public:
 
 	void set_joint_rotation(const Vector3 &p_euler_rad);
 	Vector3 get_joint_rotation() const;
-
-	void set_joint_rotation_degrees(const Vector3 &p_euler_deg);
-	Vector3 get_joint_rotation_degrees() const;
 
 	void set_body_offset(const Transform3D &p_offset);
 	const Transform3D &get_body_offset() const;

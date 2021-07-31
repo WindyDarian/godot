@@ -32,6 +32,7 @@
 
 #include "core/config/engine.h"
 #include "core/object/message_queue.h"
+#include "scene/3d/visual_instance_3d.h"
 #include "scene/main/scene_tree.h"
 #include "scene/main/window.h"
 #include "scene/scene_string_names.h"
@@ -75,7 +76,7 @@ Node3DGizmo::Node3DGizmo() {
 
 void Node3D::_notify_dirty() {
 #ifdef TOOLS_ENABLED
-	if ((data.gizmo.is_valid() || data.notify_transform) && !data.ignore_notification && !xform_change.in_list()) {
+	if ((!data.gizmos.is_empty() || data.notify_transform) && !data.ignore_notification && !xform_change.in_list()) {
 #else
 	if (data.notify_transform && !data.ignore_notification && !xform_change.in_list()) {
 
@@ -102,14 +103,14 @@ void Node3D::_propagate_transform_changed(Node3D *p_origin) {
 
 	data.children_lock++;
 
-	for (List<Node3D *>::Element *E = data.children.front(); E; E = E->next()) {
-		if (E->get()->data.top_level_active) {
+	for (Node3D *&E : data.children) {
+		if (E->data.top_level_active) {
 			continue; //don't propagate to a top_level
 		}
-		E->get()->_propagate_transform_changed(p_origin);
+		E->_propagate_transform_changed(p_origin);
 	}
 #ifdef TOOLS_ENABLED
-	if ((data.gizmo.is_valid() || data.notify_transform) && !data.ignore_notification && !xform_change.in_list()) {
+	if ((!data.gizmos.is_empty() || data.notify_transform) && !data.ignore_notification && !xform_change.in_list()) {
 #else
 	if (data.notify_transform && !data.ignore_notification && !xform_change.in_list()) {
 #endif
@@ -148,6 +149,7 @@ void Node3D::_notification(int p_what) {
 			_notify_dirty();
 
 			notification(NOTIFICATION_ENTER_WORLD);
+			_update_visibility_parent(true);
 
 		} break;
 		case NOTIFICATION_EXIT_TREE: {
@@ -161,6 +163,7 @@ void Node3D::_notification(int p_what) {
 			data.parent = nullptr;
 			data.C = nullptr;
 			data.top_level_active = false;
+			_update_visibility_parent(true);
 		} break;
 		case NOTIFICATION_ENTER_WORLD: {
 			data.inside_world = true;
@@ -178,15 +181,14 @@ void Node3D::_notification(int p_what) {
 			}
 #ifdef TOOLS_ENABLED
 			if (Engine::get_singleton()->is_editor_hint() && get_tree()->is_node_being_edited(this)) {
-				//get_scene()->call_group(SceneMainLoop::GROUP_CALL_REALTIME,SceneStringNames::get_singleton()->_spatial_editor_group,SceneStringNames::get_singleton()->_request_gizmo,this);
 				get_tree()->call_group_flags(0, SceneStringNames::get_singleton()->_spatial_editor_group, SceneStringNames::get_singleton()->_request_gizmo, this);
-				if (!data.gizmo_disabled) {
-					if (data.gizmo.is_valid()) {
-						data.gizmo->create();
+				if (!data.gizmos_disabled) {
+					for (int i = 0; i < data.gizmos.size(); i++) {
+						data.gizmos.write[i]->create();
 						if (is_visible_in_tree()) {
-							data.gizmo->redraw();
+							data.gizmos.write[i]->redraw();
 						}
-						data.gizmo->transform();
+						data.gizmos.write[i]->transform();
 					}
 				}
 			}
@@ -195,10 +197,7 @@ void Node3D::_notification(int p_what) {
 		} break;
 		case NOTIFICATION_EXIT_WORLD: {
 #ifdef TOOLS_ENABLED
-			if (data.gizmo.is_valid()) {
-				data.gizmo->free();
-				data.gizmo.unref();
-			}
+			clear_gizmos();
 #endif
 
 			if (get_script_instance()) {
@@ -212,8 +211,8 @@ void Node3D::_notification(int p_what) {
 
 		case NOTIFICATION_TRANSFORM_CHANGED: {
 #ifdef TOOLS_ENABLED
-			if (data.gizmo.is_valid()) {
-				data.gizmo->transform();
+			for (int i = 0; i < data.gizmos.size(); i++) {
+				data.gizmos.write[i]->transform();
 			}
 #endif
 		} break;
@@ -282,8 +281,12 @@ Transform3D Node3D::get_local_gizmo_transform() const {
 }
 #endif
 
-Node3D *Node3D::get_parent_spatial() const {
-	return data.parent;
+Node3D *Node3D::get_parent_node_3d() const {
+	if (data.top_level) {
+		return nullptr;
+	}
+
+	return Object::cast_to<Node3D>(get_parent());
 }
 
 Transform3D Node3D::get_relative_transform(const Node *p_parent) const {
@@ -321,10 +324,6 @@ void Node3D::set_rotation(const Vector3 &p_euler_rad) {
 	}
 }
 
-void Node3D::set_rotation_degrees(const Vector3 &p_euler_deg) {
-	set_rotation(p_euler_deg * (Math_PI / 180.0));
-}
-
 void Node3D::set_scale(const Vector3 &p_scale) {
 	if (data.dirty & DIRTY_VECTORS) {
 		data.rotation = data.local_transform.basis.get_rotation();
@@ -354,10 +353,6 @@ Vector3 Node3D::get_rotation() const {
 	return data.rotation;
 }
 
-Vector3 Node3D::get_rotation_degrees() const {
-	return get_rotation() * (180.0 / Math_PI);
-}
-
 Vector3 Node3D::get_scale() const {
 	if (data.dirty & DIRTY_VECTORS) {
 		data.scale = data.local_transform.basis.get_scale();
@@ -369,80 +364,119 @@ Vector3 Node3D::get_scale() const {
 	return data.scale;
 }
 
-void Node3D::update_gizmo() {
+void Node3D::update_gizmos() {
 #ifdef TOOLS_ENABLED
 	if (!is_inside_world()) {
 		return;
 	}
-	if (!data.gizmo.is_valid()) {
-		get_tree()->call_group_flags(SceneTree::GROUP_CALL_REALTIME, SceneStringNames::get_singleton()->_spatial_editor_group, SceneStringNames::get_singleton()->_request_gizmo, this);
-	}
-	if (!data.gizmo.is_valid()) {
+
+	if (data.gizmos.is_empty()) {
 		return;
 	}
-	if (data.gizmo_dirty) {
-		return;
-	}
-	data.gizmo_dirty = true;
-	MessageQueue::get_singleton()->push_call(this, "_update_gizmo");
+	data.gizmos_dirty = true;
+	MessageQueue::get_singleton()->push_callable(callable_mp(this, &Node3D::_update_gizmos));
 #endif
 }
 
-void Node3D::set_gizmo(const Ref<Node3DGizmo> &p_gizmo) {
+void Node3D::clear_subgizmo_selection() {
 #ifdef TOOLS_ENABLED
-
-	if (data.gizmo_disabled) {
+	if (!is_inside_world()) {
 		return;
 	}
-	if (data.gizmo.is_valid() && is_inside_world()) {
-		data.gizmo->free();
+
+	if (data.gizmos.is_empty()) {
+		return;
 	}
-	data.gizmo = p_gizmo;
-	if (data.gizmo.is_valid() && is_inside_world()) {
-		data.gizmo->create();
+
+	if (Engine::get_singleton()->is_editor_hint() && get_tree()->is_node_being_edited(this)) {
+		get_tree()->call_group_flags(0, SceneStringNames::get_singleton()->_spatial_editor_group, SceneStringNames::get_singleton()->_clear_subgizmo_selection, this);
+	}
+#endif
+}
+
+void Node3D::add_gizmo(Ref<Node3DGizmo> p_gizmo) {
+#ifdef TOOLS_ENABLED
+
+	if (data.gizmos_disabled || p_gizmo.is_null()) {
+		return;
+	}
+	data.gizmos.push_back(p_gizmo);
+
+	if (p_gizmo.is_valid() && is_inside_world()) {
+		p_gizmo->create();
 		if (is_visible_in_tree()) {
-			data.gizmo->redraw();
+			p_gizmo->redraw();
 		}
-		data.gizmo->transform();
+		p_gizmo->transform();
 	}
-
 #endif
 }
 
-Ref<Node3DGizmo> Node3D::get_gizmo() const {
+void Node3D::remove_gizmo(Ref<Node3DGizmo> p_gizmo) {
 #ifdef TOOLS_ENABLED
 
-	return data.gizmo;
+	int idx = data.gizmos.find(p_gizmo);
+	if (idx != -1) {
+		p_gizmo->free();
+		data.gizmos.remove(idx);
+	}
+#endif
+}
+
+void Node3D::clear_gizmos() {
+#ifdef TOOLS_ENABLED
+	for (int i = 0; i < data.gizmos.size(); i++) {
+		data.gizmos.write[i]->free();
+	}
+	data.gizmos.clear();
+#endif
+}
+
+Array Node3D::get_gizmos_bind() const {
+	Array ret;
+
+#ifdef TOOLS_ENABLED
+	for (int i = 0; i < data.gizmos.size(); i++) {
+		ret.push_back(Variant(data.gizmos[i].ptr()));
+	}
+#endif
+
+	return ret;
+}
+
+Vector<Ref<Node3DGizmo>> Node3D::get_gizmos() const {
+#ifdef TOOLS_ENABLED
+
+	return data.gizmos;
 #else
 
-	return Ref<Node3DGizmo>();
+	return Vector<Ref<Node3DGizmo>>();
 #endif
 }
 
-void Node3D::_update_gizmo() {
+void Node3D::_update_gizmos() {
 #ifdef TOOLS_ENABLED
-	if (!is_inside_world()) {
+	if (data.gizmos_disabled || !is_inside_world() || !data.gizmos_dirty) {
 		return;
 	}
-	data.gizmo_dirty = false;
-	if (data.gizmo.is_valid()) {
+	data.gizmos_dirty = false;
+	for (int i = 0; i < data.gizmos.size(); i++) {
 		if (is_visible_in_tree()) {
-			data.gizmo->redraw();
+			data.gizmos.write[i]->redraw();
 		} else {
-			data.gizmo->clear();
+			data.gizmos.write[i]->clear();
 		}
 	}
 #endif
 }
 
 #ifdef TOOLS_ENABLED
-void Node3D::set_disable_gizmo(bool p_enabled) {
-	data.gizmo_disabled = p_enabled;
-	if (!p_enabled && data.gizmo.is_valid()) {
-		data.gizmo = Ref<Node3DGizmo>();
+void Node3D::set_disable_gizmos(bool p_enabled) {
+	data.gizmos_disabled = p_enabled;
+	if (!p_enabled) {
+		clear_gizmos();
 	}
 }
-
 #endif
 
 void Node3D::set_disable_scale(bool p_enabled) {
@@ -487,13 +521,13 @@ void Node3D::_propagate_visibility_changed() {
 	notification(NOTIFICATION_VISIBILITY_CHANGED);
 	emit_signal(SceneStringNames::get_singleton()->visibility_changed);
 #ifdef TOOLS_ENABLED
-	if (data.gizmo.is_valid()) {
-		_update_gizmo();
+	if (!data.gizmos.is_empty()) {
+		data.gizmos_dirty = true;
+		_update_gizmos();
 	}
 #endif
 
-	for (List<Node3D *>::Element *E = data.children.front(); E; E = E->next()) {
-		Node3D *c = E->get();
+	for (Node3D *c : data.children) {
 		if (!c || !c->data.visible) {
 			continue;
 		}
@@ -690,6 +724,50 @@ void Node3D::force_update_transform() {
 	notification(NOTIFICATION_TRANSFORM_CHANGED);
 }
 
+void Node3D::_update_visibility_parent(bool p_update_root) {
+	RID new_parent;
+
+	if (!visibility_parent_path.is_empty()) {
+		if (!p_update_root) {
+			return;
+		}
+		Node *parent = get_node_or_null(visibility_parent_path);
+		ERR_FAIL_COND_MSG(!parent, "Can't find visibility parent node at path: " + visibility_parent_path);
+		ERR_FAIL_COND_MSG(parent == this, "The visibility parent can't be the same node.");
+		GeometryInstance3D *gi = Object::cast_to<GeometryInstance3D>(parent);
+		ERR_FAIL_COND_MSG(!gi, "The visibility parent node must be a GeometryInstance3D, at path: " + visibility_parent_path);
+		new_parent = gi ? gi->get_instance() : RID();
+	} else if (data.parent) {
+		new_parent = data.parent->data.visibility_parent;
+	}
+
+	if (new_parent == data.visibility_parent) {
+		return;
+	}
+
+	data.visibility_parent = new_parent;
+
+	VisualInstance3D *vi = Object::cast_to<VisualInstance3D>(this);
+	if (vi) {
+		RS::get_singleton()->instance_set_visibility_parent(vi->get_instance(), data.visibility_parent);
+	}
+
+	for (Node3D *c : data.children) {
+		c->_update_visibility_parent(false);
+	}
+}
+
+void Node3D::set_visibility_parent(const NodePath &p_path) {
+	visibility_parent_path = p_path;
+	if (is_inside_tree()) {
+		_update_visibility_parent(true);
+	}
+}
+
+NodePath Node3D::get_visibility_parent() const {
+	return visibility_parent_path;
+}
+
 void Node3D::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_transform", "local"), &Node3D::set_transform);
 	ClassDB::bind_method(D_METHOD("get_transform"), &Node3D::get_transform);
@@ -697,13 +775,11 @@ void Node3D::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_position"), &Node3D::get_position);
 	ClassDB::bind_method(D_METHOD("set_rotation", "euler"), &Node3D::set_rotation);
 	ClassDB::bind_method(D_METHOD("get_rotation"), &Node3D::get_rotation);
-	ClassDB::bind_method(D_METHOD("set_rotation_degrees", "euler_degrees"), &Node3D::set_rotation_degrees);
-	ClassDB::bind_method(D_METHOD("get_rotation_degrees"), &Node3D::get_rotation_degrees);
 	ClassDB::bind_method(D_METHOD("set_scale", "scale"), &Node3D::set_scale);
 	ClassDB::bind_method(D_METHOD("get_scale"), &Node3D::get_scale);
 	ClassDB::bind_method(D_METHOD("set_global_transform", "global"), &Node3D::set_global_transform);
 	ClassDB::bind_method(D_METHOD("get_global_transform"), &Node3D::get_global_transform);
-	ClassDB::bind_method(D_METHOD("get_parent_spatial"), &Node3D::get_parent_spatial);
+	ClassDB::bind_method(D_METHOD("get_parent_node_3d"), &Node3D::get_parent_node_3d);
 	ClassDB::bind_method(D_METHOD("set_ignore_transform_notification", "enabled"), &Node3D::set_ignore_transform_notification);
 	ClassDB::bind_method(D_METHOD("set_as_top_level", "enable"), &Node3D::set_as_top_level);
 	ClassDB::bind_method(D_METHOD("is_set_as_top_level"), &Node3D::is_set_as_top_level);
@@ -713,11 +789,14 @@ void Node3D::_bind_methods() {
 
 	ClassDB::bind_method(D_METHOD("force_update_transform"), &Node3D::force_update_transform);
 
-	ClassDB::bind_method(D_METHOD("_update_gizmo"), &Node3D::_update_gizmo);
+	ClassDB::bind_method(D_METHOD("set_visibility_parent", "path"), &Node3D::set_visibility_parent);
+	ClassDB::bind_method(D_METHOD("get_visibility_parent"), &Node3D::get_visibility_parent);
 
-	ClassDB::bind_method(D_METHOD("update_gizmo"), &Node3D::update_gizmo);
-	ClassDB::bind_method(D_METHOD("set_gizmo", "gizmo"), &Node3D::set_gizmo);
-	ClassDB::bind_method(D_METHOD("get_gizmo"), &Node3D::get_gizmo);
+	ClassDB::bind_method(D_METHOD("update_gizmos"), &Node3D::update_gizmos);
+	ClassDB::bind_method(D_METHOD("add_gizmo", "gizmo"), &Node3D::add_gizmo);
+	ClassDB::bind_method(D_METHOD("get_gizmos"), &Node3D::get_gizmos_bind);
+	ClassDB::bind_method(D_METHOD("clear_gizmos"), &Node3D::clear_gizmos);
+	ClassDB::bind_method(D_METHOD("clear_subgizmo_selection"), &Node3D::clear_subgizmo_selection);
 
 	ClassDB::bind_method(D_METHOD("set_visible", "visible"), &Node3D::set_visible);
 	ClassDB::bind_method(D_METHOD("is_visible"), &Node3D::is_visible);
@@ -758,17 +837,16 @@ void Node3D::_bind_methods() {
 
 	//ADD_PROPERTY( PropertyInfo(Variant::TRANSFORM3D,"transform/global",PROPERTY_HINT_NONE, "", PROPERTY_USAGE_EDITOR ), "set_global_transform", "get_global_transform") ;
 	ADD_GROUP("Transform", "");
-	ADD_PROPERTY(PropertyInfo(Variant::TRANSFORM3D, "global_transform", PROPERTY_HINT_NONE, "", 0), "set_global_transform", "get_global_transform");
-	ADD_PROPERTY(PropertyInfo(Variant::VECTOR3, "position", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_EDITOR), "set_position", "get_position");
-	ADD_PROPERTY(PropertyInfo(Variant::VECTOR3, "rotation_degrees", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_EDITOR), "set_rotation_degrees", "get_rotation_degrees");
-	ADD_PROPERTY(PropertyInfo(Variant::VECTOR3, "rotation", PROPERTY_HINT_NONE, "", 0), "set_rotation", "get_rotation");
+	ADD_PROPERTY(PropertyInfo(Variant::TRANSFORM3D, "global_transform", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NONE), "set_global_transform", "get_global_transform");
+	ADD_PROPERTY(PropertyInfo(Variant::VECTOR3, "position", PROPERTY_HINT_RANGE, "-99999,99999,0,or_greater,or_lesser,noslider,suffix:m", PROPERTY_USAGE_EDITOR), "set_position", "get_position");
+	ADD_PROPERTY(PropertyInfo(Variant::VECTOR3, "rotation", PROPERTY_HINT_RANGE, "-360,360,0.1,or_lesser,or_greater,radians", PROPERTY_USAGE_EDITOR), "set_rotation", "get_rotation");
 	ADD_PROPERTY(PropertyInfo(Variant::VECTOR3, "scale", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_EDITOR), "set_scale", "get_scale");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "top_level"), "set_as_top_level", "is_set_as_top_level");
 	ADD_GROUP("Matrix", "");
 	ADD_PROPERTY(PropertyInfo(Variant::TRANSFORM3D, "transform", PROPERTY_HINT_NONE, ""), "set_transform", "get_transform");
 	ADD_GROUP("Visibility", "");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "visible"), "set_visible", "is_visible");
-	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "gizmo", PROPERTY_HINT_RESOURCE_TYPE, "Node3DGizmo", 0), "set_gizmo", "get_gizmo");
+	ADD_PROPERTY(PropertyInfo(Variant::NODE_PATH, "visibility_parent", PROPERTY_HINT_NODE_PATH_VALID_TYPES, "GeometryInstance3D"), "set_visibility_parent", "get_visibility_parent");
 
 	ADD_SIGNAL(MethodInfo("visibility_changed"));
 }

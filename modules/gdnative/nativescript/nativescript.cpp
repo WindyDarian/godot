@@ -37,8 +37,8 @@
 #include "core/config/project_settings.h"
 #include "core/core_constants.h"
 #include "core/core_string_names.h"
+#include "core/io/file_access.h"
 #include "core/io/file_access_encrypted.h"
-#include "core/os/file_access.h"
 #include "core/os/os.h"
 
 #include "main/main.h"
@@ -98,10 +98,10 @@ void NativeScript::_update_placeholder(PlaceHolderScriptInstance *p_placeholder)
 	List<PropertyInfo> info;
 	get_script_property_list(&info);
 	Map<StringName, Variant> values;
-	for (List<PropertyInfo>::Element *E = info.front(); E; E = E->next()) {
+	for (const PropertyInfo &E : info) {
 		Variant value;
-		get_property_default_value(E->get().name, value);
-		values[E->get().name] = value;
+		get_property_default_value(E.name, value);
+		values[E.name] = value;
 	}
 
 	p_placeholder->update(info, values);
@@ -170,7 +170,7 @@ String NativeScript::get_script_class_icon_path() const {
 	return script_class_icon_path;
 }
 
-bool NativeScript::can_instance() const {
+bool NativeScript::can_instantiate() const {
 	NativeScriptDesc *script_data = get_script_desc();
 
 #ifdef TOOLS_ENABLED
@@ -503,9 +503,9 @@ Variant NativeScript::_new(const Variant **p_args, int p_argcount, Callable::Cal
 	Object *owner = nullptr;
 
 	if (!(script_data->base_native_type == "")) {
-		owner = ClassDB::instance(script_data->base_native_type);
+		owner = ClassDB::instantiate(script_data->base_native_type);
 	} else {
-		owner = memnew(Reference);
+		owner = memnew(RefCounted);
 	}
 
 	if (!owner) {
@@ -513,7 +513,7 @@ Variant NativeScript::_new(const Variant **p_args, int p_argcount, Callable::Cal
 		return Variant();
 	}
 
-	Reference *r = Object::cast_to<Reference>(owner);
+	RefCounted *r = Object::cast_to<RefCounted>(owner);
 	if (r) {
 		ref = REF(r);
 	}
@@ -1035,7 +1035,7 @@ Ref<Script> NativeScriptLanguage::get_template(const String &p_class_name, const
 	return Ref<NativeScript>(s);
 }
 
-bool NativeScriptLanguage::validate(const String &p_script, int &r_line_error, int &r_col_error, String &r_test_error, const String &p_path, List<String> *r_functions, List<ScriptLanguage::Warning> *r_warnings, Set<int> *r_safe_lines) const {
+bool NativeScriptLanguage::validate(const String &p_script, const String &p_path, List<String> *r_functions, List<ScriptLanguage::ScriptError> *r_errors, List<ScriptLanguage::Warning> *r_warnings, Set<int> *r_safe_lines) const {
 	return true;
 }
 
@@ -1258,6 +1258,8 @@ void NativeScriptLanguage::unregister_binding_functions(int p_idx) {
 }
 
 void *NativeScriptLanguage::get_instance_binding_data(int p_idx, Object *p_object) {
+	return nullptr;
+#if 0
 	ERR_FAIL_INDEX_V(p_idx, binding_functions.size(), nullptr);
 
 	ERR_FAIL_COND_V_MSG(!binding_functions[p_idx].first, nullptr, "Tried to get binding data for a nativescript binding that does not exist.");
@@ -1287,9 +1289,12 @@ void *NativeScriptLanguage::get_instance_binding_data(int p_idx, Object *p_objec
 	}
 
 	return (*binding_data)[p_idx];
+#endif
 }
 
 void *NativeScriptLanguage::alloc_instance_binding_data(Object *p_object) {
+	return nullptr;
+#if 0
 	Vector<void *> *binding_data = new Vector<void *>;
 
 	binding_data->resize(binding_functions.size());
@@ -1301,9 +1306,11 @@ void *NativeScriptLanguage::alloc_instance_binding_data(Object *p_object) {
 	binding_instances.insert(binding_data);
 
 	return (void *)binding_data;
+#endif
 }
 
 void NativeScriptLanguage::free_instance_binding_data(void *p_data) {
+#if 0
 	if (!p_data) {
 		return;
 	}
@@ -1323,9 +1330,11 @@ void NativeScriptLanguage::free_instance_binding_data(void *p_data) {
 	binding_instances.erase(&binding_data);
 
 	delete &binding_data;
+#endif
 }
 
 void NativeScriptLanguage::refcount_incremented_instance_binding(Object *p_object) {
+#if 0
 	void *data = p_object->get_script_instance_binding(lang_idx);
 
 	if (!data) {
@@ -1347,9 +1356,11 @@ void NativeScriptLanguage::refcount_incremented_instance_binding(Object *p_objec
 			binding_functions[i].second.refcount_incremented_instance_binding(binding_data[i], p_object);
 		}
 	}
+#endif
 }
 
 bool NativeScriptLanguage::refcount_decremented_instance_binding(Object *p_object) {
+#if 0
 	void *data = p_object->get_script_instance_binding(lang_idx);
 
 	if (!data) {
@@ -1375,6 +1386,8 @@ bool NativeScriptLanguage::refcount_decremented_instance_binding(Object *p_objec
 	}
 
 	return can_die;
+#endif
+	return false;
 }
 
 void NativeScriptLanguage::set_global_type_tag(int p_idx, StringName p_class_name, const void *p_type_tag) {
@@ -1422,7 +1435,7 @@ void NativeScriptLanguage::init_library(const Ref<GDNativeLibrary> &lib) {
 
 	if (!E) {
 		Ref<GDNative> gdn;
-		gdn.instance();
+		gdn.instantiate();
 		gdn->set_library(lib);
 
 		// TODO check the return value?

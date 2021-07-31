@@ -1,16 +1,10 @@
-// file: core/math/math_2d.h
-// commit: 7ad14e7a3e6f87ddc450f7e34621eb5200808451
-// file: core/math/math_2d.cpp
-// commit: 7ad14e7a3e6f87ddc450f7e34621eb5200808451
-// file: core/variant_call.cpp
-// commit: 5ad9be4c24e9d7dc5672fdc42cea896622fe5685
-using System;
-using System.Runtime.InteropServices;
 #if REAL_T_IS_DOUBLE
 using real_t = System.Double;
 #else
 using real_t = System.Single;
 #endif
+using System;
+using System.Runtime.InteropServices;
 
 namespace Godot
 {
@@ -757,20 +751,12 @@ namespace Godot
 
         public override string ToString()
         {
-            return String.Format("({0}, {1})", new object[]
-            {
-                x.ToString(),
-                y.ToString()
-            });
+            return $"({x}, {y})";
         }
 
         public string ToString(string format)
         {
-            return String.Format("({0}, {1})", new object[]
-            {
-                x.ToString(format),
-                y.ToString(format)
-            });
+            return $"({x.ToString(format)}, {y.ToString(format)})";
         }
     }
 }

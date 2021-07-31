@@ -165,7 +165,7 @@ struct Vector2 {
 	Vector2 clamp(const Vector2 &p_min, const Vector2 &p_max) const;
 	real_t aspect() const { return width / height; }
 
-	operator String() const { return String::num(x) + ", " + String::num(y); }
+	operator String() const;
 
 	_FORCE_INLINE_ Vector2() {}
 	_FORCE_INLINE_ Vector2(real_t p_x, real_t p_y) {
@@ -300,6 +300,14 @@ struct Vector2i {
 		return p_idx ? y : x;
 	}
 
+	_FORCE_INLINE_ int min_axis() const {
+		return x < y ? 0 : 1;
+	}
+
+	_FORCE_INLINE_ int max_axis() const {
+		return x < y ? 1 : 0;
+	}
+
 	Vector2i min(const Vector2i &p_vector2i) const {
 		return Vector2(MIN(x, p_vector2i.x), MIN(y, p_vector2i.y));
 	}
@@ -340,7 +348,7 @@ struct Vector2i {
 	Vector2i abs() const { return Vector2i(ABS(x), ABS(y)); }
 	Vector2i clamp(const Vector2i &p_min, const Vector2i &p_max) const;
 
-	operator String() const { return String::num(x) + ", " + String::num(y); }
+	operator String() const;
 
 	operator Vector2() const { return Vector2(x, y); }
 

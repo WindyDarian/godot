@@ -38,10 +38,10 @@ void Path3D::_notification(int p_what) {
 
 void Path3D::_curve_changed() {
 	if (is_inside_tree() && Engine::get_singleton()->is_editor_hint()) {
-		update_gizmo();
+		update_gizmos();
 	}
 	if (is_inside_tree()) {
-		emit_signal("curve_changed");
+		emit_signal(SNAME("curve_changed"));
 	}
 
 	// update the configuration warnings of all children of type PathFollow

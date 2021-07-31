@@ -51,12 +51,14 @@
 # Kareem Abduljaleel <karemjaleel34@gmail.com>, 2021.
 # ILG - Game <moegypt277@gmail.com>, 2021.
 # Hatim Jamal <hatimjamal8@gmail.com>, 2021.
+# HASSAN GAMER - حسن جيمر <gamerhassan55@gmail.com>, 2021.
+# abubakrAlsaab <madeinsudan19@gmail.com>, 2021.
 msgid ""
 msgstr ""
 "Project-Id-Version: Godot Engine editor\n"
 "POT-Creation-Date: \n"
-"PO-Revision-Date: 2021-05-07 02:12+0000\n"
-"Last-Translator: ILG - Game <moegypt277@gmail.com>\n"
+"PO-Revision-Date: 2021-07-16 05:47+0000\n"
+"Last-Translator: abubakrAlsaab <madeinsudan19@gmail.com>\n"
 "Language-Team: Arabic <https://hosted.weblate.org/projects/godot-engine/"
 "godot/ar/>\n"
 "Language: ar\n"
@@ -65,7 +67,7 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=6; plural=n==0 ? 0 : n==1 ? 1 : n==2 ? 2 : n%100>=3 "
 "&& n%100<=10 ? 3 : n%100>=11 ? 4 : 5;\n"
-"X-Generator: Weblate 4.7-dev\n"
+"X-Generator: Weblate 4.7.2-dev\n"
 
 #: core/math/expression.cpp modules/gdscript/gdscript_functions.cpp
 #: modules/visual_script/visual_script_builtin_funcs.cpp
@@ -88,7 +90,7 @@ msgstr "مدخلات خاطئة %i (لم يتم تمريره) في التعبي�
 
 #: core/math/expression.cpp
 msgid "self can't be used because instance is null (not passed)"
-msgstr "لا يمكن إستخدامه نفسه لأن الحالة فارغة (لم يُمرر)"
+msgstr "لا يمكن استخدام self لأن النموذج فارغ (لم يتم ادخاله)"
 
 #: core/math/expression.cpp
 msgid "Invalid operands to operator %s, %s and %s."
@@ -455,10 +457,6 @@ msgid "Animation tracks can only point to AnimationPlayer nodes."
 msgstr "مسارات الحركة يمكنها فقط أن تشير إلى عُقد مشغّل الحركة."
 
 #: editor/animation_track_editor.cpp
-msgid "An animation player can't animate itself, only other players."
-msgstr "مشغل الحركة لا يمكنه أن يحرك نفسه, فقط الاعبين الأخرين."
-
-#: editor/animation_track_editor.cpp
 msgid "Not possible to add a new track without a root"
 msgstr "لا يمكن إضافة مقطع جديد بدون جذر"
 
@@ -503,8 +501,9 @@ msgid "Anim Move Keys"
 msgstr "مفتاح حركة التحريك"
 
 #: editor/animation_track_editor.cpp
-msgid "Clipboard is empty"
-msgstr "الحافظة (Clipboard) فارغة"
+#: modules/visual_script/visual_script_editor.cpp
+msgid "Clipboard is empty!"
+msgstr "الحافظة فارغة!"
 
 #: editor/animation_track_editor.cpp
 msgid "Paste Tracks"
@@ -1153,6 +1152,10 @@ msgstr "تغيير قيمة في القاموس"
 #: editor/editor_about.cpp
 msgid "Thanks from the Godot community!"
 msgstr "شكراً من مجتمع غودوت!"
+
+#: editor/editor_about.cpp editor/editor_node.cpp editor/project_manager.cpp
+msgid "Click to copy."
+msgstr "انقر للنسخ"
 
 #: editor/editor_about.cpp
 msgid "Godot Engine contributors"
@@ -2527,7 +2530,7 @@ msgid "Save changes to the following scene(s) before quitting?"
 msgstr "هل تريد حفظ التغييرات للمشاهد التالية قبل الخروج؟"
 
 #: editor/editor_node.cpp
-msgid "Save changes the following scene(s) before opening Project Manager?"
+msgid "Save changes to the following scene(s) before opening Project Manager?"
 msgstr ""
 "هل تود حفظ التغييرات التي اجريت على المشاهد الحالية قبل فتح نافذة ادارة "
 "المشروع؟"
@@ -3019,7 +3022,7 @@ msgstr "حول"
 
 #: editor/editor_node.cpp
 msgid "Support Godot Development"
-msgstr ""
+msgstr "إدعم تطوير محرك غو-دوت"
 
 #: editor/editor_node.cpp
 msgid "Play the project."
@@ -5213,9 +5216,10 @@ msgstr ""
 "الضوء المعدة مسبقا."
 
 #: editor/plugins/baked_lightmap_editor_plugin.cpp
+#, fuzzy
 msgid ""
-"No meshes to bake. Make sure they contain an UV2 channel and that the 'Bake "
-"Light' flag is on."
+"No meshes to bake. Make sure they contain an UV2 channel and that the 'Use "
+"In Baked Light' and 'Generate Lightmap' flags are on."
 msgstr ""
 "لايوجد ميش لكي يتم تجهيزة. تاكد من انه يحتوي على منفذ UV2 و ان زر الضوء "
 "'المعد' مفعل."
@@ -5340,7 +5344,7 @@ msgstr "تعديل حجم العقدة \"Node2D \"%s إلى (s, %s%)"
 
 #: editor/plugins/canvas_item_editor_plugin.cpp
 msgid "Resize Control \"%s\" to (%d, %d)"
-msgstr ""
+msgstr "تغيير حجم عنصر التحكم \"٪ s\" إلى (٪ d،٪ d)"
 
 #: editor/plugins/canvas_item_editor_plugin.cpp
 #, fuzzy
@@ -7564,6 +7568,7 @@ msgstr "تدوير الرؤية مقفول"
 msgid ""
 "To zoom further, change the camera's clipping planes (View -> Settings...)"
 msgstr ""
+"للتكبير بشكل أكبر ، قم بتغيير مستويات اقتصاص الكاميرا (عرض -> الإعدادات ...)"
 
 #: editor/plugins/spatial_editor_plugin.cpp
 msgid ""
@@ -9534,7 +9539,7 @@ msgstr ""
 
 #: editor/plugins/visual_shader_editor_plugin.cpp
 msgid "A reference to an existing uniform."
-msgstr ""
+msgstr "إشارة إلى زي موحد موجود."
 
 #: editor/plugins/visual_shader_editor_plugin.cpp
 msgid "(Fragment/Light mode only) Scalar derivative function."
@@ -9901,7 +9906,7 @@ msgstr "OpenGL ES 3.0"
 
 #: editor/project_manager.cpp
 msgid "Not supported by your GPU drivers."
-msgstr ""
+msgstr "غير مدعوم من قبل برامج تشغيل GPU(اجهزة اارسوم) الخاصة بك."
 
 #: editor/project_manager.cpp
 msgid ""
@@ -10957,6 +10962,9 @@ msgid ""
 "every time it updates.\n"
 "Switch back to the Local scene tree dock to improve performance."
 msgstr ""
+"إذا تم تحديده ، فسيؤدي شجرة المشهد إلى توقف المشروع في كل مرة يتم فيها "
+"تحديثه.\n"
+"قم بالتبديل مرة أخرى إلى رصيف شجرة المشهد المحلي لتحسين الأداء."
 
 #: editor/scene_tree_dock.cpp
 msgid "Local"
@@ -11655,11 +11663,11 @@ msgstr ""
 
 #: modules/lightmapper_cpu/lightmapper_cpu.cpp
 msgid "Begin Bake"
-msgstr ""
+msgstr "ابدأ الخبز (دمج تاثير الضوء في الصورة )"
 
 #: modules/lightmapper_cpu/lightmapper_cpu.cpp
 msgid "Preparing data structures"
-msgstr ""
+msgstr "تحضير هياكل البيانات"
 
 #: modules/lightmapper_cpu/lightmapper_cpu.cpp
 #, fuzzy
@@ -11992,10 +12000,6 @@ msgid "Can't copy the function node."
 msgstr "لا يمكن نسخ الوظيفة البرمجية للعُقدة."
 
 #: modules/visual_script/visual_script_editor.cpp
-msgid "Clipboard is empty!"
-msgstr "الحافظة فارغة!"
-
-#: modules/visual_script/visual_script_editor.cpp
 msgid "Paste VisualScript Nodes"
 msgstr "لصق عُقد البرمجة البصرية VisualScript"
 
@@ -12194,7 +12198,7 @@ msgstr "اختر جهازاً من القائمة"
 
 #: platform/android/export/export.cpp
 msgid "Unable to find the 'apksigner' tool."
-msgstr ""
+msgstr "تعذر العثور على أداة توقيع تطبيق اندرويد\"apksigner\"."
 
 #: platform/android/export/export.cpp
 msgid ""
@@ -12204,10 +12208,22 @@ msgstr ""
 "لم يتم تنزيل قالب بناء Android لهذا المشروع. نزّل واحداً من قائمة المشروع."
 
 #: platform/android/export/export.cpp
+msgid ""
+"Either Debug Keystore, Debug User AND Debug Password settings must be "
+"configured OR none of them."
+msgstr ""
+
+#: platform/android/export/export.cpp
 msgid "Debug keystore not configured in the Editor Settings nor in the preset."
 msgstr ""
 "مُنقح أخطاء مفتاح المتجر keystore غير مُهيئ في إعدادت المُحرر أو في الإعدادات "
 "الموضوعة سلفاً."
+
+#: platform/android/export/export.cpp
+msgid ""
+"Either Release Keystore, Release User AND Release Password settings must be "
+"configured OR none of them."
+msgstr ""
 
 #: platform/android/export/export.cpp
 msgid "Release keystore incorrectly configured in the export preset."
@@ -13181,6 +13197,12 @@ msgstr "يمكن تعيين المتغيرات فقط في الذروة ."
 #: servers/visual/shader_language.cpp
 msgid "Constants cannot be modified."
 msgstr "لا يمكن تعديل الثوابت."
+
+#~ msgid "An animation player can't animate itself, only other players."
+#~ msgstr "مشغل الحركة لا يمكنه أن يحرك نفسه, فقط الاعبين الأخرين."
+
+#~ msgid "Clipboard is empty"
+#~ msgstr "الحافظة (Clipboard) فارغة"
 
 #~ msgid "No"
 #~ msgstr "لا"
