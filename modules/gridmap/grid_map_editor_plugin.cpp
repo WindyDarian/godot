@@ -675,7 +675,7 @@ bool GridMapEditor::forward_spatial_input_event(Camera3D *p_camera, const Ref<In
 			}
 
 			if (mb->get_button_index() == MOUSE_BUTTON_LEFT && input_action == INPUT_SELECT) {
-				undo_redo->create_action("GridMap Selection");
+				undo_redo->create_action(TTR("GridMap Selection"));
 				undo_redo->add_do_method(this, "_set_selection", selection.active, selection.begin, selection.end);
 				undo_redo->add_undo_method(this, "_set_selection", last_selection.active, last_selection.begin, last_selection.end);
 				undo_redo->commit_action();
@@ -790,7 +790,7 @@ void GridMapEditor::_sbox_input(const Ref<InputEvent> &p_ie) {
 
 	if (k.is_valid() && (k->get_keycode() == KEY_UP || k->get_keycode() == KEY_DOWN || k->get_keycode() == KEY_PAGEUP || k->get_keycode() == KEY_PAGEDOWN)) {
 		// Forward the key input to the ItemList so it can be scrolled
-		mesh_library_palette->call("_gui_input", k);
+		mesh_library_palette->gui_input(k);
 		search_box->accept_event();
 	}
 }

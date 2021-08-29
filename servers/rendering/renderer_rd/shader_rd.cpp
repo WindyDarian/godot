@@ -146,7 +146,9 @@ void ShaderRD::_clear_version(Version *p_version) {
 	//clear versions if they exist
 	if (p_version->variants) {
 		for (int i = 0; i < variant_defines.size(); i++) {
-			RD::get_singleton()->free(p_version->variants[i]);
+			if (variants_enabled[i]) {
+				RD::get_singleton()->free(p_version->variants[i]);
+			}
 		}
 
 		memdelete_arr(p_version->variants);
@@ -277,7 +279,7 @@ void ShaderRD::_compile_variant(uint32_t p_variant, Version *p_version) {
 		return;
 	}
 
-	Vector<uint8_t> shader_data = RD::get_singleton()->shader_compile_binary_from_spirv(stages);
+	Vector<uint8_t> shader_data = RD::get_singleton()->shader_compile_binary_from_spirv(stages, name + ":" + itos(p_variant));
 
 	ERR_FAIL_COND(shader_data.size() == 0);
 

@@ -35,6 +35,7 @@
 #include "editor/editor_plugin.h"
 #include "editor/editor_scale.h"
 #include "editor/plugins/node_3d_editor_gizmos.h"
+#include "scene/3d/camera_3d.h"
 #include "scene/3d/light_3d.h"
 #include "scene/3d/visual_instance_3d.h"
 #include "scene/3d/world_environment.h"
@@ -42,7 +43,6 @@
 #include "scene/resources/environment.h"
 #include "scene/resources/sky_material.h"
 
-class Camera3D;
 class Node3DEditor;
 class Node3DEditorViewport;
 class SubViewportContainer;
@@ -74,9 +74,8 @@ class ViewportRotationControl : public Control {
 	const float AXIS_CIRCLE_RADIUS = 8.0f * EDSCALE;
 
 protected:
-	static void _bind_methods();
 	void _notification(int p_what);
-	void _gui_input(Ref<InputEvent> p_event);
+	virtual void gui_input(const Ref<InputEvent> &p_event) override;
 	void _draw();
 	void _draw_axis(const Axis2D &p_axis);
 	void _get_sorted_axis(Vector<Axis2D> &r_axis);
@@ -143,6 +142,16 @@ class Node3DEditorViewport : public Control {
 		VIEW_MAX
 	};
 
+	enum ViewType {
+		VIEW_TYPE_USER,
+		VIEW_TYPE_TOP,
+		VIEW_TYPE_BOTTOM,
+		VIEW_TYPE_LEFT,
+		VIEW_TYPE_RIGHT,
+		VIEW_TYPE_FRONT,
+		VIEW_TYPE_REAR,
+	};
+
 public:
 	enum {
 		GIZMO_BASE_LAYER = 27,
@@ -166,13 +175,13 @@ public:
 	};
 
 private:
-	float cpu_time_history[FRAME_TIME_HISTORY];
+	double cpu_time_history[FRAME_TIME_HISTORY];
 	int cpu_time_history_index;
-	float gpu_time_history[FRAME_TIME_HISTORY];
+	double gpu_time_history[FRAME_TIME_HISTORY];
 	int gpu_time_history_index;
 
 	int index;
-	String name;
+	ViewType view_type;
 	void _menu_option(int p_option);
 	void _set_auto_orthogonal();
 	Node3D *preview_node;
@@ -201,7 +210,7 @@ private:
 	bool orthogonal;
 	bool auto_orthogonal;
 	bool lock_rotation;
-	float gizmo_scale;
+	real_t gizmo_scale;
 
 	bool freelook_active;
 	real_t freelook_speed;
@@ -221,7 +230,7 @@ private:
 
 	struct _RayResult {
 		Node3D *item = nullptr;
-		float depth = 0;
+		real_t depth = 0;
 		_FORCE_INLINE_ bool operator<(const _RayResult &p_rr) const { return depth < p_rr.depth; }
 	};
 
@@ -306,7 +315,7 @@ private:
 
 	struct Cursor {
 		Vector3 pos;
-		float x_rot, y_rot, distance;
+		real_t x_rot, y_rot, distance;
 		Vector3 eye_pos; // Used in freelook mode
 		bool region_select;
 		Point2 region_begin, region_end;
@@ -336,12 +345,11 @@ private:
 
 	String last_message;
 	String message;
-	float message_time;
+	double message_time;
 
 	void set_message(String p_message, float p_time = 5);
 
-	//
-	void _update_camera(float p_interp_delta);
+	void _update_camera(real_t p_interp_delta);
 	Transform3D to_camera_transform(const Cursor &p_cursor) const;
 	void _draw();
 
@@ -450,8 +458,8 @@ public:
 private:
 	View view;
 	bool mouseover;
-	float ratio_h;
-	float ratio_v;
+	real_t ratio_h;
+	real_t ratio_v;
 
 	bool hovering_v;
 	bool hovering_h;
@@ -461,11 +469,10 @@ private:
 	Vector2 drag_begin_pos;
 	Vector2 drag_begin_ratio;
 
-	void _gui_input(const Ref<InputEvent> &p_event);
+	virtual void gui_input(const Ref<InputEvent> &p_event) override;
 
 protected:
 	void _notification(int p_what);
-	static void _bind_methods();
 
 public:
 	void set_view(View p_view);
@@ -522,6 +529,9 @@ private:
 	bool grid_visible[3]; //currently visible
 	bool grid_enable[3]; //should be always visible if true
 	bool grid_enabled;
+	bool grid_init_draw = false;
+	Camera3D::Projection grid_camera_last_update_perspective = Camera3D::PROJECTION_PERSPECTIVE;
+	Vector3 grid_camera_last_update_position = Vector3();
 
 	Ref<ArrayMesh> move_gizmo[3], move_plane_gizmo[3], rotate_gizmo[4], scale_gizmo[3], scale_plane_gizmo[3];
 	Ref<StandardMaterial3D> gizmo_color[3];
@@ -534,9 +544,9 @@ private:
 	Ref<Node3DGizmo> current_hover_gizmo;
 	int current_hover_gizmo_handle;
 
-	float snap_translate_value;
-	float snap_rotate_value;
-	float snap_scale_value;
+	real_t snap_translate_value;
+	real_t snap_rotate_value;
+	real_t snap_scale_value;
 
 	Ref<ArrayMesh> selection_box_xray;
 	Ref<ArrayMesh> selection_box;
@@ -554,7 +564,7 @@ private:
 
 	struct Gizmo {
 		bool visible = false;
-		float scale = 0;
+		real_t scale = 0;
 		Transform3D transform;
 	} gizmo;
 
@@ -623,7 +633,6 @@ private:
 	void _menu_gizmo_toggled(int p_option);
 	void _update_camera_override_button(bool p_game_running);
 	void _update_camera_override_viewport(Object *p_viewport);
-
 	HBoxContainer *hbc_menu;
 	// Used for secondary menu items which are displayed depending on the currently selected node
 	// (such as MeshInstance's "Mesh" menu).
@@ -733,7 +742,7 @@ private:
 protected:
 	void _notification(int p_what);
 	//void _gui_input(InputEvent p_event);
-	void _unhandled_key_input(Ref<InputEvent> p_event);
+	virtual void unhandled_key_input(const Ref<InputEvent> &p_event) override;
 
 	static void _bind_methods();
 
@@ -752,9 +761,9 @@ public:
 	ToolMode get_tool_mode() const { return tool_mode; }
 	bool are_local_coords_enabled() const { return tool_option_button[Node3DEditor::TOOL_OPT_LOCAL_COORDS]->is_pressed(); }
 	bool is_snap_enabled() const { return snap_enabled ^ snap_key_enabled; }
-	float get_translate_snap() const;
-	float get_rotate_snap() const;
-	float get_scale_snap() const;
+	double get_translate_snap() const;
+	double get_rotate_snap() const;
+	double get_scale_snap() const;
 
 	Ref<ArrayMesh> get_move_gizmo(int idx) const { return move_gizmo[idx]; }
 	Ref<ArrayMesh> get_move_plane_gizmo(int idx) const { return move_plane_gizmo[idx]; }

@@ -41,6 +41,7 @@
 #include "editor/editor_settings.h"
 #include "editor/plugins/animation_player_editor_plugin.h"
 #include "editor/plugins/script_editor_plugin.h"
+#include "scene/2d/cpu_particles_2d.h"
 #include "scene/2d/gpu_particles_2d.h"
 #include "scene/2d/light_2d.h"
 #include "scene/2d/polygon_2d.h"
@@ -81,8 +82,8 @@ public:
 	SnapDialog() {
 		const int SPIN_BOX_GRID_RANGE = 16384;
 		const int SPIN_BOX_ROTATION_RANGE = 360;
-		const float SPIN_BOX_SCALE_MIN = 0.01f;
-		const float SPIN_BOX_SCALE_MAX = 100;
+		const real_t SPIN_BOX_SCALE_MIN = 0.01;
+		const real_t SPIN_BOX_SCALE_MAX = 100;
 
 		Label *label;
 		VBoxContainer *container;
@@ -210,7 +211,7 @@ public:
 		child_container->add_child(scale_step);
 	}
 
-	void set_fields(const Point2 p_grid_offset, const Point2 p_grid_step, const int p_primary_grid_steps, const float p_rotation_offset, const float p_rotation_step, const float p_scale_step) {
+	void set_fields(const Point2 p_grid_offset, const Point2 p_grid_step, const int p_primary_grid_steps, const real_t p_rotation_offset, const real_t p_rotation_step, const real_t p_scale_step) {
 		grid_offset_x->set_value(p_grid_offset.x);
 		grid_offset_y->set_value(p_grid_offset.y);
 		grid_step_x->set_value(p_grid_step.x);
@@ -221,7 +222,7 @@ public:
 		scale_step->set_value(p_scale_step);
 	}
 
-	void get_fields(Point2 &p_grid_offset, Point2 &p_grid_step, int &p_primary_grid_steps, float &p_rotation_offset, float &p_rotation_step, float &p_scale_step) {
+	void get_fields(Point2 &p_grid_offset, Point2 &p_grid_step, int &p_primary_grid_steps, real_t &p_rotation_offset, real_t &p_rotation_step, real_t &p_scale_step) {
 		p_grid_offset = Point2(grid_offset_x->get_value(), grid_offset_y->get_value());
 		p_grid_step = Point2(grid_step_x->get_value(), grid_step_y->get_value());
 		p_primary_grid_steps = int(primary_grid_steps->get_value());
@@ -249,12 +250,12 @@ bool CanvasItemEditor::_is_node_movable(const Node *p_node, bool p_popup_warning
 }
 
 void CanvasItemEditor::_snap_if_closer_float(
-		float p_value,
-		float &r_current_snap, SnapTarget &r_current_snap_target,
-		float p_target_value, SnapTarget p_snap_target,
-		float p_radius) {
-	float radius = p_radius / zoom;
-	float dist = Math::abs(p_value - p_target_value);
+		const real_t p_value,
+		real_t &r_current_snap, SnapTarget &r_current_snap_target,
+		const real_t p_target_value, const SnapTarget p_snap_target,
+		const real_t p_radius) {
+	const real_t radius = p_radius / zoom;
+	const real_t dist = Math::abs(p_value - p_target_value);
 	if ((p_radius < 0 || dist < radius) && (r_current_snap_target == SNAP_TARGET_NONE || dist < Math::abs(r_current_snap - p_value))) {
 		r_current_snap = p_target_value;
 		r_current_snap_target = p_snap_target;
@@ -264,9 +265,9 @@ void CanvasItemEditor::_snap_if_closer_float(
 void CanvasItemEditor::_snap_if_closer_point(
 		Point2 p_value,
 		Point2 &r_current_snap, SnapTarget (&r_current_snap_target)[2],
-		Point2 p_target_value, SnapTarget p_snap_target,
-		real_t rotation,
-		float p_radius) {
+		Point2 p_target_value, const SnapTarget p_snap_target,
+		const real_t rotation,
+		const real_t p_radius) {
 	Transform2D rot_trans = Transform2D(rotation, Point2());
 	p_value = rot_trans.inverse().xform(p_value);
 	p_target_value = rot_trans.inverse().xform(p_target_value);
@@ -459,7 +460,7 @@ Point2 CanvasItemEditor::snap_point(Point2 p_target, unsigned int p_modes, unsig
 	return output;
 }
 
-float CanvasItemEditor::snap_angle(float p_target, float p_start) const {
+real_t CanvasItemEditor::snap_angle(real_t p_target, real_t p_start) const {
 	if (((smart_snap_active || snap_rotation) ^ Input::get_singleton()->is_key_pressed(KEY_CTRL)) && snap_rotation_step != 0) {
 		if (snap_relative) {
 			return Math::snapped(p_target - snap_rotation_offset, snap_rotation_step) + snap_rotation_offset + (p_start - (int)(p_start / snap_rotation_step) * snap_rotation_step);
@@ -471,7 +472,7 @@ float CanvasItemEditor::snap_angle(float p_target, float p_start) const {
 	}
 }
 
-void CanvasItemEditor::_unhandled_key_input(const Ref<InputEvent> &p_ev) {
+void CanvasItemEditor::unhandled_key_input(const Ref<InputEvent> &p_ev) {
 	ERR_FAIL_COND(p_ev.is_null());
 
 	Ref<InputEventKey> k = p_ev;
@@ -486,11 +487,11 @@ void CanvasItemEditor::_unhandled_key_input(const Ref<InputEvent> &p_ev) {
 		}
 
 		if (k->is_pressed() && !k->is_ctrl_pressed() && !k->is_echo()) {
-			if ((grid_snap_active || show_grid) && multiply_grid_step_shortcut.is_valid() && multiply_grid_step_shortcut->is_shortcut(p_ev)) {
+			if ((grid_snap_active || show_grid) && multiply_grid_step_shortcut.is_valid() && multiply_grid_step_shortcut->matches_event(p_ev)) {
 				// Multiply the grid size
 				grid_step_multiplier = MIN(grid_step_multiplier + 1, 12);
 				viewport->update();
-			} else if ((grid_snap_active || show_grid) && divide_grid_step_shortcut.is_valid() && divide_grid_step_shortcut->is_shortcut(p_ev)) {
+			} else if ((grid_snap_active || show_grid) && divide_grid_step_shortcut.is_valid() && divide_grid_step_shortcut->matches_event(p_ev)) {
 				// Divide the grid size
 				Point2 new_grid_step = grid_step * Math::pow(2.0, grid_step_multiplier - 1);
 				if (new_grid_step.x >= 1.0 && new_grid_step.y >= 1.0) {
@@ -589,7 +590,7 @@ void CanvasItemEditor::_find_canvas_items_at_pos(const Point2 &p_pos, Node *p_no
 		return;
 	}
 
-	const real_t grab_distance = EDITOR_GET("editors/poly_editor/point_grab_radius");
+	const real_t grab_distance = EDITOR_GET("editors/polygon_editor/point_grab_radius");
 	CanvasItem *canvas_item = Object::cast_to<CanvasItem>(p_node);
 
 	for (int i = p_node->get_child_count() - 1; i >= 0; i--) {
@@ -923,7 +924,7 @@ bool CanvasItemEditor::_gui_input_rulers_and_guides(const Ref<InputEvent> &p_eve
 			}
 
 			// Hover over guides
-			float minimum = 1e20;
+			real_t minimum = 1e20;
 			is_hovering_h_guide = false;
 			is_hovering_v_guide = false;
 
@@ -1192,30 +1193,30 @@ bool CanvasItemEditor::_gui_input_zoom_or_pan(const Ref<InputEvent> &p_event, bo
 	Ref<InputEventKey> k = p_event;
 	if (k.is_valid()) {
 		if (k->is_pressed()) {
-			if (ED_GET_SHORTCUT("canvas_item_editor/zoom_3.125_percent")->is_shortcut(p_event)) {
+			if (ED_GET_SHORTCUT("canvas_item_editor/zoom_3.125_percent")->matches_event(p_event)) {
 				_update_zoom((1.0 / 32.0) * MAX(1, EDSCALE));
-			} else if (ED_GET_SHORTCUT("canvas_item_editor/zoom_6.25_percent")->is_shortcut(p_event)) {
+			} else if (ED_GET_SHORTCUT("canvas_item_editor/zoom_6.25_percent")->matches_event(p_event)) {
 				_update_zoom((1.0 / 16.0) * MAX(1, EDSCALE));
-			} else if (ED_GET_SHORTCUT("canvas_item_editor/zoom_12.5_percent")->is_shortcut(p_event)) {
+			} else if (ED_GET_SHORTCUT("canvas_item_editor/zoom_12.5_percent")->matches_event(p_event)) {
 				_update_zoom((1.0 / 8.0) * MAX(1, EDSCALE));
-			} else if (ED_GET_SHORTCUT("canvas_item_editor/zoom_25_percent")->is_shortcut(p_event)) {
+			} else if (ED_GET_SHORTCUT("canvas_item_editor/zoom_25_percent")->matches_event(p_event)) {
 				_update_zoom((1.0 / 4.0) * MAX(1, EDSCALE));
-			} else if (ED_GET_SHORTCUT("canvas_item_editor/zoom_50_percent")->is_shortcut(p_event)) {
+			} else if (ED_GET_SHORTCUT("canvas_item_editor/zoom_50_percent")->matches_event(p_event)) {
 				_update_zoom((1.0 / 2.0) * MAX(1, EDSCALE));
-			} else if (ED_GET_SHORTCUT("canvas_item_editor/zoom_100_percent")->is_shortcut(p_event)) {
+			} else if (ED_GET_SHORTCUT("canvas_item_editor/zoom_100_percent")->matches_event(p_event)) {
 				_update_zoom(1.0 * MAX(1, EDSCALE));
-			} else if (ED_GET_SHORTCUT("canvas_item_editor/zoom_200_percent")->is_shortcut(p_event)) {
+			} else if (ED_GET_SHORTCUT("canvas_item_editor/zoom_200_percent")->matches_event(p_event)) {
 				_update_zoom(2.0 * MAX(1, EDSCALE));
-			} else if (ED_GET_SHORTCUT("canvas_item_editor/zoom_400_percent")->is_shortcut(p_event)) {
+			} else if (ED_GET_SHORTCUT("canvas_item_editor/zoom_400_percent")->matches_event(p_event)) {
 				_update_zoom(4.0 * MAX(1, EDSCALE));
-			} else if (ED_GET_SHORTCUT("canvas_item_editor/zoom_800_percent")->is_shortcut(p_event)) {
+			} else if (ED_GET_SHORTCUT("canvas_item_editor/zoom_800_percent")->matches_event(p_event)) {
 				_update_zoom(8.0 * MAX(1, EDSCALE));
-			} else if (ED_GET_SHORTCUT("canvas_item_editor/zoom_1600_percent")->is_shortcut(p_event)) {
+			} else if (ED_GET_SHORTCUT("canvas_item_editor/zoom_1600_percent")->matches_event(p_event)) {
 				_update_zoom(16.0 * MAX(1, EDSCALE));
 			}
 		}
 
-		bool is_pan_key = pan_view_shortcut.is_valid() && pan_view_shortcut->is_shortcut(p_event);
+		bool is_pan_key = pan_view_shortcut.is_valid() && pan_view_shortcut->matches_event(p_event);
 
 		if (is_pan_key && (EditorSettings::get_singleton()->get("editors/2d/simple_panning") || drag_type != DRAG_NONE)) {
 			if (!panning) {
@@ -1264,7 +1265,7 @@ bool CanvasItemEditor::_gui_input_zoom_or_pan(const Ref<InputEvent> &p_event, bo
 	if (pan_gesture.is_valid() && !p_already_accepted) {
 		// If ctrl key pressed, then zoom instead of pan.
 		if (pan_gesture->is_ctrl_pressed()) {
-			const float factor = pan_gesture->get_delta().y;
+			const real_t factor = pan_gesture->get_delta().y;
 
 			zoom_widget->set_zoom_by_increments(1);
 			if (factor != 1.f) {
@@ -1490,9 +1491,9 @@ bool CanvasItemEditor::_gui_input_anchors(const Ref<InputEvent> &p_event) {
 						anchor_pos[i] = (transform * control->get_global_transform_with_canvas()).xform(_anchor_to_position(control, anchor_pos[i]));
 						anchor_rects[i] = Rect2(anchor_pos[i], anchor_handle->get_size());
 						if (control->is_layout_rtl()) {
-							anchor_rects[i].position -= anchor_handle->get_size() * Vector2(float(i == 1 || i == 2), float(i <= 1));
+							anchor_rects[i].position -= anchor_handle->get_size() * Vector2(real_t(i == 1 || i == 2), real_t(i <= 1));
 						} else {
-							anchor_rects[i].position -= anchor_handle->get_size() * Vector2(float(i == 0 || i == 3), float(i <= 1));
+							anchor_rects[i].position -= anchor_handle->get_size() * Vector2(real_t(i == 0 || i == 3), real_t(i <= 1));
 						}
 					}
 
@@ -1646,7 +1647,7 @@ bool CanvasItemEditor::_gui_input_resize(const Ref<InputEvent> &p_event) {
 					};
 
 					DragType resize_drag = DRAG_NONE;
-					float radius = (select_handle->get_size().width / 2) * 1.5;
+					real_t radius = (select_handle->get_size().width / 2) * 1.5;
 
 					for (int i = 0; i < 4; i++) {
 						int prev = (i + 3) % 4;
@@ -1692,7 +1693,7 @@ bool CanvasItemEditor::_gui_input_resize(const Ref<InputEvent> &p_event) {
 			bool symmetric = m->is_alt_pressed();
 
 			Rect2 local_rect = canvas_item->_edit_get_rect();
-			float aspect = local_rect.get_size().y / local_rect.get_size().x;
+			real_t aspect = local_rect.get_size().y / local_rect.get_size().x;
 			Point2 current_begin = local_rect.get_position();
 			Point2 current_end = local_rect.get_position() + local_rect.get_size();
 			Point2 max_begin = (symmetric) ? (current_begin + current_end - canvas_item->_edit_get_minimum_size()) / 2.0 : current_end - canvas_item->_edit_get_minimum_size();
@@ -1883,7 +1884,7 @@ bool CanvasItemEditor::_gui_input_scale(const Ref<InputEvent> &p_event) {
 
 			Size2 scale = canvas_item->call("get_scale");
 			Size2 original_scale = scale;
-			float ratio = scale.y / scale.x;
+			real_t ratio = scale.y / scale.x;
 			if (drag_type == DRAG_SCALE_BOTH) {
 				Size2 scale_factor = drag_to_local / drag_from_local;
 				if (uniform) {
@@ -2012,11 +2013,13 @@ bool CanvasItemEditor::_gui_input_move(const Ref<InputEvent> &p_event) {
 
 			drag_to = transform.affine_inverse().xform(m->get_position());
 			Point2 previous_pos;
-			if (drag_selection.size() == 1) {
-				Transform2D xform = drag_selection[0]->get_global_transform_with_canvas() * drag_selection[0]->get_transform().affine_inverse();
-				previous_pos = xform.xform(drag_selection[0]->_edit_get_position());
-			} else {
-				previous_pos = _get_encompassing_rect_from_list(drag_selection).position;
+			if (!drag_selection.is_empty()) {
+				if (drag_selection.size() == 1) {
+					Transform2D xform = drag_selection[0]->get_global_transform_with_canvas() * drag_selection[0]->get_transform().affine_inverse();
+					previous_pos = xform.xform(drag_selection[0]->_edit_get_position());
+				} else {
+					previous_pos = _get_encompassing_rect_from_list(drag_selection).position;
+				}
 			}
 
 			Point2 new_pos = snap_point(previous_pos + (drag_to - drag_from), SNAP_GRID | SNAP_GUIDES | SNAP_PIXEL | SNAP_NODE_PARENT | SNAP_NODE_ANCHORS | SNAP_OTHER_NODES, 0, nullptr, drag_selection);
@@ -2539,7 +2542,7 @@ void CanvasItemEditor::_update_cursor() {
 
 	List<CanvasItem *> selection = _get_edited_canvas_items();
 	if (selection.size() == 1) {
-		float angle = Math::fposmod((double)selection[0]->get_global_transform_with_canvas().get_rotation(), Math_PI);
+		const double angle = Math::fposmod((double)selection[0]->get_global_transform_with_canvas().get_rotation(), Math_PI);
 		if (angle > Math_PI * 7.0 / 8.0) {
 			rotation_array_index = 0;
 		} else if (angle > Math_PI * 5.0 / 8.0) {
@@ -2645,7 +2648,7 @@ void CanvasItemEditor::_draw_margin_at_position(int p_value, Point2 p_position, 
 	}
 }
 
-void CanvasItemEditor::_draw_percentage_at_position(float p_value, Point2 p_position, Side p_side) {
+void CanvasItemEditor::_draw_percentage_at_position(real_t p_value, Point2 p_position, Side p_side) {
 	String str = TS->format_number(vformat("%.1f ", p_value * 100.0)) + TS->percent_sign();
 	if (p_value != 0) {
 		_draw_text_at_position(p_position, str, p_side);
@@ -2670,7 +2673,7 @@ void CanvasItemEditor::_draw_guides() {
 			if (drag_type == DRAG_V_GUIDE && i == dragged_guide_index) {
 				continue;
 			}
-			float x = xform.xform(Point2(vguides[i], 0)).x;
+			real_t x = xform.xform(Point2(vguides[i], 0)).x;
 			viewport->draw_line(Point2(x, 0), Point2(x, viewport->get_size().y), guide_color, Math::round(EDSCALE));
 		}
 	}
@@ -2681,7 +2684,7 @@ void CanvasItemEditor::_draw_guides() {
 			if (drag_type == DRAG_H_GUIDE && i == dragged_guide_index) {
 				continue;
 			}
-			float y = xform.xform(Point2(0, hguides[i])).y;
+			real_t y = xform.xform(Point2(0, hguides[i])).y;
 			viewport->draw_line(Point2(0, y), Point2(viewport->get_size().x, y), guide_color, Math::round(EDSCALE));
 		}
 	}
@@ -2745,7 +2748,7 @@ void CanvasItemEditor::_draw_rulers() {
 			ruler_transform.scale_basis(Point2(2, 2));
 		}
 	} else {
-		float basic_rule = 100;
+		real_t basic_rule = 100;
 		for (int i = 0; basic_rule * zoom > 100; i++) {
 			basic_rule /= (i % 2) ? 5.0 : 2.0;
 		}
@@ -2774,7 +2777,7 @@ void CanvasItemEditor::_draw_rulers() {
 		Point2 position = (transform * ruler_transform * major_subdivide * minor_subdivide).xform(Point2(i, 0)).round();
 		if (i % (major_subdivision * minor_subdivision) == 0) {
 			viewport->draw_line(Point2(position.x, 0), Point2(position.x, RULER_WIDTH), graduation_color, Math::round(EDSCALE));
-			float val = (ruler_transform * major_subdivide * minor_subdivide).xform(Point2(i, 0)).x;
+			real_t val = (ruler_transform * major_subdivide * minor_subdivide).xform(Point2(i, 0)).x;
 			viewport->draw_string(font, Point2(position.x + 2, font->get_height(font_size)), TS->format_number(vformat(((int)val == val) ? "%d" : "%.1f", val)), HALIGN_LEFT, -1, font_size, font_color);
 		} else {
 			if (i % minor_subdivision == 0) {
@@ -2791,7 +2794,7 @@ void CanvasItemEditor::_draw_rulers() {
 		Point2 position = (transform * ruler_transform * major_subdivide * minor_subdivide).xform(Point2(0, i)).round();
 		if (i % (major_subdivision * minor_subdivision) == 0) {
 			viewport->draw_line(Point2(0, position.y), Point2(RULER_WIDTH, position.y), graduation_color, Math::round(EDSCALE));
-			float val = (ruler_transform * major_subdivide * minor_subdivide).xform(Point2(0, i)).y;
+			real_t val = (ruler_transform * major_subdivide * minor_subdivide).xform(Point2(0, i)).y;
 
 			Transform2D text_xform = Transform2D(-Math_PI / 2.0, Point2(font->get_height(font_size), position.y - 2));
 			viewport->draw_set_transform_matrix(viewport->get_transform() * text_xform);
@@ -2924,8 +2927,8 @@ void CanvasItemEditor::_draw_ruler_tool() {
 		viewport->draw_string(font, text_pos, TS->format_number(vformat("%.1f px", length_vector.length())), HALIGN_LEFT, -1, font_size, font_color, outline_size, outline_color);
 
 		if (draw_secondary_lines) {
-			const float horizontal_angle_rad = atan2(length_vector.y, length_vector.x);
-			const float vertical_angle_rad = Math_PI / 2.0 - horizontal_angle_rad;
+			const real_t horizontal_angle_rad = atan2(length_vector.y, length_vector.x);
+			const real_t vertical_angle_rad = Math_PI / 2.0 - horizontal_angle_rad;
 			const int horizontal_angle = round(180 * horizontal_angle_rad / Math_PI);
 			const int vertical_angle = round(180 * vertical_angle_rad / Math_PI);
 
@@ -2961,28 +2964,28 @@ void CanvasItemEditor::_draw_ruler_tool() {
 
 			// Angle arcs
 			int arc_point_count = 8;
-			float arc_radius_max_length_percent = 0.1;
-			float ruler_length = length_vector.length() * zoom;
-			float arc_max_radius = 50.0;
-			float arc_line_width = 2.0;
+			real_t arc_radius_max_length_percent = 0.1;
+			real_t ruler_length = length_vector.length() * zoom;
+			real_t arc_max_radius = 50.0;
+			real_t arc_line_width = 2.0;
 
 			const Vector2 end_to_begin = (end - begin);
 
-			float arc_1_start_angle =
+			real_t arc_1_start_angle =
 					end_to_begin.x < 0 ?
 							  (end_to_begin.y < 0 ? 3.0 * Math_PI / 2.0 - vertical_angle_rad : Math_PI / 2.0) :
 							  (end_to_begin.y < 0 ? 3.0 * Math_PI / 2.0 : Math_PI / 2.0 - vertical_angle_rad);
-			float arc_1_end_angle = arc_1_start_angle + vertical_angle_rad;
+			real_t arc_1_end_angle = arc_1_start_angle + vertical_angle_rad;
 			// Constrain arc to triangle height & max size
-			float arc_1_radius = MIN(MIN(arc_radius_max_length_percent * ruler_length, ABS(end_to_begin.y)), arc_max_radius);
+			real_t arc_1_radius = MIN(MIN(arc_radius_max_length_percent * ruler_length, ABS(end_to_begin.y)), arc_max_radius);
 
-			float arc_2_start_angle =
+			real_t arc_2_start_angle =
 					end_to_begin.x < 0 ?
 							  (end_to_begin.y < 0 ? 0.0 : -horizontal_angle_rad) :
 							  (end_to_begin.y < 0 ? Math_PI - horizontal_angle_rad : Math_PI);
-			float arc_2_end_angle = arc_2_start_angle + horizontal_angle_rad;
+			real_t arc_2_end_angle = arc_2_start_angle + horizontal_angle_rad;
 			// Constrain arc to triangle width & max size
-			float arc_2_radius = MIN(MIN(arc_radius_max_length_percent * ruler_length, ABS(end_to_begin.x)), arc_max_radius);
+			real_t arc_2_radius = MIN(MIN(arc_radius_max_length_percent * ruler_length, ABS(end_to_begin.x)), arc_max_radius);
 
 			viewport->draw_arc(begin, arc_1_radius, arc_1_start_angle, arc_1_end_angle, arc_point_count, ruler_primary_color, Math::round(EDSCALE * arc_line_width));
 			viewport->draw_arc(end, arc_2_radius, arc_2_start_angle, arc_2_end_angle, arc_point_count, ruler_primary_color, Math::round(EDSCALE * arc_line_width));
@@ -3020,7 +3023,7 @@ void CanvasItemEditor::_draw_control_anchors(Control *control) {
 	RID ci = viewport->get_canvas_item();
 	if (tool == TOOL_SELECT && !Object::cast_to<Container>(control->get_parent())) {
 		// Compute the anchors
-		float anchors_values[4];
+		real_t anchors_values[4];
 		anchors_values[0] = control->get_anchor(SIDE_LEFT);
 		anchors_values[1] = control->get_anchor(SIDE_TOP);
 		anchors_values[2] = control->get_anchor(SIDE_RIGHT);
@@ -3059,7 +3062,7 @@ void CanvasItemEditor::_draw_control_helpers(Control *control) {
 		Color color_base = Color(0.8, 0.8, 0.8, 0.5);
 
 		// Compute the anchors
-		float anchors_values[4];
+		real_t anchors_values[4];
 		anchors_values[0] = control->get_anchor(SIDE_LEFT);
 		anchors_values[1] = control->get_anchor(SIDE_TOP);
 		anchors_values[2] = control->get_anchor(SIDE_RIGHT);
@@ -3105,7 +3108,7 @@ void CanvasItemEditor::_draw_control_helpers(Control *control) {
 			Vector2 line_starts[4];
 			Vector2 line_ends[4];
 			for (int i = 0; i < 4; i++) {
-				float anchor_val = (i >= 2) ? ANCHOR_END - anchors_values[i] : anchors_values[i];
+				real_t anchor_val = (i >= 2) ? ANCHOR_END - anchors_values[i] : anchors_values[i];
 				line_starts[i] = corners_pos[i].lerp(corners_pos[(i + 1) % 4], anchor_val);
 				line_ends[i] = corners_pos[(i + 3) % 4].lerp(corners_pos[(i + 2) % 4], anchor_val);
 				anchor_snapped = anchors_values[i] == 0.0 || anchors_values[i] == 0.5 || anchors_values[i] == 1.0;
@@ -3113,7 +3116,7 @@ void CanvasItemEditor::_draw_control_helpers(Control *control) {
 			}
 
 			// Display the percentages next to the lines
-			float percent_val;
+			real_t percent_val;
 			percent_val = anchors_values[(dragged_anchor + 2) % 4] - anchors_values[dragged_anchor];
 			percent_val = (dragged_anchor >= 2) ? -percent_val : percent_val;
 			_draw_percentage_at_position(percent_val, (anchors_pos[dragged_anchor] + anchors_pos[(dragged_anchor + 1) % 4]) / 2, (Side)((dragged_anchor + 1) % 4));
@@ -3132,9 +3135,9 @@ void CanvasItemEditor::_draw_control_helpers(Control *control) {
 		}
 
 		// Draw the margin values and the node width/height when dragging control side
-		float ratio = 0.33;
+		const real_t ratio = 0.33;
 		Transform2D parent_transform = xform * control->get_transform().affine_inverse();
-		float node_pos_in_parent[4];
+		real_t node_pos_in_parent[4];
 
 		Rect2 parent_rect = control->get_parent_anchorable_rect();
 
@@ -3451,10 +3454,10 @@ void CanvasItemEditor::_draw_straight_line(Point2 p_from, Point2 p_to, Color p_c
 		points.push_back(Point2(0, to.y));
 		points.push_back(Point2(viewport_size.x, to.y));
 	} else {
-		float y_for_zero_x = (to.y * from.x - from.y * to.x) / (from.x - to.x);
-		float x_for_zero_y = (to.x * from.y - from.x * to.y) / (from.y - to.y);
-		float y_for_viewport_x = ((to.y - from.y) * (viewport_size.x - from.x)) / (to.x - from.x) + from.y;
-		float x_for_viewport_y = ((to.x - from.x) * (viewport_size.y - from.y)) / (to.y - from.y) + from.x; // faux
+		real_t y_for_zero_x = (to.y * from.x - from.y * to.x) / (from.x - to.x);
+		real_t x_for_zero_y = (to.x * from.y - from.x * to.y) / (from.y - to.y);
+		real_t y_for_viewport_x = ((to.y - from.y) * (viewport_size.x - from.x)) / (to.x - from.x) + from.y;
+		real_t x_for_viewport_y = ((to.x - from.x) * (viewport_size.y - from.y)) / (to.y - from.y) + from.x; // faux
 
 		//bool start_set = false;
 		if (y_for_zero_x >= 0 && y_for_zero_x <= viewport_size.y) {
@@ -3600,7 +3603,7 @@ void CanvasItemEditor::_draw_locks_and_groups(Node *p_node, const Transform2D &p
 
 	RID viewport_canvas_item = viewport->get_canvas_item();
 	if (canvas_item) {
-		float offset = 0;
+		real_t offset = 0;
 
 		Ref<Texture2D> lock = get_theme_icon(SNAME("LockViewport"), SNAME("EditorIcons"));
 		if (p_node->has_meta("_edit_lock_") && show_edit_locks) {
@@ -3724,7 +3727,7 @@ void CanvasItemEditor::_notification(int p_what) {
 
 			Control *control = Object::cast_to<Control>(canvas_item);
 			if (control) {
-				float anchors[4];
+				real_t anchors[4];
 				Vector2 pivot;
 
 				pivot = control->get_pivot_offset();
@@ -3906,6 +3909,11 @@ void CanvasItemEditor::_notification(int p_what) {
 		anchors_popup->add_icon_item(get_theme_icon(SNAME("ControlAlignWide"), SNAME("EditorIcons")), TTR("Full Rect"), ANCHORS_PRESET_WIDE);
 
 		anchor_mode_button->set_icon(get_theme_icon(SNAME("Anchor"), SNAME("EditorIcons")));
+
+		info_overlay->get_theme()->set_stylebox("normal", "Label", get_theme_stylebox(SNAME("CanvasItemInfoOverlay"), SNAME("EditorStyles")));
+		warning_child_of_container->add_theme_color_override("font_color", get_theme_color(SNAME("warning_color"), SNAME("Editor")));
+		warning_child_of_container->add_theme_font_override("font", get_theme_font(SNAME("main"), SNAME("EditorFonts")));
+		warning_child_of_container->add_theme_font_size_override("font_size", get_theme_font_size(SNAME("main_size"), SNAME("EditorFonts")));
 	}
 
 	if (p_what == NOTIFICATION_VISIBILITY_CHANGED) {
@@ -4001,7 +4009,7 @@ void CanvasItemEditor::_update_scrollbars() {
 	bool constrain_editor_view = bool(EditorSettings::get_singleton()->get("editors/2d/constrain_editor_view"));
 
 	if (canvas_item_rect.size.height <= (local_rect.size.y / zoom)) {
-		float centered = -(size.y / 2) / zoom + screen_rect.y / 2;
+		real_t centered = -(size.y / 2) / zoom + screen_rect.y / 2;
 		if (constrain_editor_view && ABS(centered - previous_update_view_offset.y) < ABS(centered - view_offset.y)) {
 			view_offset.y = previous_update_view_offset.y;
 		}
@@ -4022,7 +4030,7 @@ void CanvasItemEditor::_update_scrollbars() {
 	}
 
 	if (canvas_item_rect.size.width <= (local_rect.size.x / zoom)) {
-		float centered = -(size.x / 2) / zoom + screen_rect.x / 2;
+		real_t centered = -(size.x / 2) / zoom + screen_rect.x / 2;
 		if (constrain_editor_view && ABS(centered - previous_update_view_offset.x) < ABS(centered - view_offset.x)) {
 			view_offset.x = previous_update_view_offset.x;
 		}
@@ -4071,7 +4079,7 @@ void CanvasItemEditor::_popup_warning_depop(Control *p_control) {
 	info_overlay->set_offset(SIDE_LEFT, (show_rulers ? RULER_WIDTH : 0) + 10);
 }
 
-void CanvasItemEditor::_popup_warning_temporarily(Control *p_control, const float p_duration) {
+void CanvasItemEditor::_popup_warning_temporarily(Control *p_control, const double p_duration) {
 	Timer *timer;
 	if (!popup_temporarily_timers.has(p_control)) {
 		timer = memnew(Timer);
@@ -4089,7 +4097,7 @@ void CanvasItemEditor::_popup_warning_temporarily(Control *p_control, const floa
 	info_overlay->set_offset(SIDE_LEFT, (show_rulers ? RULER_WIDTH : 0) + 10);
 }
 
-void CanvasItemEditor::_update_scroll(float) {
+void CanvasItemEditor::_update_scroll(real_t) {
 	if (updating_scroll) {
 		return;
 	}
@@ -4183,14 +4191,15 @@ void CanvasItemEditor::_set_anchors_preset(Control::LayoutPreset p_preset) {
 	undo_redo->commit_action();
 }
 
-void CanvasItemEditor::_zoom_on_position(float p_zoom, Point2 p_position) {
+void CanvasItemEditor::_zoom_on_position(real_t p_zoom, Point2 p_position) {
 	p_zoom = CLAMP(p_zoom, MIN_ZOOM, MAX_ZOOM);
 
 	if (p_zoom == zoom) {
+		zoom_widget->set_zoom(p_zoom);
 		return;
 	}
 
-	float prev_zoom = zoom;
+	real_t prev_zoom = zoom;
 	zoom = p_zoom;
 
 	view_offset += p_position / prev_zoom - p_position / zoom;
@@ -4199,7 +4208,7 @@ void CanvasItemEditor::_zoom_on_position(float p_zoom, Point2 p_position) {
 	// in small details (texts, lines).
 	// This correction adds a jitter movement when zooming, so we correct only when the
 	// zoom factor is an integer. (in the other cases, all pixels won't be aligned anyway)
-	float closest_zoom_factor = Math::round(zoom);
+	const real_t closest_zoom_factor = Math::round(zoom);
 	if (Math::is_zero_approx(zoom - closest_zoom_factor)) {
 		// make sure scene pixel at view_offset is aligned on a screen pixel
 		Vector2 view_offset_int = view_offset.floor();
@@ -4211,7 +4220,7 @@ void CanvasItemEditor::_zoom_on_position(float p_zoom, Point2 p_position) {
 	update_viewport();
 }
 
-void CanvasItemEditor::_update_zoom(float p_zoom) {
+void CanvasItemEditor::_update_zoom(real_t p_zoom) {
 	_zoom_on_position(p_zoom, viewport_scrollable->get_size() / 2.0);
 }
 
@@ -4896,8 +4905,8 @@ void CanvasItemEditor::_focus_selection(int p_op) {
 	} else { // VIEW_FRAME_TO_SELECTION
 
 		if (rect.size.x > CMP_EPSILON && rect.size.y > CMP_EPSILON) {
-			float scale_x = viewport->get_size().x / rect.size.x;
-			float scale_y = viewport->get_size().y / rect.size.y;
+			real_t scale_x = viewport->get_size().x / rect.size.x;
+			real_t scale_y = viewport->get_size().y / rect.size.y;
 			zoom = scale_x < scale_y ? scale_x : scale_y;
 			zoom *= 0.90;
 			viewport->update();
@@ -4910,7 +4919,7 @@ void CanvasItemEditor::_focus_selection(int p_op) {
 void CanvasItemEditor::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("_update_override_camera_button", "game_running"), &CanvasItemEditor::_update_override_camera_button);
 	ClassDB::bind_method("_get_editor_data", &CanvasItemEditor::_get_editor_data);
-	ClassDB::bind_method("_unhandled_key_input", &CanvasItemEditor::_unhandled_key_input);
+
 	ClassDB::bind_method(D_METHOD("set_state"), &CanvasItemEditor::set_state);
 	ClassDB::bind_method(D_METHOD("update_viewport"), &CanvasItemEditor::update_viewport);
 	ClassDB::bind_method(D_METHOD("_zoom_on_position"), &CanvasItemEditor::_zoom_on_position);
@@ -4962,7 +4971,7 @@ void CanvasItemEditor::set_state(const Dictionary &p_state) {
 	if (state.has("zoom")) {
 		// Compensate the editor scale, so that the editor scale can be changed
 		// and the zoom level will still be the same (relative to the editor scale).
-		zoom = float(p_state["zoom"]) * MAX(1, EDSCALE);
+		zoom = real_t(p_state["zoom"]) * MAX(1, EDSCALE);
 		zoom_widget->set_zoom(zoom);
 	}
 
@@ -5277,21 +5286,13 @@ CanvasItemEditor::CanvasItemEditor(EditorNode *p_editor) {
 	info_overlay->add_theme_constant_override("separation", 10);
 	viewport_scrollable->add_child(info_overlay);
 
+	// Make sure all labels inside of the container are styled the same.
 	Theme *info_overlay_theme = memnew(Theme);
-	info_overlay_theme->copy_default_theme();
 	info_overlay->set_theme(info_overlay_theme);
-
-	StyleBoxFlat *info_overlay_label_stylebox = memnew(StyleBoxFlat);
-	info_overlay_label_stylebox->set_bg_color(Color(0.0, 0.0, 0.0, 0.2));
-	info_overlay_label_stylebox->set_expand_margin_size_all(4);
-	info_overlay_theme->set_stylebox("normal", "Label", info_overlay_label_stylebox);
 
 	warning_child_of_container = memnew(Label);
 	warning_child_of_container->hide();
 	warning_child_of_container->set_text(TTR("Warning: Children of a container get their position and size determined only by their parent."));
-	warning_child_of_container->add_theme_color_override("font_color", EditorNode::get_singleton()->get_gui_base()->get_theme_color(SNAME("warning_color"), SNAME("Editor")));
-	warning_child_of_container->add_theme_font_override("font", EditorNode::get_singleton()->get_gui_base()->get_theme_font(SNAME("main"), SNAME("EditorFonts")));
-	warning_child_of_container->add_theme_font_size_override("font_size", EditorNode::get_singleton()->get_gui_base()->get_theme_font_size(SNAME("main_size"), SNAME("EditorFonts")));
 	add_control_to_info_overlay(warning_child_of_container);
 
 	h_scroll = memnew(HScrollBar);
@@ -5738,7 +5739,7 @@ void CanvasItemEditorViewport::_on_change_type_confirmed() {
 	}
 
 	CheckBox *check = Object::cast_to<CheckBox>(button_group->get_pressed_button());
-	default_type = check->get_text();
+	default_texture_node_type = check->get_text();
 	_perform_drop_data();
 	selector->hide();
 }
@@ -5813,16 +5814,30 @@ bool CanvasItemEditorViewport::_cyclical_dependency_exists(const String &p_targe
 }
 
 void CanvasItemEditorViewport::_create_nodes(Node *parent, Node *child, String &path, const Point2 &p_point) {
-	child->set_name(path.get_file().get_basename());
+	// Adjust casing according to project setting. The file name is expected to be in snake_case, but will work for others.
+	String name = path.get_file().get_basename();
+	switch (ProjectSettings::get_singleton()->get("editor/node_naming/name_casing").operator int()) {
+		case NAME_CASING_PASCAL_CASE:
+			name = name.capitalize().replace(" ", "");
+			break;
+		case NAME_CASING_CAMEL_CASE:
+			name = name.capitalize().replace(" ", "");
+			name[0] = name.to_lower()[0];
+			break;
+		case NAME_CASING_SNAKE_CASE:
+			name = name.capitalize().replace(" ", "_").to_lower();
+			break;
+	}
+	child->set_name(name);
+
 	Ref<Texture2D> texture = Ref<Texture2D>(Object::cast_to<Texture2D>(ResourceCache::get(path)));
-	Size2 texture_size = texture->get_size();
 
 	if (parent) {
 		editor_data->get_undo_redo().add_do_method(parent, "add_child", child);
 		editor_data->get_undo_redo().add_do_method(child, "set_owner", editor->get_edited_scene());
 		editor_data->get_undo_redo().add_do_reference(child);
 		editor_data->get_undo_redo().add_undo_method(parent, "remove_child", child);
-	} else { // if we haven't parent, lets try to make a child as a parent.
+	} else { // If no parent is selected, set as root node of the scene.
 		editor_data->get_undo_redo().add_do_method(editor, "set_edited_scene", child);
 		editor_data->get_undo_redo().add_do_method(child, "set_owner", editor->get_edited_scene());
 		editor_data->get_undo_redo().add_do_reference(child);
@@ -5836,28 +5851,23 @@ void CanvasItemEditorViewport::_create_nodes(Node *parent, Node *child, String &
 		editor_data->get_undo_redo().add_undo_method(ed, "live_debug_remove_node", NodePath(String(editor->get_edited_scene()->get_path_to(parent)) + "/" + new_name));
 	}
 
-	// handle with different property for texture
-	String property = "texture";
-	List<PropertyInfo> props;
-	child->get_property_list(&props);
-	for (const PropertyInfo &E : props) {
-		if (E.name == "config/texture") { // Particles2D
-			property = "config/texture";
-			break;
-		} else if (E.name == "texture/texture") { // Polygon2D
-			property = "texture/texture";
-			break;
-		} else if (E.name == "normal") { // TouchScreenButton
-			property = "normal";
-			break;
-		}
+	String node_class = child->get_class();
+	if (node_class == "Polygon2D") {
+		editor_data->get_undo_redo().add_do_property(child, "texture/texture", texture);
+	} else if (node_class == "TouchScreenButton") {
+		editor_data->get_undo_redo().add_do_property(child, "normal", texture);
+	} else if (node_class == "TextureButton") {
+		editor_data->get_undo_redo().add_do_property(child, "texture_button", texture);
+	} else {
+		editor_data->get_undo_redo().add_do_property(child, "texture", texture);
 	}
-	editor_data->get_undo_redo().add_do_property(child, property, texture);
 
 	// make visible for certain node type
-	if (default_type == "NinePatchRect") {
-		editor_data->get_undo_redo().add_do_property(child, "rect/size", texture_size);
-	} else if (default_type == "Polygon2D") {
+	if (ClassDB::is_parent_class(node_class, "Control")) {
+		Size2 texture_size = texture->get_size();
+		editor_data->get_undo_redo().add_do_property(child, "rect_size", texture_size);
+	} else if (node_class == "Polygon2D") {
+		Size2 texture_size = texture->get_size();
 		Vector<Vector2> list;
 		list.push_back(Vector2(0, 0));
 		list.push_back(Vector2(texture_size.width, 0));
@@ -5958,23 +5968,7 @@ void CanvasItemEditorViewport::_perform_drop_data() {
 		} else {
 			Ref<Texture2D> texture = Ref<Texture2D>(Object::cast_to<Texture2D>(*res));
 			if (texture != nullptr && texture.is_valid()) {
-				Node *child;
-				if (default_type == "Light2D") {
-					child = memnew(Light2D);
-				} else if (default_type == "GPUParticles2D") {
-					child = memnew(GPUParticles2D);
-				} else if (default_type == "Polygon2D") {
-					child = memnew(Polygon2D);
-				} else if (default_type == "TouchScreenButton") {
-					child = memnew(TouchScreenButton);
-				} else if (default_type == "TextureRect") {
-					child = memnew(TextureRect);
-				} else if (default_type == "NinePatchRect") {
-					child = memnew(NinePatchRect);
-				} else {
-					child = memnew(Sprite2D); // default
-				}
-
+				Node *child = _make_texture_node_type(default_texture_node_type);
 				_create_nodes(target_node, child, path, drop_pos);
 			}
 		}
@@ -6012,13 +6006,7 @@ bool CanvasItemEditorViewport::can_drop_data(const Point2 &p_point, const Varian
 						continue;
 					}
 					memdelete(instantiated_scene);
-				} else if (type == "Texture2D" ||
-						   type == "ImageTexture" ||
-						   type == "ViewportTexture" ||
-						   type == "CurveTexture" ||
-						   type == "GradientTexture" ||
-						   type == "StreamTexture2D" ||
-						   type == "AtlasTexture") {
+				} else if (ClassDB::is_parent_class(type, "Texture2D")) {
 					Ref<Texture2D> texture = Ref<Texture2D>(Object::cast_to<Texture2D>(*res));
 					if (!texture.is_valid()) {
 						continue;
@@ -6035,7 +6023,7 @@ bool CanvasItemEditorViewport::can_drop_data(const Point2 &p_point, const Varian
 				}
 				Transform2D trans = canvas_item_editor->get_canvas_transform();
 				preview_node->set_position((p_point - trans.get_origin()) / trans.get_scale().x);
-				label->set_text(vformat(TTR("Adding %s..."), default_type));
+				label->set_text(vformat(TTR("Adding %s..."), default_texture_node_type));
 			}
 			return can_instantiate;
 		}
@@ -6051,9 +6039,9 @@ void CanvasItemEditorViewport::_show_resource_type_selector() {
 
 	for (int i = 0; i < btn_list.size(); i++) {
 		CheckBox *check = Object::cast_to<CheckBox>(btn_list[i]);
-		check->set_pressed(check->get_text() == default_type);
+		check->set_pressed(check->get_text() == default_texture_node_type);
 	}
-	selector->set_title(vformat(TTR("Add %s"), default_type));
+	selector->set_title(vformat(TTR("Add %s"), default_texture_node_type));
 	selector->popup_centered();
 }
 
@@ -6109,6 +6097,30 @@ void CanvasItemEditorViewport::drop_data(const Point2 &p_point, const Variant &p
 	}
 }
 
+Node *CanvasItemEditorViewport::_make_texture_node_type(String texture_node_type) {
+	Node *node = nullptr;
+	if (texture_node_type == "Sprite2D") {
+		node = memnew(Sprite2D);
+	} else if (texture_node_type == "PointLight2D") {
+		node = memnew(PointLight2D);
+	} else if (texture_node_type == "CPUParticles2D") {
+		node = memnew(CPUParticles2D);
+	} else if (texture_node_type == "GPUParticles2D") {
+		node = memnew(GPUParticles2D);
+	} else if (texture_node_type == "Polygon2D") {
+		node = memnew(Polygon2D);
+	} else if (texture_node_type == "TouchScreenButton") {
+		node = memnew(TouchScreenButton);
+	} else if (texture_node_type == "TextureRect") {
+		node = memnew(TextureRect);
+	} else if (texture_node_type == "TextureButton") {
+		node = memnew(TextureButton);
+	} else if (texture_node_type == "NinePatchRect") {
+		node = memnew(NinePatchRect);
+	}
+	return node;
+}
+
 void CanvasItemEditorViewport::_notification(int p_what) {
 	switch (p_what) {
 		case NOTIFICATION_ENTER_TREE: {
@@ -6128,22 +6140,24 @@ void CanvasItemEditorViewport::_bind_methods() {
 }
 
 CanvasItemEditorViewport::CanvasItemEditorViewport(EditorNode *p_node, CanvasItemEditor *p_canvas_item_editor) {
-	default_type = "Sprite2D";
+	default_texture_node_type = "Sprite2D";
 	// Node2D
-	types.push_back("Sprite2D");
-	types.push_back("Light2D");
-	types.push_back("GPUParticles2D");
-	types.push_back("Polygon2D");
-	types.push_back("TouchScreenButton");
+	texture_node_types.push_back("Sprite2D");
+	texture_node_types.push_back("PointLight2D");
+	texture_node_types.push_back("CPUParticles2D");
+	texture_node_types.push_back("GPUParticles2D");
+	texture_node_types.push_back("Polygon2D");
+	texture_node_types.push_back("TouchScreenButton");
 	// Control
-	types.push_back("TextureRect");
-	types.push_back("NinePatchRect");
+	texture_node_types.push_back("TextureRect");
+	texture_node_types.push_back("TextureButton");
+	texture_node_types.push_back("NinePatchRect");
 
 	target_node = nullptr;
 	editor = p_node;
 	editor_data = editor->get_scene_tree_dock()->get_editor_data();
 	canvas_item_editor = p_canvas_item_editor;
-	preview_node = memnew(Node2D);
+	preview_node = memnew(Control);
 
 	accept = memnew(AcceptDialog);
 	editor->get_gui_base()->add_child(accept);
@@ -6165,10 +6179,10 @@ CanvasItemEditorViewport::CanvasItemEditorViewport(EditorNode *p_node, CanvasIte
 	btn_group->set_h_size_flags(0);
 
 	button_group.instantiate();
-	for (int i = 0; i < types.size(); i++) {
+	for (int i = 0; i < texture_node_types.size(); i++) {
 		CheckBox *check = memnew(CheckBox);
 		btn_group->add_child(check);
-		check->set_text(types[i]);
+		check->set_text(texture_node_types[i]);
 		check->connect("button_down", callable_mp(this, &CanvasItemEditorViewport::_on_select_type), varray(check));
 		check->set_button_group(button_group);
 	}
