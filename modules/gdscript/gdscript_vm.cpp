@@ -322,6 +322,7 @@ void (*type_init_function_table[])(Variant *) = {
 		&&OPCODE_ITERATE_PACKED_VECTOR3_ARRAY,       \
 		&&OPCODE_ITERATE_PACKED_COLOR_ARRAY,         \
 		&&OPCODE_ITERATE_OBJECT,                     \
+		&&OPCODE_STORE_GLOBAL,                       \
 		&&OPCODE_STORE_NAMED_GLOBAL,                 \
 		&&OPCODE_TYPE_ADJUST_BOOL,                   \
 		&&OPCODE_TYPE_ADJUST_INT,                    \
@@ -1231,6 +1232,13 @@ Variant GDScriptFunction::call(GDScriptInstance *p_instance, const Variant **p_a
 
 				GD_ERR_BREAK(to_type < 0 || to_type >= Variant::VARIANT_MAX);
 
+#ifdef DEBUG_ENABLED
+				if (src->get_type() == Variant::OBJECT && !src->operator ObjectID().is_ref_counted() && ObjectDB::get_instance(src->operator ObjectID()) == nullptr) {
+					err_text = "Trying to cast a freed object.";
+					OPCODE_BREAK;
+				}
+#endif
+
 				Callable::CallError err;
 				Variant::construct(to_type, *dst, (const Variant **)&src, 1, err);
 
@@ -1255,6 +1263,10 @@ Variant GDScriptFunction::call(GDScriptInstance *p_instance, const Variant **p_a
 				GD_ERR_BREAK(!nc);
 
 #ifdef DEBUG_ENABLED
+				if (src->get_type() == Variant::OBJECT && !src->operator ObjectID().is_ref_counted() && ObjectDB::get_instance(src->operator ObjectID()) == nullptr) {
+					err_text = "Trying to cast a freed object.";
+					OPCODE_BREAK;
+				}
 				if (src->get_type() != Variant::OBJECT && src->get_type() != Variant::NIL) {
 					err_text = "Invalid cast: can't convert a non-object value to an object type.";
 					OPCODE_BREAK;
@@ -1283,6 +1295,10 @@ Variant GDScriptFunction::call(GDScriptInstance *p_instance, const Variant **p_a
 				GD_ERR_BREAK(!base_type);
 
 #ifdef DEBUG_ENABLED
+				if (src->get_type() == Variant::OBJECT && !src->operator ObjectID().is_ref_counted() && ObjectDB::get_instance(src->operator ObjectID()) == nullptr) {
+					err_text = "Trying to cast a freed object.";
+					OPCODE_BREAK;
+				}
 				if (src->get_type() != Variant::OBJECT && src->get_type() != Variant::NIL) {
 					err_text = "Trying to assign a non-object value to a variable of type '" + base_type->get_path().get_file() + "'.";
 					OPCODE_BREAK;
@@ -3113,6 +3129,18 @@ Variant GDScriptFunction::call(GDScriptInstance *p_instance, const Variant **p_a
 
 					ip += 5; // Loop again.
 				}
+			}
+			DISPATCH_OPCODE;
+
+			OPCODE(OPCODE_STORE_GLOBAL) {
+				CHECK_SPACE(3);
+				int global_idx = _code_ptr[ip + 2];
+				GD_ERR_BREAK(global_idx < 0 || global_idx >= GDScriptLanguage::get_singleton()->get_global_array_size());
+
+				GET_INSTRUCTION_ARG(dst, 0);
+				*dst = GDScriptLanguage::get_singleton()->get_global_array()[global_idx];
+
+				ip += 3;
 			}
 			DISPATCH_OPCODE;
 

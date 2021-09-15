@@ -33,6 +33,8 @@
 #include "core/math/math_defs.h"
 #include "scene/resources/surface_tool.h"
 
+#include <cstdint>
+
 void EditorSceneImporterMesh::add_blend_shape(const String &p_name) {
 	ERR_FAIL_COND(surfaces.size() > 0);
 	blend_shapes.push_back(p_name);
@@ -55,13 +57,14 @@ Mesh::BlendShapeMode EditorSceneImporterMesh::get_blend_shape_mode() const {
 	return blend_shape_mode;
 }
 
-void EditorSceneImporterMesh::add_surface(Mesh::PrimitiveType p_primitive, const Array &p_arrays, const Array &p_blend_shapes, const Dictionary &p_lods, const Ref<Material> &p_material, const String &p_name) {
+void EditorSceneImporterMesh::add_surface(Mesh::PrimitiveType p_primitive, const Array &p_arrays, const Array &p_blend_shapes, const Dictionary &p_lods, const Ref<Material> &p_material, const String &p_name, const uint32_t p_flags) {
 	ERR_FAIL_COND(p_blend_shapes.size() != blend_shapes.size());
 	ERR_FAIL_COND(p_arrays.size() != Mesh::ARRAY_MAX);
 	Surface s;
 	s.primitive = p_primitive;
 	s.arrays = p_arrays;
 	s.name = p_name;
+	s.flags = p_flags;
 
 	Vector<Vector3> vertex_array = p_arrays[Mesh::ARRAY_VERTEX];
 	int vertex_count = vertex_array.size();
@@ -136,6 +139,11 @@ float EditorSceneImporterMesh::get_surface_lod_size(int p_surface, int p_lod) co
 	ERR_FAIL_INDEX_V(p_surface, surfaces.size(), 0);
 	ERR_FAIL_INDEX_V(p_lod, surfaces[p_surface].lods.size(), 0);
 	return surfaces[p_surface].lods[p_lod].distance;
+}
+
+uint32_t EditorSceneImporterMesh::get_surface_format(int p_surface) const {
+	ERR_FAIL_INDEX_V(p_surface, surfaces.size(), 0);
+	return surfaces[p_surface].flags;
 }
 
 Ref<Material> EditorSceneImporterMesh::get_surface_material(int p_surface) const {
@@ -283,7 +291,7 @@ Ref<ArrayMesh> EditorSceneImporterMesh::get_mesh(const Ref<ArrayMesh> &p_base) {
 				}
 			}
 
-			mesh->add_surface_from_arrays(surfaces[i].primitive, surfaces[i].arrays, bs_data, lods);
+			mesh->add_surface_from_arrays(surfaces[i].primitive, surfaces[i].arrays, bs_data, lods, surfaces[i].flags);
 			if (surfaces[i].material.is_valid()) {
 				mesh->surface_set_material(mesh->get_surface_count() - 1, surfaces[i].material);
 			}
@@ -398,7 +406,7 @@ void EditorSceneImporterMesh::create_shadow_mesh() {
 			}
 		}
 
-		shadow_mesh->add_surface(surfaces[i].primitive, new_surface, Array(), lods, Ref<Material>(), surfaces[i].name);
+		shadow_mesh->add_surface(surfaces[i].primitive, new_surface, Array(), lods, Ref<Material>(), surfaces[i].name, surfaces[i].flags);
 	}
 }
 
@@ -436,7 +444,11 @@ void EditorSceneImporterMesh::_set_data(const Dictionary &p_data) {
 			if (s.has("material")) {
 				material = s["material"];
 			}
-			add_surface(prim, arr, blend_shapes, lods, material, name);
+			uint32_t flags = 0;
+			if (s.has("flags")) {
+				flags = s["flags"];
+			}
+			add_surface(prim, arr, blend_shapes, lods, material, name, flags);
 		}
 	}
 }
@@ -471,6 +483,10 @@ Dictionary EditorSceneImporterMesh::_get_data() const {
 
 		if (surfaces[i].name != String()) {
 			d["name"] = surfaces[i].name;
+		}
+
+		if (surfaces[i].flags != 0) {
+			d["flags"] = surfaces[i].flags;
 		}
 
 		surface_arr.push_back(d);
@@ -508,36 +524,47 @@ Vector<Face3> EditorSceneImporterMesh::get_faces() const {
 	return faces;
 }
 
-Vector<Ref<Shape3D>> EditorSceneImporterMesh::convex_decompose() const {
-	ERR_FAIL_COND_V(!Mesh::convex_composition_function, Vector<Ref<Shape3D>>());
+Vector<Ref<Shape3D>> EditorSceneImporterMesh::convex_decompose(const Mesh::ConvexDecompositionSettings &p_settings) const {
+	ERR_FAIL_COND_V(!Mesh::convex_decomposition_function, Vector<Ref<Shape3D>>());
 
 	const Vector<Face3> faces = get_faces();
+	int face_count = faces.size();
 
-	Vector<Vector<Face3>> decomposed = Mesh::convex_composition_function(faces, -1);
+	Vector<Vector3> vertices;
+	uint32_t vertex_count = 0;
+	vertices.resize(face_count * 3);
+	Vector<uint32_t> indices;
+	indices.resize(face_count * 3);
+	{
+		Map<Vector3, uint32_t> vertex_map;
+		Vector3 *vertex_w = vertices.ptrw();
+		uint32_t *index_w = indices.ptrw();
+		for (int i = 0; i < face_count; i++) {
+			for (int j = 0; j < 3; j++) {
+				const Vector3 &vertex = faces[i].vertex[j];
+				Map<Vector3, uint32_t>::Element *found_vertex = vertex_map.find(vertex);
+				uint32_t index;
+				if (found_vertex) {
+					index = found_vertex->get();
+				} else {
+					index = ++vertex_count;
+					vertex_map[vertex] = index;
+					vertex_w[index] = vertex;
+				}
+				index_w[i * 3 + j] = index;
+			}
+		}
+	}
+	vertices.resize(vertex_count);
+
+	Vector<Vector<Vector3>> decomposed = Mesh::convex_decomposition_function((real_t *)vertices.ptr(), vertex_count, indices.ptr(), face_count, p_settings, nullptr);
 
 	Vector<Ref<Shape3D>> ret;
 
 	for (int i = 0; i < decomposed.size(); i++) {
-		Set<Vector3> points;
-		for (int j = 0; j < decomposed[i].size(); j++) {
-			points.insert(decomposed[i][j].vertex[0]);
-			points.insert(decomposed[i][j].vertex[1]);
-			points.insert(decomposed[i][j].vertex[2]);
-		}
-
-		Vector<Vector3> convex_points;
-		convex_points.resize(points.size());
-		{
-			Vector3 *w = convex_points.ptrw();
-			int idx = 0;
-			for (Set<Vector3>::Element *E = points.front(); E; E = E->next()) {
-				w[idx++] = E->get();
-			}
-		}
-
 		Ref<ConvexPolygonShape3D> shape;
 		shape.instantiate();
-		shape->set_points(convex_points);
+		shape->set_points(decomposed[i]);
 		ret.push_back(shape);
 	}
 
@@ -833,7 +860,7 @@ void EditorSceneImporterMesh::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_blend_shape_mode", "mode"), &EditorSceneImporterMesh::set_blend_shape_mode);
 	ClassDB::bind_method(D_METHOD("get_blend_shape_mode"), &EditorSceneImporterMesh::get_blend_shape_mode);
 
-	ClassDB::bind_method(D_METHOD("add_surface", "primitive", "arrays", "blend_shapes", "lods", "material", "name"), &EditorSceneImporterMesh::add_surface, DEFVAL(Array()), DEFVAL(Dictionary()), DEFVAL(Ref<Material>()), DEFVAL(String()));
+	ClassDB::bind_method(D_METHOD("add_surface", "primitive", "arrays", "blend_shapes", "lods", "material", "name", "flags"), &EditorSceneImporterMesh::add_surface, DEFVAL(Array()), DEFVAL(Dictionary()), DEFVAL(Ref<Material>()), DEFVAL(String()), DEFVAL(0));
 
 	ClassDB::bind_method(D_METHOD("get_surface_count"), &EditorSceneImporterMesh::get_surface_count);
 	ClassDB::bind_method(D_METHOD("get_surface_primitive_type", "surface_idx"), &EditorSceneImporterMesh::get_surface_primitive_type);
@@ -844,6 +871,7 @@ void EditorSceneImporterMesh::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_surface_lod_size", "surface_idx", "lod_idx"), &EditorSceneImporterMesh::get_surface_lod_size);
 	ClassDB::bind_method(D_METHOD("get_surface_lod_indices", "surface_idx", "lod_idx"), &EditorSceneImporterMesh::get_surface_lod_indices);
 	ClassDB::bind_method(D_METHOD("get_surface_material", "surface_idx"), &EditorSceneImporterMesh::get_surface_material);
+	ClassDB::bind_method(D_METHOD("get_surface_format", "surface_idx"), &EditorSceneImporterMesh::get_surface_format);
 
 	ClassDB::bind_method(D_METHOD("set_surface_name", "surface_idx", "name"), &EditorSceneImporterMesh::set_surface_name);
 	ClassDB::bind_method(D_METHOD("set_surface_material", "surface_idx", "material"), &EditorSceneImporterMesh::set_surface_material);

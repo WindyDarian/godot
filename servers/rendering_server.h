@@ -836,7 +836,6 @@ public:
 		VIEWPORT_MSAA_2X,
 		VIEWPORT_MSAA_4X,
 		VIEWPORT_MSAA_8X,
-		VIEWPORT_MSAA_16X,
 		VIEWPORT_MSAA_MAX,
 	};
 
@@ -1493,6 +1492,7 @@ public:
 
 	virtual void set_print_gpu_profile(bool p_enable) = 0;
 
+	RenderingDevice *get_rendering_device() const;
 	RenderingDevice *create_local_rendering_device() const;
 
 	bool is_render_loop_enabled() const;

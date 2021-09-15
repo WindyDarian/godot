@@ -1,5 +1,5 @@
 /*************************************************************************/
-/*  resource_importer_ogg_vorbis.h                                       */
+/*  test_tools.h                                                         */
 /*************************************************************************/
 /*                       This file is part of:                           */
 /*                           GODOT ENGINE                                */
@@ -28,31 +28,34 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
 
-#ifndef RESOURCEIMPORTEROGGVORBIS_H
-#define RESOURCEIMPORTEROGGVORBIS_H
+#ifndef TEST_TOOLS_H
+#define TEST_TOOLS_H
 
-#include "audio_stream_ogg_vorbis.h"
-#include "core/io/resource_importer.h"
+#include "core/error/error_macros.h"
 
-class ResourceImporterOGGVorbis : public ResourceImporter {
-	GDCLASS(ResourceImporterOGGVorbis, ResourceImporter);
+struct ErrorDetector {
+	ErrorDetector() {
+		eh.errfunc = _detect_error;
+		eh.userdata = this;
 
-public:
-	virtual String get_importer_name() const override;
-	virtual String get_visible_name() const override;
-	virtual void get_recognized_extensions(List<String> *p_extensions) const override;
-	virtual String get_save_extension() const override;
-	virtual String get_resource_type() const override;
+		add_error_handler(&eh);
+	}
 
-	virtual int get_preset_count() const override;
-	virtual String get_preset_name(int p_idx) const override;
+	~ErrorDetector() {
+		remove_error_handler(&eh);
+	}
 
-	virtual void get_import_options(List<ImportOption> *r_options, int p_preset = 0) const override;
-	virtual bool get_option_visibility(const String &p_option, const Map<StringName, Variant> &p_options) const override;
+	void clear() {
+		has_error = false;
+	}
 
-	virtual Error import(const String &p_source_file, const String &p_save_path, const Map<StringName, Variant> &p_options, List<String> *r_platform_variants, List<String> *r_gen_files = nullptr, Variant *r_metadata = nullptr) override;
+	static void _detect_error(void *p_self, const char *p_func, const char *p_file, int p_line, const char *p_error, const char *p_errorexp, ErrorHandlerType p_type) {
+		ErrorDetector *self = (ErrorDetector *)p_self;
+		self->has_error = true;
+	}
 
-	ResourceImporterOGGVorbis();
+	ErrorHandlerList eh;
+	bool has_error = false;
 };
 
-#endif // RESOURCEIMPORTEROGGVORBIS_H
+#endif // TEST_TOOLS_H
