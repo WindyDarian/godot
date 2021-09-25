@@ -227,17 +227,17 @@ void CodeEdit::_notification(int p_what) {
 						end = font->get_string_size(line.substr(0, line.rfind(String::chr(0xFFFF))), font_size).x;
 					}
 
-					Point2 round_ofs = hint_ofs + sb->get_offset() + Vector2(0, font->get_ascent() + font_height * i + yofs);
+					Point2 round_ofs = hint_ofs + sb->get_offset() + Vector2(0, font->get_ascent(font_size) + font_height * i + yofs);
 					round_ofs = round_ofs.round();
 					draw_string(font, round_ofs, line.replace(String::chr(0xFFFF), ""), HALIGN_LEFT, -1, font_size, font_color);
 					if (end > 0) {
 						// Draw an underline for the currently edited function parameter.
-						const Vector2 b = hint_ofs + sb->get_offset() + Vector2(begin, font_height + font_height * i + line_spacing);
+						const Vector2 b = hint_ofs + sb->get_offset() + Vector2(begin, font_height + font_height * i + yofs);
 						draw_line(b, b + Vector2(end - begin, 0), font_color, 2);
 
 						// Draw a translucent text highlight as well.
 						const Rect2 highlight_rect = Rect2(
-								hint_ofs + sb->get_offset() + Vector2(begin, 0),
+								b - Vector2(0, font_height),
 								Vector2(end - begin, font_height));
 						draw_rect(highlight_rect, font_color * Color(1, 1, 1, 0.2));
 					}
@@ -296,7 +296,7 @@ void CodeEdit::gui_input(const Ref<InputEvent> &p_gui_input) {
 				mpos.x = get_size().x - mpos.x;
 			}
 
-			Point2i pos = get_line_column_at_pos(Point2i(mpos.x, mpos.y));
+			Point2i pos = get_line_column_at_pos(mpos);
 			int line = pos.y;
 			int col = pos.x;
 
@@ -321,7 +321,7 @@ void CodeEdit::gui_input(const Ref<InputEvent> &p_gui_input) {
 						mpos.x = get_size().x - mpos.x;
 					}
 
-					Point2i pos = get_line_column_at_pos(Point2i(mpos.x, mpos.y));
+					Point2i pos = get_line_column_at_pos(mpos);
 					int line = pos.y;
 					int col = pos.x;
 
@@ -467,7 +467,7 @@ void CodeEdit::gui_input(const Ref<InputEvent> &p_gui_input) {
 	}
 
 	/* MISC */
-	if (k->is_action("ui_cancel", true)) {
+	if (!code_hint.is_empty() && k->is_action("ui_cancel", true)) {
 		set_code_hint("");
 		accept_event();
 		return;
@@ -1725,14 +1725,17 @@ bool CodeEdit::is_code_completion_enabled() const {
 void CodeEdit::set_code_completion_prefixes(const TypedArray<String> &p_prefixes) {
 	code_completion_prefixes.clear();
 	for (int i = 0; i < p_prefixes.size(); i++) {
-		code_completion_prefixes.insert(p_prefixes[i]);
+		const String prefix = p_prefixes[i];
+
+		ERR_CONTINUE_MSG(prefix.is_empty(), "Code completion prefix cannot be empty.");
+		code_completion_prefixes.insert(prefix[0]);
 	}
 }
 
 TypedArray<String> CodeEdit::get_code_completion_prefixes() const {
 	TypedArray<String> prefixes;
-	for (Set<String>::Element *E = code_completion_prefixes.front(); E; E = E->next()) {
-		prefixes.push_back(E->get());
+	for (const Set<char32_t>::Element *E = code_completion_prefixes.front(); E; E = E->next()) {
+		prefixes.push_back(String::chr(E->get()));
 	}
 	return prefixes;
 }
@@ -1795,9 +1798,9 @@ void CodeEdit::request_code_completion(bool p_force) {
 	String line = get_line(get_caret_line());
 	int ofs = CLAMP(get_caret_column(), 0, line.length());
 
-	if (ofs > 0 && (is_in_string(get_caret_line(), ofs) != -1 || _is_char(line[ofs - 1]) || code_completion_prefixes.has(String::chr(line[ofs - 1])))) {
+	if (ofs > 0 && (is_in_string(get_caret_line(), ofs) != -1 || _is_char(line[ofs - 1]) || code_completion_prefixes.has(line[ofs - 1]))) {
 		emit_signal(SNAME("request_code_completion"));
-	} else if (ofs > 1 && line[ofs - 1] == ' ' && code_completion_prefixes.has(String::chr(line[ofs - 2]))) {
+	} else if (ofs > 1 && line[ofs - 1] == ' ' && code_completion_prefixes.has(line[ofs - 2])) {
 		emit_signal(SNAME("request_code_completion"));
 	}
 }
@@ -1969,7 +1972,7 @@ void CodeEdit::confirm_code_completion(bool p_replace) {
 	end_complex_operation();
 
 	cancel_code_completion();
-	if (code_completion_prefixes.has(String::chr(last_completion_char))) {
+	if (code_completion_prefixes.has(last_completion_char)) {
 		request_code_completion();
 	}
 }
@@ -2764,7 +2767,7 @@ void CodeEdit::_filter_code_completion_candidates_impl() {
 	bool prev_is_word = false;
 
 	/* Cancel if we are at the close of a string. */
-	if (in_string == -1 && first_quote_col == cofs - 1) {
+	if (caret_column > 0 && in_string == -1 && first_quote_col == cofs - 1) {
 		cancel_code_completion();
 		return;
 		/* In a string, therefore we are trying to complete the string text. */
@@ -2790,9 +2793,9 @@ void CodeEdit::_filter_code_completion_candidates_impl() {
 	/* If all else fails, check for a prefix.         */
 	/* Single space between caret and prefix is okay. */
 	bool prev_is_prefix = false;
-	if (cofs > 0 && code_completion_prefixes.has(String::chr(line[cofs - 1]))) {
+	if (cofs > 0 && code_completion_prefixes.has(line[cofs - 1])) {
 		prev_is_prefix = true;
-	} else if (cofs > 1 && line[cofs - 1] == ' ' && code_completion_prefixes.has(String::chr(line[cofs - 2]))) {
+	} else if (cofs > 1 && line[cofs - 1] == ' ' && code_completion_prefixes.has(line[cofs - 2])) {
 		prev_is_prefix = true;
 	}
 

@@ -85,7 +85,6 @@ public:
 protected:
 	void _notification(int p_what);
 	static void _bind_methods();
-	void _validate_property(PropertyInfo &property) const override;
 
 private:
 	struct Item;
@@ -268,6 +267,7 @@ private:
 		float rate = 0.0f;
 		uint64_t _current_rng = 0;
 		uint64_t _previous_rng = 0;
+		Vector2 prev_off;
 
 		ItemShake() { type = ITEM_SHAKE; }
 
@@ -290,6 +290,7 @@ private:
 	struct ItemWave : public ItemFX {
 		float frequency = 1.0f;
 		float amplitude = 1.0f;
+		Vector2 prev_off;
 
 		ItemWave() { type = ITEM_WAVE; }
 	};
@@ -297,6 +298,7 @@ private:
 	struct ItemTornado : public ItemFX {
 		float radius = 1.0f;
 		float frequency = 1.0f;
+		Vector2 prev_off;
 
 		ItemTornado() { type = ITEM_TORNADO; }
 	};
@@ -452,16 +454,19 @@ private:
 	virtual Dictionary parse_expressions_for_values(Vector<String> p_expressions);
 
 	void _draw_fbg_boxes(RID p_ci, RID p_rid, Vector2 line_off, Item *it_from, Item *it_to, int start, int end, int fbg_flag);
-
+#ifndef DISABLE_DEPRECATED
+	// Kept for compatibility from 3.x to 4.0.
+	bool _set(const StringName &p_name, const Variant &p_value);
+#endif
 	bool use_bbcode = false;
-	String bbcode;
+	String text;
 
 	int fixed_width = -1;
 
 	bool fit_content_height = false;
 
 public:
-	String get_text();
+	String get_parsed_text() const;
 	void add_text(const String &p_text);
 	void add_image(const Ref<Texture2D> &p_image, const int p_width = 0, const int p_height = 0, const Color &p_color = Color(1.0, 1.0, 1.0), InlineAlign p_align = INLINE_ALIGN_CENTER);
 	void add_newline();
@@ -548,15 +553,13 @@ public:
 	void selection_copy();
 
 	Error parse_bbcode(const String &p_bbcode);
-	Error append_bbcode(const String &p_bbcode);
+	Error append_text(const String &p_bbcode);
 
 	void set_use_bbcode(bool p_enable);
 	bool is_using_bbcode() const;
 
-	void set_bbcode(const String &p_bbcode);
-	String get_bbcode() const;
-
-	void set_text(const String &p_string);
+	void set_text(const String &p_bbcode);
+	String get_text() const;
 
 	void set_text_direction(TextDirection p_text_direction);
 	TextDirection get_text_direction() const;

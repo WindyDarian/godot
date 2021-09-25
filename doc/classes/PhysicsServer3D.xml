@@ -583,6 +583,7 @@
 			<argument index="4" name="result" type="PhysicsTestMotionResult3D" default="null" />
 			<argument index="5" name="collide_separation_ray" type="bool" default="false" />
 			<argument index="6" name="exclude" type="Array" default="[]" />
+			<argument index="7" name="max_collisions" type="int" default="1" />
 			<description>
 				Returns [code]true[/code] if a collision would result from moving in the given direction from a given point in space. Margin increases the size of the shapes involved in the collision detection. [PhysicsTestMotionResult3D] can be passed to return additional information in.
 			</description>
@@ -1212,7 +1213,7 @@
 			The [Shape3D] is a [HeightMapShape3D].
 		</constant>
 		<constant name="SHAPE_SOFT_BODY" value="9" enum="ShapeType">
-			The [Shape3D] is a [SoftBody3D].
+			The [Shape3D] is used internally for a soft body. Any attempt to create this kind of shape results in an error.
 		</constant>
 		<constant name="SHAPE_CUSTOM" value="10" enum="ShapeType">
 			This constant is used internally by the engine. Any attempt to create this kind of shape results in an error.

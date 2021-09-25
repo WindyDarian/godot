@@ -101,11 +101,6 @@ const Map<ShapeOwner3DSW *, int> &Shape3DSW::get_owners() const {
 	return owners;
 }
 
-Shape3DSW::Shape3DSW() {
-	custom_bias = 0;
-	configured = false;
-}
-
 Shape3DSW::~Shape3DSW() {
 	ERR_FAIL_COND(owners.size());
 }
@@ -244,10 +239,7 @@ Variant SeparationRayShape3DSW::get_data() const {
 	return d;
 }
 
-SeparationRayShape3DSW::SeparationRayShape3DSW() {
-	length = 1;
-	slide_on_slope = false;
-}
+SeparationRayShape3DSW::SeparationRayShape3DSW() {}
 
 /********** SPHERE *************/
 
@@ -311,9 +303,7 @@ Variant SphereShape3DSW::get_data() const {
 	return radius;
 }
 
-SphereShape3DSW::SphereShape3DSW() {
-	radius = 0;
-}
+SphereShape3DSW::SphereShape3DSW() {}
 
 /********** BOX *************/
 
@@ -502,8 +492,7 @@ Variant BoxShape3DSW::get_data() const {
 	return half_extents;
 }
 
-BoxShape3DSW::BoxShape3DSW() {
-}
+BoxShape3DSW::BoxShape3DSW() {}
 
 /********** CAPSULE *************/
 
@@ -668,9 +657,7 @@ Variant CapsuleShape3DSW::get_data() const {
 	return d;
 }
 
-CapsuleShape3DSW::CapsuleShape3DSW() {
-	height = radius = 0;
-}
+CapsuleShape3DSW::CapsuleShape3DSW() {}
 
 /********** CYLINDER *************/
 
@@ -848,9 +835,7 @@ Variant CylinderShape3DSW::get_data() const {
 	return d;
 }
 
-CylinderShape3DSW::CylinderShape3DSW() {
-	height = radius = 0;
-}
+CylinderShape3DSW::CylinderShape3DSW() {}
 
 /********** CONVEX POLYGON *************/
 
@@ -1591,7 +1576,7 @@ void ConcavePolygonShape3DSW::_setup(const Vector<Vector3> &p_faces, bool p_back
 		Face3 face(facesr[i * 3 + 0], facesr[i * 3 + 1], facesr[i * 3 + 2]);
 
 		bvh_arrayw[i].aabb = face.get_aabb();
-		bvh_arrayw[i].center = bvh_arrayw[i].aabb.position + bvh_arrayw[i].aabb.size * 0.5;
+		bvh_arrayw[i].center = bvh_arrayw[i].aabb.get_center();
 		bvh_arrayw[i].face_index = i;
 		facesw[i].indices[0] = i * 3 + 0;
 		facesw[i].indices[1] = i * 3 + 1;

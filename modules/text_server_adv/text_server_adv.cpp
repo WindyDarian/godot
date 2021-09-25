@@ -131,20 +131,6 @@ hb_position_t TextServerAdvanced::hb_bmp_get_glyph_h_kerning(hb_font_t *p_font, 
 	return bm_font->face->kerning_map[Vector2i(p_left_glyph, p_right_glyph)].x * 64;
 }
 
-hb_position_t TextServerAdvanced::hb_bmp_get_glyph_v_kerning(hb_font_t *p_font, void *p_font_data, hb_codepoint_t p_left_glyph, hb_codepoint_t p_right_glyph, void *p_user_data) {
-	const hb_bmp_font_t *bm_font = reinterpret_cast<const hb_bmp_font_t *>(p_font_data);
-
-	if (!bm_font->face) {
-		return 0;
-	}
-
-	if (!bm_font->face->kerning_map.has(Vector2i(p_left_glyph, p_right_glyph))) {
-		return 0;
-	}
-
-	return bm_font->face->kerning_map[Vector2i(p_left_glyph, p_right_glyph)].y * 64;
-}
-
 hb_bool_t TextServerAdvanced::hb_bmp_get_glyph_v_origin(hb_font_t *p_font, void *p_font_data, hb_codepoint_t p_glyph, hb_position_t *r_x, hb_position_t *r_y, void *p_user_data) {
 	const hb_bmp_font_t *bm_font = reinterpret_cast<const hb_bmp_font_t *>(p_font_data);
 
@@ -205,7 +191,6 @@ void TextServerAdvanced::hb_bmp_create_font_funcs() {
 		hb_font_funcs_set_glyph_v_advance_func(funcs, hb_bmp_get_glyph_v_advance, nullptr, nullptr);
 		hb_font_funcs_set_glyph_v_origin_func(funcs, hb_bmp_get_glyph_v_origin, nullptr, nullptr);
 		hb_font_funcs_set_glyph_h_kerning_func(funcs, hb_bmp_get_glyph_h_kerning, nullptr, nullptr);
-		hb_font_funcs_set_glyph_v_kerning_func(funcs, hb_bmp_get_glyph_v_kerning, nullptr, nullptr);
 		hb_font_funcs_set_glyph_extents_func(funcs, hb_bmp_get_glyph_extents, nullptr, nullptr);
 
 		hb_font_funcs_make_immutable(funcs);
@@ -3804,7 +3789,12 @@ bool TextServerAdvanced::shaped_text_update_breaks(RID p_shaped) {
 						gl.font_rid = sd_glyphs[i].font_rid;
 						gl.font_size = sd_glyphs[i].font_size;
 						gl.flags = GRAPHEME_IS_BREAK_SOFT | GRAPHEME_IS_VIRTUAL;
-						sd->glyphs.insert(i + sd_glyphs[i].count, gl); // Insert after.
+						if (sd->glyphs[i].flags & GRAPHEME_IS_RTL) {
+							gl.flags |= GRAPHEME_IS_RTL;
+							sd->glyphs.insert(i, gl); // Insert before.
+						} else {
+							sd->glyphs.insert(i + sd_glyphs[i].count, gl); // Insert after.
+						}
 
 						// Update write pointer and size.
 						sd_size = sd->glyphs.size();
@@ -3998,7 +3988,12 @@ bool TextServerAdvanced::shaped_text_update_justification_ops(RID p_shaped) {
 						gl.font_rid = sd->glyphs[i].font_rid;
 						gl.font_size = sd->glyphs[i].font_size;
 						gl.flags = GRAPHEME_IS_SPACE | GRAPHEME_IS_VIRTUAL;
-						sd->glyphs.insert(i + sd->glyphs[i].count, gl); // Insert after.
+						if (sd->glyphs[i].flags & GRAPHEME_IS_RTL) {
+							gl.flags |= GRAPHEME_IS_RTL;
+							sd->glyphs.insert(i, gl); // Insert before.
+						} else {
+							sd->glyphs.insert(i + sd->glyphs[i].count, gl); // Insert after.
+						}
 						i += sd->glyphs[i].count;
 						continue;
 					}
@@ -4147,7 +4142,7 @@ void TextServerAdvanced::_shape_run(ShapedTextDataAdvanced *p_sd, int32_t p_star
 					}
 				}
 				if (p_direction == HB_DIRECTION_RTL || p_direction == HB_DIRECTION_BTT) {
-					w[last_cluster_index].flags |= TextServer::GRAPHEME_IS_RTL;
+					w[last_cluster_index].flags |= GRAPHEME_IS_RTL;
 				}
 				if (last_cluster_valid) {
 					w[last_cluster_index].flags |= GRAPHEME_IS_VALID;
@@ -4169,6 +4164,10 @@ void TextServerAdvanced::_shape_run(ShapedTextDataAdvanced *p_sd, int32_t p_star
 			gl.font_rid = p_fonts[p_fb_index];
 			gl.font_size = fs;
 
+			if (glyph_info[i].mask & HB_GLYPH_FLAG_DEFINED) {
+				gl.flags |= GRAPHEME_IS_CONNECTED;
+			}
+
 			gl.index = glyph_info[i].codepoint;
 			if (gl.index != 0) {
 				real_t scale = font_get_scale(f, fs);
@@ -4187,9 +4186,9 @@ void TextServerAdvanced::_shape_run(ShapedTextDataAdvanced *p_sd, int32_t p_star
 			}
 
 			if (p_sd->preserve_control) {
-				last_cluster_valid = last_cluster_valid && ((glyph_info[i].codepoint != 0) || is_whitespace(p_sd->text[glyph_info[i].cluster]) || is_linebreak(p_sd->text[glyph_info[i].cluster]));
+				last_cluster_valid = last_cluster_valid && ((glyph_info[i].codepoint != 0) || (p_sd->text[glyph_info[i].cluster] == 0x0009) || (u_isblank(p_sd->text[glyph_info[i].cluster]) && (gl.advance != 0)) || (!u_isblank(p_sd->text[glyph_info[i].cluster]) && is_linebreak(p_sd->text[glyph_info[i].cluster])));
 			} else {
-				last_cluster_valid = last_cluster_valid && ((glyph_info[i].codepoint != 0) || !u_isgraph(p_sd->text[glyph_info[i].cluster]));
+				last_cluster_valid = last_cluster_valid && ((glyph_info[i].codepoint != 0) || (p_sd->text[glyph_info[i].cluster] == 0x0009) || (u_isblank(p_sd->text[glyph_info[i].cluster]) && (gl.advance != 0)) || (!u_isblank(p_sd->text[glyph_info[i].cluster]) && !u_isgraph(p_sd->text[glyph_info[i].cluster])));
 			}
 		}
 		if (p_direction == HB_DIRECTION_LTR || p_direction == HB_DIRECTION_TTB) {
@@ -4199,7 +4198,7 @@ void TextServerAdvanced::_shape_run(ShapedTextDataAdvanced *p_sd, int32_t p_star
 		}
 		w[last_cluster_index].count = glyph_count - last_cluster_index;
 		if (p_direction == HB_DIRECTION_RTL || p_direction == HB_DIRECTION_BTT) {
-			w[last_cluster_index].flags |= TextServer::GRAPHEME_IS_RTL;
+			w[last_cluster_index].flags |= GRAPHEME_IS_RTL;
 		}
 		if (last_cluster_valid) {
 			w[last_cluster_index].flags |= GRAPHEME_IS_VALID;

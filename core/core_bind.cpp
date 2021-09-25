@@ -286,6 +286,10 @@ String OS::get_locale() const {
 	return ::OS::get_singleton()->get_locale();
 }
 
+String OS::get_locale_language() const {
+	return ::OS::get_singleton()->get_locale_language();
+}
+
 String OS::get_model_name() const {
 	return ::OS::get_singleton()->get_model_name();
 }
@@ -547,6 +551,7 @@ void OS::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("delay_usec", "usec"), &OS::delay_usec);
 	ClassDB::bind_method(D_METHOD("delay_msec", "msec"), &OS::delay_msec);
 	ClassDB::bind_method(D_METHOD("get_locale"), &OS::get_locale);
+	ClassDB::bind_method(D_METHOD("get_locale_language"), &OS::get_locale_language);
 	ClassDB::bind_method(D_METHOD("get_model_name"), &OS::get_model_name);
 
 	ClassDB::bind_method(D_METHOD("is_userfs_persistent"), &OS::is_userfs_persistent);
@@ -2042,6 +2047,42 @@ StringName ClassDB::get_category(const StringName &p_node) const {
 	return ::ClassDB::get_category(p_node);
 }
 
+bool ClassDB::has_enum(const StringName &p_class, const StringName &p_name, bool p_no_inheritance) const {
+	return ::ClassDB::has_enum(p_class, p_name, p_no_inheritance);
+}
+
+PackedStringArray ClassDB::get_enum_list(const StringName &p_class, bool p_no_inheritance) const {
+	List<StringName> enums;
+	::ClassDB::get_enum_list(p_class, &enums, p_no_inheritance);
+
+	PackedStringArray ret;
+	ret.resize(enums.size());
+	int idx = 0;
+	for (const StringName &E : enums) {
+		ret.set(idx++, E);
+	}
+
+	return ret;
+}
+
+PackedStringArray ClassDB::get_enum_constants(const StringName &p_class, const StringName &p_enum, bool p_no_inheritance) const {
+	List<StringName> constants;
+	::ClassDB::get_enum_constants(p_class, p_enum, &constants, p_no_inheritance);
+
+	PackedStringArray ret;
+	ret.resize(constants.size());
+	int idx = 0;
+	for (const StringName &E : constants) {
+		ret.set(idx++, E);
+	}
+
+	return ret;
+}
+
+StringName ClassDB::get_integer_constant_enum(const StringName &p_class, const StringName &p_name, bool p_no_inheritance) const {
+	return ::ClassDB::get_integer_constant_enum(p_class, p_name, p_no_inheritance);
+}
+
 bool ClassDB::is_class_enabled(StringName p_class) const {
 	return ::ClassDB::is_class_enabled(p_class);
 }
@@ -2071,6 +2112,11 @@ void ClassDB::_bind_methods() {
 
 	::ClassDB::bind_method(D_METHOD("class_has_integer_constant", "class", "name"), &ClassDB::has_integer_constant);
 	::ClassDB::bind_method(D_METHOD("class_get_integer_constant", "class", "name"), &ClassDB::get_integer_constant);
+
+	::ClassDB::bind_method(D_METHOD("class_has_enum", "class", "name", "no_inheritance"), &ClassDB::has_enum, DEFVAL(false));
+	::ClassDB::bind_method(D_METHOD("class_get_enum_list", "class", "no_inheritance"), &ClassDB::get_enum_list, DEFVAL(false));
+	::ClassDB::bind_method(D_METHOD("class_get_enum_constants", "class", "enum", "no_inheritance"), &ClassDB::get_enum_constants, DEFVAL(false));
+	::ClassDB::bind_method(D_METHOD("class_get_integer_constant_enum", "class", "name", "no_inheritance"), &ClassDB::get_integer_constant_enum, DEFVAL(false));
 
 	::ClassDB::bind_method(D_METHOD("class_get_category", "class"), &ClassDB::get_category);
 	::ClassDB::bind_method(D_METHOD("is_class_enabled", "class"), &ClassDB::is_class_enabled);
@@ -2251,13 +2297,11 @@ void Engine::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("unregister_singleton", "name"), &Engine::unregister_singleton);
 	ClassDB::bind_method(D_METHOD("get_singleton_list"), &Engine::get_singleton_list);
 
-	ClassDB::bind_method(D_METHOD("set_editor_hint", "enabled"), &Engine::set_editor_hint);
 	ClassDB::bind_method(D_METHOD("is_editor_hint"), &Engine::is_editor_hint);
 
 	ClassDB::bind_method(D_METHOD("set_print_error_messages", "enabled"), &Engine::set_print_error_messages);
 	ClassDB::bind_method(D_METHOD("is_printing_error_messages"), &Engine::is_printing_error_messages);
 
-	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "editor_hint"), "set_editor_hint", "is_editor_hint");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "print_error_messages"), "set_print_error_messages", "is_printing_error_messages");
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "physics_ticks_per_second"), "set_physics_ticks_per_second", "get_physics_ticks_per_second");
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "target_fps"), "set_target_fps", "get_target_fps");

@@ -113,8 +113,8 @@ private:
 	bool is_sync_to_physics_enabled() const;
 };
 
-class RigidBody2D : public PhysicsBody2D {
-	GDCLASS(RigidBody2D, PhysicsBody2D);
+class RigidDynamicBody2D : public PhysicsBody2D {
+	GDCLASS(RigidDynamicBody2D, PhysicsBody2D);
 
 public:
 	enum Mode {
@@ -177,7 +177,7 @@ private:
 			local_shape = p_ls;
 		}
 	};
-	struct RigidBody2D_RemoveAction {
+	struct RigidDynamicBody2D_RemoveAction {
 		RID rid;
 		ObjectID body_id;
 		ShapePair pair;
@@ -283,16 +283,16 @@ public:
 
 	virtual TypedArray<String> get_configuration_warnings() const override;
 
-	RigidBody2D();
-	~RigidBody2D();
+	RigidDynamicBody2D();
+	~RigidDynamicBody2D();
 
 private:
 	void _reload_physics_characteristics();
 };
 
-VARIANT_ENUM_CAST(RigidBody2D::Mode);
-VARIANT_ENUM_CAST(RigidBody2D::CenterOfMassMode);
-VARIANT_ENUM_CAST(RigidBody2D::CCDMode);
+VARIANT_ENUM_CAST(RigidDynamicBody2D::Mode);
+VARIANT_ENUM_CAST(RigidDynamicBody2D::CenterOfMassMode);
+VARIANT_ENUM_CAST(RigidDynamicBody2D::CCDMode);
 
 class CharacterBody2D : public PhysicsBody2D {
 	GDCLASS(CharacterBody2D, PhysicsBody2D);
@@ -334,7 +334,7 @@ private:
 	int max_slides = 4;
 	int platform_layer;
 	real_t floor_max_angle = Math::deg2rad((real_t)45.0);
-	float floor_snap_length = 0;
+	real_t floor_snap_length = 0;
 	real_t free_mode_min_slide_angle = Math::deg2rad((real_t)15.0);
 	Vector2 up_direction = Vector2(0.0, -1.0);
 	uint32_t moving_platform_floor_layers = UINT32_MAX;

@@ -1513,6 +1513,7 @@ static void _register_variant_builtin_methods() {
 
 	/* Rect2 */
 
+	bind_method(Rect2, get_center, sarray(), varray());
 	bind_method(Rect2, get_area, sarray(), varray());
 	bind_method(Rect2, has_no_area, sarray(), varray());
 	bind_method(Rect2, has_point, sarray("point"), varray());
@@ -1529,6 +1530,7 @@ static void _register_variant_builtin_methods() {
 
 	/* Rect2i */
 
+	bind_method(Rect2i, get_center, sarray(), varray());
 	bind_method(Rect2i, get_area, sarray(), varray());
 	bind_method(Rect2i, has_no_area, sarray(), varray());
 	bind_method(Rect2i, has_point, sarray("point"), varray());
@@ -1568,7 +1570,6 @@ static void _register_variant_builtin_methods() {
 	bind_method(Vector3, dot, sarray("with"), varray());
 	bind_method(Vector3, cross, sarray("with"), varray());
 	bind_method(Vector3, outer, sarray("with"), varray());
-	bind_method(Vector3, to_diagonal_matrix, sarray(), varray());
 	bind_method(Vector3, abs, sarray(), varray());
 	bind_method(Vector3, floor, sarray(), varray());
 	bind_method(Vector3, ceil, sarray(), varray());
@@ -1689,7 +1690,7 @@ static void _register_variant_builtin_methods() {
 	bind_method(Signal, get_object_id, sarray(), varray());
 	bind_method(Signal, get_name, sarray(), varray());
 
-	bind_method(Signal, connect, sarray("callable", "binds", "flags"), varray(Array(), 0));
+	bind_method(Signal, connect, sarray("callable", "flags"), varray(0));
 	bind_method(Signal, disconnect, sarray("callable"), varray());
 	bind_method(Signal, is_connected, sarray("callable"), varray());
 	bind_method(Signal, get_connections, sarray(), varray());
@@ -1703,6 +1704,7 @@ static void _register_variant_builtin_methods() {
 	bind_method(Transform2D, get_rotation, sarray(), varray());
 	bind_method(Transform2D, get_origin, sarray(), varray());
 	bind_method(Transform2D, get_scale, sarray(), varray());
+	bind_method(Transform2D, get_skew, sarray(), varray());
 	bind_method(Transform2D, orthonormalized, sarray(), varray());
 	bind_method(Transform2D, rotated, sarray("phi"), varray());
 	bind_method(Transform2D, scaled, sarray("scale"), varray());
@@ -1712,6 +1714,8 @@ static void _register_variant_builtin_methods() {
 	bind_method(Transform2D, interpolate_with, sarray("xform", "weight"), varray());
 	bind_method(Transform2D, is_equal_approx, sarray("xform"), varray());
 	bind_method(Transform2D, set_rotation, sarray("rotation"), varray());
+	bind_method(Transform2D, set_scale, sarray("scale"), varray());
+	bind_method(Transform2D, set_skew, sarray("skew"), varray());
 	bind_method(Transform2D, looking_at, sarray("target"), varray(Vector2()));
 
 	/* Basis */
@@ -1732,10 +1736,12 @@ static void _register_variant_builtin_methods() {
 	bind_method(Basis, is_equal_approx, sarray("b"), varray());
 	bind_method(Basis, get_rotation_quaternion, sarray(), varray());
 	bind_static_method(Basis, looking_at, sarray("target", "up"), varray(Vector3(0, 1, 0)));
+	bind_static_method(Basis, from_scale, sarray("scale"), varray());
 
 	/* AABB */
 
 	bind_method(AABB, abs, sarray(), varray());
+	bind_method(AABB, get_center, sarray(), varray());
 	bind_method(AABB, get_area, sarray(), varray());
 	bind_method(AABB, has_no_area, sarray(), varray());
 	bind_method(AABB, has_no_surface, sarray(), varray());

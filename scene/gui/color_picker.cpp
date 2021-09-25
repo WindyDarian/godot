@@ -827,7 +827,7 @@ void ColorPicker::_uv_input(const Ref<InputEvent> &p_event, Control *c) {
 				real_t dist = center.distance_to(bev->get_position());
 
 				if (dist <= center.x) {
-					real_t rad = Math::atan2(bev->get_position().y - center.y, bev->get_position().x - center.x);
+					real_t rad = bev->get_position().angle_to_point(center);
 					h = ((rad >= 0) ? rad : (Math_TAU + rad)) / Math_TAU;
 					s = CLAMP(dist / center.x, 0, 1);
 				} else {
@@ -844,7 +844,7 @@ void ColorPicker::_uv_input(const Ref<InputEvent> &p_event, Control *c) {
 						real_t dist = center.distance_to(bev->get_position());
 
 						if (dist >= center.x * 0.84 && dist <= center.x) {
-							real_t rad = Math::atan2(bev->get_position().y - center.y, bev->get_position().x - center.x);
+							real_t rad = bev->get_position().angle_to_point(center);
 							h = ((rad >= 0) ? rad : (Math_TAU + rad)) / Math_TAU;
 							spinning = true;
 						} else {
@@ -889,12 +889,12 @@ void ColorPicker::_uv_input(const Ref<InputEvent> &p_event, Control *c) {
 		Vector2 center = c->get_size() / 2.0;
 		if (picker_type == SHAPE_VHS_CIRCLE) {
 			real_t dist = center.distance_to(mev->get_position());
-			real_t rad = Math::atan2(mev->get_position().y - center.y, mev->get_position().x - center.x);
+			real_t rad = mev->get_position().angle_to_point(center);
 			h = ((rad >= 0) ? rad : (Math_TAU + rad)) / Math_TAU;
 			s = CLAMP(dist / center.x, 0, 1);
 		} else {
 			if (spinning) {
-				real_t rad = Math::atan2(mev->get_position().y - center.y, mev->get_position().x - center.x);
+				real_t rad = mev->get_position().angle_to_point(center);
 				h = ((rad >= 0) ? rad : (Math_TAU + rad)) / Math_TAU;
 			} else {
 				real_t corner_x = (c == wheel_uv) ? center.x - Math_SQRT12 * c->get_size().width * 0.42 : 0;
@@ -996,7 +996,7 @@ void ColorPicker::_screen_input(const Ref<InputEvent> &p_event) {
 	Ref<InputEventMouseMotion> mev = p_event;
 	if (mev.is_valid()) {
 		Viewport *r = get_tree()->get_root();
-		if (!r->get_visible_rect().has_point(Point2(mev->get_global_position().x, mev->get_global_position().y))) {
+		if (!r->get_visible_rect().has_point(mev->get_global_position())) {
 			return;
 		}
 
@@ -1308,6 +1308,8 @@ void ColorPickerButton::_modal_closed() {
 void ColorPickerButton::pressed() {
 	_update_picker();
 
+	Size2 size = get_size() * get_viewport()->get_canvas_transform().get_scale();
+
 	popup->set_as_minsize();
 	picker->_update_presets();
 
@@ -1319,13 +1321,13 @@ void ColorPickerButton::pressed() {
 		if (i > 1) {
 			cp_rect.position.y = get_screen_position().y - cp_rect.size.y;
 		} else {
-			cp_rect.position.y = get_screen_position().y + get_size().height;
+			cp_rect.position.y = get_screen_position().y + size.height;
 		}
 
 		if (i & 1) {
 			cp_rect.position.x = get_screen_position().x;
 		} else {
-			cp_rect.position.x = get_screen_position().x - MAX(0, (cp_rect.size.x - get_size().x));
+			cp_rect.position.x = get_screen_position().x - MAX(0, (cp_rect.size.x - size.x));
 		}
 
 		if (usable_rect.encloses(cp_rect)) {
