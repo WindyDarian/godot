@@ -271,7 +271,6 @@ public:
 		SPACE_PARAM_BODY_TIME_TO_SLEEP,
 		SPACE_PARAM_BODY_ANGULAR_VELOCITY_DAMP_RATIO,
 		SPACE_PARAM_CONSTRAINT_DEFAULT_BIAS,
-		SPACE_PARAM_TEST_MOTION_MIN_CONTACT_DEPTH
 	};
 
 	virtual void space_set_param(RID p_space, SpaceParameter p_param, real_t p_value) = 0;
@@ -361,7 +360,7 @@ public:
 		BODY_MODE_STATIC,
 		BODY_MODE_KINEMATIC,
 		BODY_MODE_DYNAMIC,
-		BODY_MODE_DYNAMIC_LOCKED,
+		BODY_MODE_DYNAMIC_LINEAR,
 	};
 
 	virtual RID body_create() = 0;
@@ -493,7 +492,6 @@ public:
 		ObjectID collider_id;
 		RID collider;
 		int collider_shape = 0;
-		Variant collider_metadata;
 
 		real_t get_angle(Vector3 p_up_direction) const {
 			return Math::acos(normal.dot(p_up_direction));
@@ -522,7 +520,7 @@ public:
 	virtual void soft_body_set_space(RID p_body, RID p_space) = 0;
 	virtual RID soft_body_get_space(RID p_body) const = 0;
 
-	virtual void soft_body_set_mesh(RID p_body, const REF &p_mesh) = 0;
+	virtual void soft_body_set_mesh(RID p_body, RID p_mesh) = 0;
 
 	virtual AABB soft_body_get_bounds(RID p_body) const = 0;
 

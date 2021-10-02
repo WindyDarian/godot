@@ -1071,19 +1071,25 @@ GDScriptCodeGenerator::Address GDScriptCompiler::_parse_expression(CodeGen &code
 					}
 				}
 
-				GDScriptCodeGenerator::Address assigned = _parse_expression(codegen, r_error, assignment->assigned_value);
-				GDScriptCodeGenerator::Address op_result;
+				GDScriptCodeGenerator::Address assigned_value = _parse_expression(codegen, r_error, assignment->assigned_value);
 				if (r_error) {
 					return GDScriptCodeGenerator::Address();
 				}
 
-				if (assignment->operation != GDScriptParser::AssignmentNode::OP_NONE) {
+				GDScriptCodeGenerator::Address to_assign;
+				bool has_operation = assignment->operation != GDScriptParser::AssignmentNode::OP_NONE;
+				if (has_operation) {
 					// Perform operation.
-					op_result = codegen.add_temporary();
-					gen->write_binary_operator(op_result, assignment->variant_op, target, assigned);
+					GDScriptCodeGenerator::Address op_result = codegen.add_temporary();
+					GDScriptCodeGenerator::Address og_value = _parse_expression(codegen, r_error, assignment->assignee);
+					gen->write_binary_operator(op_result, assignment->variant_op, og_value, assigned_value);
+					to_assign = op_result;
+
+					if (og_value.mode == GDScriptCodeGenerator::Address::TEMPORARY) {
+						gen->pop_temporary();
+					}
 				} else {
-					op_result = assigned;
-					assigned = GDScriptCodeGenerator::Address();
+					to_assign = assigned_value;
 				}
 
 				GDScriptDataType assign_type = _gdtype_from_datatype(assignment->assignee->get_datatype());
@@ -1091,25 +1097,25 @@ GDScriptCodeGenerator::Address GDScriptCompiler::_parse_expression(CodeGen &code
 				if (has_setter && !is_in_setter) {
 					// Call setter.
 					Vector<GDScriptCodeGenerator::Address> args;
-					args.push_back(op_result);
+					args.push_back(to_assign);
 					gen->write_call(GDScriptCodeGenerator::Address(), GDScriptCodeGenerator::Address(GDScriptCodeGenerator::Address::SELF), setter_function, args);
 				} else {
 					// Just assign.
 					if (assignment->use_conversion_assign) {
-						gen->write_assign_with_conversion(target, op_result);
+						gen->write_assign_with_conversion(target, to_assign);
 					} else {
-						gen->write_assign(target, op_result);
+						gen->write_assign(target, to_assign);
 					}
 				}
 
-				if (op_result.mode == GDScriptCodeGenerator::Address::TEMPORARY) {
-					gen->pop_temporary();
+				if (to_assign.mode == GDScriptCodeGenerator::Address::TEMPORARY) {
+					gen->pop_temporary(); // Pop assigned value or temp operation result.
 				}
-				if (assigned.mode == GDScriptCodeGenerator::Address::TEMPORARY) {
-					gen->pop_temporary();
+				if (has_operation && assigned_value.mode == GDScriptCodeGenerator::Address::TEMPORARY) {
+					gen->pop_temporary(); // Pop assigned value if not done before.
 				}
 				if (target.mode == GDScriptCodeGenerator::Address::TEMPORARY) {
-					gen->pop_temporary();
+					gen->pop_temporary(); // Pop the target to assignment.
 				}
 			}
 			return GDScriptCodeGenerator::Address(); // Assignment does not return a value.
@@ -2187,8 +2193,8 @@ Error GDScriptCompiler::_parse_class_level(GDScript *p_script, const GDScriptPar
 	p_script->_base = nullptr;
 	p_script->members.clear();
 	p_script->constants.clear();
-	for (Map<StringName, GDScriptFunction *>::Element *E = p_script->member_functions.front(); E; E = E->next()) {
-		memdelete(E->get());
+	for (const KeyValue<StringName, GDScriptFunction *> &E : p_script->member_functions) {
+		memdelete(E.value);
 	}
 	p_script->member_functions.clear();
 	p_script->member_indices.clear();
@@ -2513,8 +2519,8 @@ Error GDScriptCompiler::_parse_class_blocks(GDScript *p_script, const GDScriptPa
 					instance->owner = E->get();
 
 					//needed for hot reloading
-					for (Map<StringName, GDScript::MemberInfo>::Element *F = p_script->member_indices.front(); F; F = F->next()) {
-						instance->member_indices_cache[F->key()] = F->get().index;
+					for (const KeyValue<StringName, GDScript::MemberInfo> &F : p_script->member_indices) {
+						instance->member_indices_cache[F.key] = F.value.index;
 					}
 					instance->owner->set_script_instance(instance);
 
