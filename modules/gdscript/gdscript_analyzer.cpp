@@ -1035,7 +1035,10 @@ void GDScriptAnalyzer::resolve_function_signature(GDScriptParser::FunctionNode *
 		return_type.is_meta_type = false;
 		p_function->set_datatype(return_type);
 		if (p_function->return_type) {
-			push_error("Constructor cannot have an explicit return type.", p_function->return_type);
+			GDScriptParser::DataType declared_return = resolve_datatype(p_function->return_type);
+			if (declared_return.kind != GDScriptParser::DataType::BUILTIN || declared_return.builtin_type != Variant::NIL) {
+				push_error("Constructor cannot have an explicit return type.", p_function->return_type);
+			}
 		}
 	} else {
 		GDScriptParser::DataType return_type = resolve_datatype(p_function->return_type);
@@ -1198,7 +1201,7 @@ void GDScriptAnalyzer::resolve_for(GDScriptParser::ForNode *p_for) {
 		variable_type.kind = GDScriptParser::DataType::BUILTIN;
 		variable_type.builtin_type = Variant::INT; // Can this ever be a float or something else?
 		p_for->variable->set_datatype(variable_type);
-	} else {
+	} else if (p_for->list) {
 		resolve_node(p_for->list);
 		if (p_for->list->datatype.has_container_element_type()) {
 			variable_type = p_for->list->datatype.get_container_element_type();
@@ -1213,7 +1216,9 @@ void GDScriptAnalyzer::resolve_for(GDScriptParser::ForNode *p_for) {
 			variable_type.kind = GDScriptParser::DataType::VARIANT;
 		}
 	}
-	p_for->variable->set_datatype(variable_type);
+	if (p_for->variable) {
+		p_for->variable->set_datatype(variable_type);
+	}
 
 	resolve_suite(p_for->loop);
 	p_for->set_datatype(p_for->loop->get_datatype());
@@ -3300,7 +3305,13 @@ GDScriptParser::DataType GDScriptAnalyzer::type_from_variant(const Variant &p_va
 						current = current->_owner;
 					}
 
-					Ref<GDScriptParserRef> ref = get_parser_for(current->path);
+					Ref<GDScriptParserRef> ref = get_parser_for(current->get_path());
+					if (ref.is_null()) {
+						push_error("Could not find script in path.", p_source);
+						GDScriptParser::DataType error_type;
+						error_type.kind = GDScriptParser::DataType::VARIANT;
+						return error_type;
+					}
 					ref->raise_status(GDScriptParserRef::INTERFACE_SOLVED);
 
 					GDScriptParser::ClassNode *found = ref->get_parser()->head;

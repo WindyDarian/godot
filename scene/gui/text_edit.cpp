@@ -42,10 +42,6 @@
 
 #include "scene/main/window.h"
 
-#ifdef TOOLS_ENABLED
-#include "editor/editor_scale.h"
-#endif
-
 static bool _is_text_char(char32_t c) {
 	return !is_symbol(c);
 }
@@ -1173,12 +1169,8 @@ void TextEdit::_notification(int p_what) {
 						}
 					}
 
-					// Carets
-#ifdef TOOLS_ENABLED
-					int caret_width = Math::round(EDSCALE);
-#else
-					int caret_width = 1;
-#endif
+					// Carets.
+					int caret_width = Math::round(1 * get_theme_default_base_scale());
 
 					if (!clipped && caret.line == line && line_wrap_index == caret_wrap_index) {
 						caret.draw_pos.y = ofs_y + ldata->get_line_descent(line_wrap_index);
@@ -5080,10 +5072,12 @@ void TextEdit::_cut_internal() {
 	}
 
 	int cl = get_caret_line();
+	int cc = get_caret_column();
+	int indent_level = get_indent_level(cl);
+	double hscroll = get_h_scroll();
 
 	String clipboard = text[cl];
 	DisplayServer::get_singleton()->clipboard_set(clipboard);
-	set_caret_line(cl);
 	set_caret_column(0);
 
 	if (cl == 0 && get_line_count() > 1) {
@@ -5093,6 +5087,17 @@ void TextEdit::_cut_internal() {
 		backspace();
 		set_caret_line(get_caret_line() + 1);
 	}
+
+	// Correct the visualy perceived caret column taking care of identation level of the lines.
+	int diff_indent = indent_level - get_indent_level(get_caret_line());
+	cc += diff_indent;
+	if (diff_indent != 0) {
+		cc += diff_indent > 0 ? -1 : 1;
+	}
+
+	// Restore horizontal scroll and caret column modified by the backspace() call.
+	set_h_scroll(hscroll);
+	set_caret_column(cc);
 
 	cut_copy_line = clipboard;
 }
