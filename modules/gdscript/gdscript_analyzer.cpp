@@ -244,6 +244,7 @@ Error GDScriptAnalyzer::resolve_inheritance(GDScriptParser::ClassNode *p_class, 
 	class_type.kind = GDScriptParser::DataType::CLASS;
 	class_type.class_type = p_class;
 	class_type.script_path = parser->script_path;
+	class_type.builtin_type = Variant::OBJECT;
 	p_class->set_datatype(class_type);
 
 	if (!p_class->extends_used) {
@@ -1742,7 +1743,7 @@ void GDScriptAnalyzer::reduce_assignment(GDScriptParser::AssignmentNode *p_assig
 		push_error("Cannot assign a new value to a constant.", p_assignment->assignee);
 	}
 
-	if (!assignee_type.is_variant() && !assigned_value_type.is_variant()) {
+	if (!assignee_type.is_variant() && assigned_value_type.is_hard_type()) {
 		bool compatible = true;
 		GDScriptParser::DataType op_type = assigned_value_type;
 		if (p_assignment->operation != GDScriptParser::AssignmentNode::OP_NONE) {
@@ -1794,27 +1795,24 @@ void GDScriptAnalyzer::reduce_assignment(GDScriptParser::AssignmentNode *p_assig
 			case GDScriptParser::IdentifierNode::FUNCTION_PARAMETER: {
 				GDScriptParser::DataType id_type = identifier->parameter_source->get_datatype();
 				if (!id_type.is_hard_type()) {
-					id_type = assigned_value_type;
-					id_type.type_source = GDScriptParser::DataType::INFERRED;
-					id_type.is_constant = false;
+					id_type.kind = GDScriptParser::DataType::VARIANT;
+					id_type.type_source = GDScriptParser::DataType::UNDETECTED;
 					identifier->parameter_source->set_datatype(id_type);
 				}
 			} break;
 			case GDScriptParser::IdentifierNode::LOCAL_VARIABLE: {
 				GDScriptParser::DataType id_type = identifier->variable_source->get_datatype();
 				if (!id_type.is_hard_type()) {
-					id_type = assigned_value_type;
-					id_type.type_source = GDScriptParser::DataType::INFERRED;
-					id_type.is_constant = false;
+					id_type.kind = GDScriptParser::DataType::VARIANT;
+					id_type.type_source = GDScriptParser::DataType::UNDETECTED;
 					identifier->variable_source->set_datatype(id_type);
 				}
 			} break;
 			case GDScriptParser::IdentifierNode::LOCAL_ITERATOR: {
 				GDScriptParser::DataType id_type = identifier->bind_source->get_datatype();
 				if (!id_type.is_hard_type()) {
-					id_type = assigned_value_type;
-					id_type.type_source = GDScriptParser::DataType::INFERRED;
-					id_type.is_constant = false;
+					id_type.kind = GDScriptParser::DataType::VARIANT;
+					id_type.type_source = GDScriptParser::DataType::UNDETECTED;
 					identifier->variable_source->set_datatype(id_type);
 				}
 			} break;
@@ -2610,10 +2608,13 @@ void GDScriptAnalyzer::reduce_identifier_from_base(GDScriptParser::IdentifierNod
 	const StringName &native = base.native_type;
 
 	if (class_exists(native)) {
-		PropertyInfo prop_info;
 		MethodInfo method_info;
-		if (ClassDB::get_property_info(native, name, &prop_info)) {
-			p_identifier->set_datatype(type_from_property(prop_info));
+		if (ClassDB::has_property(native, name)) {
+			StringName getter_name = ClassDB::get_property_getter(native, name);
+			MethodBind *getter = ClassDB::get_method(native, getter_name);
+			if (getter != nullptr) {
+				p_identifier->set_datatype(type_from_property(getter->get_return_info()));
+			}
 			return;
 		}
 		if (ClassDB::get_method_info(native, name, &method_info)) {
@@ -2941,7 +2942,7 @@ void GDScriptAnalyzer::reduce_subscript(GDScriptParser::SubscriptNode *p_subscri
 		} else {
 			GDScriptParser::DataType base_type = p_subscript->base->get_datatype();
 
-			if (base_type.is_variant()) {
+			if (base_type.is_variant() || !base_type.is_hard_type()) {
 				result_type.kind = GDScriptParser::DataType::VARIANT;
 				mark_node_unsafe(p_subscript);
 			} else {
@@ -3064,6 +3065,9 @@ void GDScriptAnalyzer::reduce_subscript(GDScriptParser::SubscriptNode *p_subscri
 				result_type.kind = GDScriptParser::DataType::BUILTIN;
 				result_type.type_source = base_type.is_hard_type() ? GDScriptParser::DataType::ANNOTATED_INFERRED : GDScriptParser::DataType::INFERRED;
 
+				if (base_type.kind != GDScriptParser::DataType::BUILTIN) {
+					base_type.builtin_type = Variant::OBJECT;
+				}
 				switch (base_type.builtin_type) {
 					// Can't index at all.
 					case Variant::RID:
@@ -3124,6 +3128,7 @@ void GDScriptAnalyzer::reduce_subscript(GDScriptParser::SubscriptNode *p_subscri
 					case Variant::PLANE:
 					case Variant::COLOR:
 					case Variant::DICTIONARY:
+					case Variant::OBJECT:
 						result_type.kind = GDScriptParser::DataType::VARIANT;
 						result_type.type_source = GDScriptParser::DataType::UNDETECTED;
 						break;
@@ -3138,7 +3143,6 @@ void GDScriptAnalyzer::reduce_subscript(GDScriptParser::SubscriptNode *p_subscri
 						}
 						break;
 					// Here for completeness.
-					case Variant::OBJECT:
 					case Variant::VARIANT_MAX:
 						break;
 				}
