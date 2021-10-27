@@ -38,8 +38,16 @@
 #include "editor/editor_properties.h"
 #include "editor/editor_scale.h"
 
-void TileDataEditor::_call_tile_set_changed() {
-	_tile_set_changed();
+void TileDataEditor::_tile_set_changed_plan_update() {
+	_tile_set_changed_update_needed = true;
+	call_deferred("_tile_set_changed_deferred_update");
+}
+
+void TileDataEditor::_tile_set_changed_deferred_update() {
+	if (_tile_set_changed_update_needed) {
+		_tile_set_changed();
+		_tile_set_changed_update_needed = false;
+	}
 }
 
 TileData *TileDataEditor::_get_tile_data(TileMapCell p_cell) {
@@ -59,18 +67,20 @@ TileData *TileDataEditor::_get_tile_data(TileMapCell p_cell) {
 }
 
 void TileDataEditor::_bind_methods() {
+	ClassDB::bind_method(D_METHOD("_tile_set_changed_deferred_update"), &TileDataEditor::_tile_set_changed_deferred_update);
+
 	ADD_SIGNAL(MethodInfo("needs_redraw"));
 }
 
 void TileDataEditor::set_tile_set(Ref<TileSet> p_tile_set) {
 	if (tile_set.is_valid()) {
-		tile_set->disconnect("changed", callable_mp(this, &TileDataEditor::_call_tile_set_changed));
+		tile_set->disconnect("changed", callable_mp(this, &TileDataEditor::_tile_set_changed_plan_update));
 	}
 	tile_set = p_tile_set;
 	if (tile_set.is_valid()) {
-		tile_set->connect("changed", callable_mp(this, &TileDataEditor::_call_tile_set_changed));
+		tile_set->connect("changed", callable_mp(this, &TileDataEditor::_tile_set_changed_plan_update));
 	}
-	_call_tile_set_changed();
+	_tile_set_changed_plan_update();
 }
 
 bool DummyObject::_set(const StringName &p_name, const Variant &p_value) {
@@ -977,6 +987,7 @@ void TileDataDefaultEditor::draw_over_tile(CanvasItem *p_canvas_item, Transform2
 		p_canvas_item->draw_rect(rect, value);
 	} else {
 		Ref<Font> font = TileSetEditor::get_singleton()->get_theme_font(SNAME("bold"), SNAME("EditorFonts"));
+		int font_size = TileSetEditor::get_singleton()->get_theme_font_size(SNAME("bold_size"), SNAME("EditorFonts"));
 		String text;
 		switch (value.get_type()) {
 			case Variant::INT:
@@ -1008,8 +1019,8 @@ void TileDataDefaultEditor::draw_over_tile(CanvasItem *p_canvas_item, Transform2
 			}
 		}
 
-		Vector2 string_size = font->get_string_size(text);
-		p_canvas_item->draw_string(font, p_transform.get_origin() + Vector2i(-string_size.x / 2, string_size.y / 2), text, HALIGN_CENTER, string_size.x, -1, color, 1, Color(0, 0, 0, 1));
+		Vector2 string_size = font->get_string_size(text, font_size);
+		p_canvas_item->draw_string(font, p_transform.get_origin() + Vector2i(-string_size.x / 2, string_size.y / 2), text, HALIGN_CENTER, string_size.x, font_size, color, 1, Color(0, 0, 0, 1));
 	}
 }
 
@@ -1572,6 +1583,7 @@ void TileDataTerrainsEditor::forward_draw_over_atlas(TileAtlasView *p_tile_atlas
 
 	// Dim terrains with wrong terrain set.
 	Ref<Font> font = TileSetEditor::get_singleton()->get_theme_font(SNAME("bold"), SNAME("EditorFonts"));
+	int font_size = TileSetEditor::get_singleton()->get_theme_font_size(SNAME("bold_size"), SNAME("EditorFonts"));
 	for (int i = 0; i < p_tile_set_atlas_source->get_tiles_count(); i++) {
 		Vector2i coords = p_tile_set_atlas_source->get_tile_id(i);
 		if (coords != hovered_coords) {
@@ -1594,8 +1606,8 @@ void TileDataTerrainsEditor::forward_draw_over_atlas(TileAtlasView *p_tile_atlas
 				} else {
 					text = "-";
 				}
-				Vector2 string_size = font->get_string_size(text);
-				p_canvas_item->draw_string(font, p_transform.xform(position) + Vector2i(-string_size.x / 2, string_size.y / 2), text, HALIGN_CENTER, string_size.x, -1, color, 1, Color(0, 0, 0, 1));
+				Vector2 string_size = font->get_string_size(text, font_size);
+				p_canvas_item->draw_string(font, p_transform.xform(position) + Vector2i(-string_size.x / 2, string_size.y / 2), text, HALIGN_CENTER, string_size.x, font_size, color, 1, Color(0, 0, 0, 1));
 			}
 		}
 	}
@@ -1745,6 +1757,7 @@ void TileDataTerrainsEditor::forward_draw_over_alternatives(TileAtlasView *p_til
 
 	// Dim terrains with wrong terrain set.
 	Ref<Font> font = TileSetEditor::get_singleton()->get_theme_font(SNAME("bold"), SNAME("EditorFonts"));
+	int font_size = TileSetEditor::get_singleton()->get_theme_font_size(SNAME("bold_size"), SNAME("EditorFonts"));
 	for (int i = 0; i < p_tile_set_atlas_source->get_tiles_count(); i++) {
 		Vector2i coords = p_tile_set_atlas_source->get_tile_id(i);
 		for (int j = 1; j < p_tile_set_atlas_source->get_alternative_tiles_count(coords); j++) {
@@ -1769,8 +1782,8 @@ void TileDataTerrainsEditor::forward_draw_over_alternatives(TileAtlasView *p_til
 					} else {
 						text = "-";
 					}
-					Vector2 string_size = font->get_string_size(text);
-					p_canvas_item->draw_string(font, p_transform.xform(position) + Vector2i(-string_size.x / 2, string_size.y / 2), text, HALIGN_CENTER, string_size.x, -1, color, 1, Color(0, 0, 0, 1));
+					Vector2 string_size = font->get_string_size(text, font_size);
+					p_canvas_item->draw_string(font, p_transform.xform(position) + Vector2i(-string_size.x / 2, string_size.y / 2), text, HALIGN_CENTER, string_size.x, font_size, color, 1, Color(0, 0, 0, 1));
 				}
 			}
 		}

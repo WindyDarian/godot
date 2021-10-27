@@ -114,6 +114,7 @@ public:
 		FEATURE_ORIENTATION,
 		FEATURE_SWAP_BUFFERS,
 		FEATURE_KEEP_SCREEN_ON,
+		FEATURE_CLIPBOARD_PRIMARY,
 	};
 
 	virtual bool has_feature(Feature p_feature) const = 0;
@@ -161,6 +162,8 @@ public:
 
 	virtual void clipboard_set(const String &p_text);
 	virtual String clipboard_get() const;
+	virtual void clipboard_set_primary(const String &p_text);
+	virtual String clipboard_get_primary() const;
 
 	enum {
 		SCREEN_OF_MAIN_WINDOW = -1

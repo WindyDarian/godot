@@ -252,6 +252,14 @@ void ViewportRotationControl::set_viewport(Node3DEditorViewport *p_viewport) {
 	viewport = p_viewport;
 }
 
+void Node3DEditorViewport::_view_settings_confirmed(real_t p_interp_delta) {
+	// Set FOV override multiplier back to the default, so that the FOV
+	// setting specified in the View menu is correctly applied.
+	cursor.fov_scale = 1.0;
+
+	_update_camera(p_interp_delta);
+}
+
 void Node3DEditorViewport::_update_camera(real_t p_interp_delta) {
 	bool is_orthogonal = camera->get_projection() == Camera3D::PROJECTION_ORTHOGONAL;
 
@@ -318,6 +326,8 @@ void Node3DEditorViewport::_update_camera(real_t p_interp_delta) {
 		equal = false;
 	} else if (!Math::is_equal_approx(old_camera_cursor.distance, camera_cursor.distance, tolerance)) {
 		equal = false;
+	} else if (!Math::is_equal_approx(old_camera_cursor.fov_scale, camera_cursor.fov_scale, tolerance)) {
+		equal = false;
 	}
 
 	if (!equal || p_interp_delta == 0 || is_orthogonal != orthogonal) {
@@ -383,7 +393,7 @@ float Node3DEditorViewport::get_zfar() const {
 }
 
 float Node3DEditorViewport::get_fov() const {
-	return CLAMP(spatial_editor->get_fov(), MIN_FOV, MAX_FOV);
+	return CLAMP(spatial_editor->get_fov() * cursor.fov_scale, MIN_FOV, MAX_FOV);
 }
 
 Transform3D Node3DEditorViewport::_get_camera_transform() const {
@@ -479,7 +489,7 @@ ObjectID Node3DEditorViewport::_select_ray(const Point2 &p_pos) {
 		RS::get_singleton()->sdfgi_set_debug_probe_select(pos, ray);
 	}
 
-	Vector<ObjectID> instances = RenderingServer::get_singleton()->instances_cull_ray(pos, ray, get_tree()->get_root()->get_world_3d()->get_scenario());
+	Vector<ObjectID> instances = RenderingServer::get_singleton()->instances_cull_ray(pos, pos + ray * camera->get_far(), get_tree()->get_root()->get_world_3d()->get_scenario());
 	Set<Ref<EditorNode3DGizmo>> found_gizmos;
 
 	Node *edited_scene = get_tree()->get_edited_scene_root();
@@ -542,7 +552,7 @@ void Node3DEditorViewport::_find_items_at_pos(const Point2 &p_pos, Vector<_RayRe
 	Vector3 ray = _get_ray(p_pos);
 	Vector3 pos = _get_ray_pos(p_pos);
 
-	Vector<ObjectID> instances = RenderingServer::get_singleton()->instances_cull_ray(pos, ray, get_tree()->get_root()->get_world_3d()->get_scenario());
+	Vector<ObjectID> instances = RenderingServer::get_singleton()->instances_cull_ray(pos, pos + ray * camera->get_far(), get_tree()->get_root()->get_world_3d()->get_scenario());
 	Set<Node3D *> found_nodes;
 
 	for (int i = 0; i < instances.size(); i++) {
@@ -651,13 +661,13 @@ void Node3DEditorViewport::_select_region() {
 		Vector3 a = _get_screen_to_space(box[i]);
 		Vector3 b = _get_screen_to_space(box[(i + 1) % 4]);
 		if (orthogonal) {
-			frustum.push_back(Plane(a, (a - b).normalized()));
+			frustum.push_back(Plane((a - b).normalized(), a));
 		} else {
 			frustum.push_back(Plane(a, b, cam_pos));
 		}
 	}
 
-	Plane near(cam_pos, -_get_camera_normal());
+	Plane near(-_get_camera_normal(), cam_pos);
 	near.d -= get_znear();
 	frustum.push_back(near);
 
@@ -972,7 +982,7 @@ bool Node3DEditorViewport::_transform_gizmo_select(const Vector2 &p_screenpos, b
 				const Vector3 grabber_pos = gt.origin + (ivec2 + ivec3) * gizmo_scale * (GIZMO_PLANE_SIZE + GIZMO_PLANE_DST * 0.6667);
 
 				Vector3 r;
-				Plane plane(gt.origin, gt.basis.get_axis(i).normalized());
+				Plane plane(gt.basis.get_axis(i).normalized(), gt.origin);
 
 				if (plane.intersects_ray(ray_pos, ray, &r)) {
 					const real_t dist = r.distance_to(grabber_pos);
@@ -1010,7 +1020,7 @@ bool Node3DEditorViewport::_transform_gizmo_select(const Vector2 &p_screenpos, b
 		float col_d = 1e20;
 
 		for (int i = 0; i < 3; i++) {
-			Plane plane(gt.origin, gt.basis.get_axis(i).normalized());
+			Plane plane(gt.basis.get_axis(i).normalized(), gt.origin);
 			Vector3 r;
 			if (!plane.intersects_ray(ray_pos, ray, &r)) {
 				continue;
@@ -1076,7 +1086,7 @@ bool Node3DEditorViewport::_transform_gizmo_select(const Vector2 &p_screenpos, b
 				const Vector3 grabber_pos = gt.origin + (ivec2 + ivec3) * gizmo_scale * (GIZMO_PLANE_SIZE + GIZMO_PLANE_DST * 0.6667);
 
 				Vector3 r;
-				Plane plane(gt.origin, gt.basis.get_axis(i).normalized());
+				Plane plane(gt.basis.get_axis(i).normalized(), gt.origin);
 
 				if (plane.intersects_ray(ray_pos, ray, &r)) {
 					const real_t dist = r.distance_to(grabber_pos);
@@ -1327,17 +1337,25 @@ void Node3DEditorViewport::_sinput(const Ref<InputEvent> &p_event) {
 		const real_t zoom_factor = 1 + (ZOOM_FREELOOK_MULTIPLIER - 1) * b->get_factor();
 		switch (b->get_button_index()) {
 			case MOUSE_BUTTON_WHEEL_UP: {
-				if (is_freelook_active()) {
-					scale_freelook_speed(zoom_factor);
+				if (b->is_alt_pressed()) {
+					scale_fov(-0.05);
 				} else {
-					scale_cursor_distance(1.0 / zoom_factor);
+					if (is_freelook_active()) {
+						scale_freelook_speed(zoom_factor);
+					} else {
+						scale_cursor_distance(1.0 / zoom_factor);
+					}
 				}
 			} break;
 			case MOUSE_BUTTON_WHEEL_DOWN: {
-				if (is_freelook_active()) {
-					scale_freelook_speed(1.0 / zoom_factor);
+				if (b->is_alt_pressed()) {
+					scale_fov(0.05);
 				} else {
-					scale_cursor_distance(zoom_factor);
+					if (is_freelook_active()) {
+						scale_freelook_speed(1.0 / zoom_factor);
+					} else {
+						scale_cursor_distance(zoom_factor);
+					}
 				}
 			} break;
 			case MOUSE_BUTTON_RIGHT: {
@@ -1761,33 +1779,33 @@ void Node3DEditorViewport::_sinput(const Ref<InputEvent> &p_event) {
 						switch (_edit.plane) {
 							case TRANSFORM_VIEW:
 								motion_mask = Vector3(0, 0, 0);
-								plane = Plane(_edit.center, _get_camera_normal());
+								plane = Plane(_get_camera_normal(), _edit.center);
 								break;
 							case TRANSFORM_X_AXIS:
 								motion_mask = spatial_editor->get_gizmo_transform().basis.get_axis(0);
-								plane = Plane(_edit.center, motion_mask.cross(motion_mask.cross(_get_camera_normal())).normalized());
+								plane = Plane(motion_mask.cross(motion_mask.cross(_get_camera_normal())).normalized(), _edit.center);
 								break;
 							case TRANSFORM_Y_AXIS:
 								motion_mask = spatial_editor->get_gizmo_transform().basis.get_axis(1);
-								plane = Plane(_edit.center, motion_mask.cross(motion_mask.cross(_get_camera_normal())).normalized());
+								plane = Plane(motion_mask.cross(motion_mask.cross(_get_camera_normal())).normalized(), _edit.center);
 								break;
 							case TRANSFORM_Z_AXIS:
 								motion_mask = spatial_editor->get_gizmo_transform().basis.get_axis(2);
-								plane = Plane(_edit.center, motion_mask.cross(motion_mask.cross(_get_camera_normal())).normalized());
+								plane = Plane(motion_mask.cross(motion_mask.cross(_get_camera_normal())).normalized(), _edit.center);
 								break;
 							case TRANSFORM_YZ:
 								motion_mask = spatial_editor->get_gizmo_transform().basis.get_axis(2) + spatial_editor->get_gizmo_transform().basis.get_axis(1);
-								plane = Plane(_edit.center, spatial_editor->get_gizmo_transform().basis.get_axis(0));
+								plane = Plane(spatial_editor->get_gizmo_transform().basis.get_axis(0), _edit.center);
 								plane_mv = true;
 								break;
 							case TRANSFORM_XZ:
 								motion_mask = spatial_editor->get_gizmo_transform().basis.get_axis(2) + spatial_editor->get_gizmo_transform().basis.get_axis(0);
-								plane = Plane(_edit.center, spatial_editor->get_gizmo_transform().basis.get_axis(1));
+								plane = Plane(spatial_editor->get_gizmo_transform().basis.get_axis(1), _edit.center);
 								plane_mv = true;
 								break;
 							case TRANSFORM_XY:
 								motion_mask = spatial_editor->get_gizmo_transform().basis.get_axis(0) + spatial_editor->get_gizmo_transform().basis.get_axis(1);
-								plane = Plane(_edit.center, spatial_editor->get_gizmo_transform().basis.get_axis(2));
+								plane = Plane(spatial_editor->get_gizmo_transform().basis.get_axis(2), _edit.center);
 								plane_mv = true;
 								break;
 						}
@@ -1882,30 +1900,30 @@ void Node3DEditorViewport::_sinput(const Ref<InputEvent> &p_event) {
 
 						switch (_edit.plane) {
 							case TRANSFORM_VIEW:
-								plane = Plane(_edit.center, _get_camera_normal());
+								plane = Plane(_get_camera_normal(), _edit.center);
 								break;
 							case TRANSFORM_X_AXIS:
 								motion_mask = spatial_editor->get_gizmo_transform().basis.get_axis(0);
-								plane = Plane(_edit.center, motion_mask.cross(motion_mask.cross(_get_camera_normal())).normalized());
+								plane = Plane(motion_mask.cross(motion_mask.cross(_get_camera_normal())).normalized(), _edit.center);
 								break;
 							case TRANSFORM_Y_AXIS:
 								motion_mask = spatial_editor->get_gizmo_transform().basis.get_axis(1);
-								plane = Plane(_edit.center, motion_mask.cross(motion_mask.cross(_get_camera_normal())).normalized());
+								plane = Plane(motion_mask.cross(motion_mask.cross(_get_camera_normal())).normalized(), _edit.center);
 								break;
 							case TRANSFORM_Z_AXIS:
 								motion_mask = spatial_editor->get_gizmo_transform().basis.get_axis(2);
-								plane = Plane(_edit.center, motion_mask.cross(motion_mask.cross(_get_camera_normal())).normalized());
+								plane = Plane(motion_mask.cross(motion_mask.cross(_get_camera_normal())).normalized(), _edit.center);
 								break;
 							case TRANSFORM_YZ:
-								plane = Plane(_edit.center, spatial_editor->get_gizmo_transform().basis.get_axis(0));
+								plane = Plane(spatial_editor->get_gizmo_transform().basis.get_axis(0), _edit.center);
 								plane_mv = true;
 								break;
 							case TRANSFORM_XZ:
-								plane = Plane(_edit.center, spatial_editor->get_gizmo_transform().basis.get_axis(1));
+								plane = Plane(spatial_editor->get_gizmo_transform().basis.get_axis(1), _edit.center);
 								plane_mv = true;
 								break;
 							case TRANSFORM_XY:
-								plane = Plane(_edit.center, spatial_editor->get_gizmo_transform().basis.get_axis(2));
+								plane = Plane(spatial_editor->get_gizmo_transform().basis.get_axis(2), _edit.center);
 								plane_mv = true;
 								break;
 						}
@@ -1978,18 +1996,18 @@ void Node3DEditorViewport::_sinput(const Ref<InputEvent> &p_event) {
 
 						switch (_edit.plane) {
 							case TRANSFORM_VIEW:
-								plane = Plane(_edit.center, _get_camera_normal());
+								plane = Plane(_get_camera_normal(), _edit.center);
 								break;
 							case TRANSFORM_X_AXIS:
-								plane = Plane(_edit.center, spatial_editor->get_gizmo_transform().basis.get_axis(0));
+								plane = Plane(spatial_editor->get_gizmo_transform().basis.get_axis(0), _edit.center);
 								axis = Vector3(1, 0, 0);
 								break;
 							case TRANSFORM_Y_AXIS:
-								plane = Plane(_edit.center, spatial_editor->get_gizmo_transform().basis.get_axis(1));
+								plane = Plane(spatial_editor->get_gizmo_transform().basis.get_axis(1), _edit.center);
 								axis = Vector3(0, 1, 0);
 								break;
 							case TRANSFORM_Z_AXIS:
-								plane = Plane(_edit.center, spatial_editor->get_gizmo_transform().basis.get_axis(2));
+								plane = Plane(spatial_editor->get_gizmo_transform().basis.get_axis(2), _edit.center);
 								axis = Vector3(0, 0, 1);
 								break;
 							case TRANSFORM_YZ:
@@ -2226,6 +2244,31 @@ void Node3DEditorViewport::_sinput(const Ref<InputEvent> &p_event) {
 		if (ED_IS_SHORTCUT("spatial_editor/right_view", p_event)) {
 			_menu_option(VIEW_RIGHT);
 		}
+		if (ED_IS_SHORTCUT("spatial_editor/orbit_view_down", p_event)) {
+			cursor.x_rot -= Math_PI / 12.0;
+			view_type = VIEW_TYPE_USER;
+			_update_name();
+		}
+		if (ED_IS_SHORTCUT("spatial_editor/orbit_view_up", p_event)) {
+			cursor.x_rot += Math_PI / 12.0;
+			view_type = VIEW_TYPE_USER;
+			_update_name();
+		}
+		if (ED_IS_SHORTCUT("spatial_editor/orbit_view_right", p_event)) {
+			cursor.y_rot -= Math_PI / 12.0;
+			view_type = VIEW_TYPE_USER;
+			_update_name();
+		}
+		if (ED_IS_SHORTCUT("spatial_editor/orbit_view_left", p_event)) {
+			cursor.y_rot += Math_PI / 12.0;
+			view_type = VIEW_TYPE_USER;
+			_update_name();
+		}
+		if (ED_IS_SHORTCUT("spatial_editor/orbit_view_180", p_event)) {
+			cursor.y_rot += Math_PI;
+			view_type = VIEW_TYPE_USER;
+			_update_name();
+		}
 		if (ED_IS_SHORTCUT("spatial_editor/focus_origin", p_event)) {
 			_menu_option(VIEW_CENTER_TO_ORIGIN);
 		}
@@ -2279,6 +2322,18 @@ void Node3DEditorViewport::_sinput(const Ref<InputEvent> &p_event) {
 			if (!k->is_pressed()) {
 				emit_signal(SNAME("toggle_maximize_view"), this);
 			}
+		}
+
+		if (ED_IS_SHORTCUT("spatial_editor/decrease_fov", p_event)) {
+			scale_fov(-0.05);
+		}
+
+		if (ED_IS_SHORTCUT("spatial_editor/increase_fov", p_event)) {
+			scale_fov(0.05);
+		}
+
+		if (ED_IS_SHORTCUT("spatial_editor/reset_fov", p_event)) {
+			reset_fov();
 		}
 	}
 
@@ -2445,6 +2500,16 @@ void Node3DEditorViewport::set_freelook_active(bool active_now) {
 	}
 
 	freelook_active = active_now;
+}
+
+void Node3DEditorViewport::scale_fov(real_t p_fov_offset) {
+	cursor.fov_scale = CLAMP(cursor.fov_scale + p_fov_offset, 0.1, 2.5);
+	surface->update();
+}
+
+void Node3DEditorViewport::reset_fov() {
+	cursor.fov_scale = 1.0;
+	surface->update();
 }
 
 void Node3DEditorViewport::scale_cursor_distance(real_t scale) {
@@ -3188,7 +3253,7 @@ void Node3DEditorViewport::_menu_option(int p_option) {
 					continue;
 				}
 
-				undo_redo->add_do_method(sp, "set_rotation", camera_transform.basis.get_rotation());
+				undo_redo->add_do_method(sp, "set_rotation", camera_transform.basis.get_euler_normalized());
 				undo_redo->add_undo_method(sp, "set_rotation", sp->get_rotation());
 			}
 			undo_redo->commit_action();
@@ -3588,7 +3653,7 @@ void Node3DEditorViewport::update_transform_gizmo_view() {
 
 	const Vector3 camz = -camera_xform.get_basis().get_axis(2).normalized();
 	const Vector3 camy = -camera_xform.get_basis().get_axis(1).normalized();
-	const Plane p(camera_xform.origin, camz);
+	const Plane p = Plane(camz, camera_xform.origin);
 	const real_t gizmo_d = MAX(Math::abs(p.distance_to(xform.origin)), CMP_EPSILON);
 	const real_t d0 = camera->unproject_position(camera_xform.origin + camz * gizmo_d).y;
 	const real_t d1 = camera->unproject_position(camera_xform.origin + camz * gizmo_d + camy).y;
@@ -3863,7 +3928,7 @@ void Node3DEditorViewport::assign_pending_data_pointers(Node3D *p_preview_node, 
 }
 
 Vector3 Node3DEditorViewport::_get_instance_position(const Point2 &p_pos) const {
-	const float MAX_DISTANCE = 10;
+	const float MAX_DISTANCE = 50.0;
 
 	Vector3 world_ray = _get_ray(p_pos);
 	Vector3 world_pos = _get_ray_pos(p_pos);
@@ -6171,7 +6236,7 @@ void Node3DEditor::_init_grid() {
 		if (orthogonal) {
 			camera_distance = camera->get_size() / 2.0;
 			Vector3 camera_direction = -camera->get_global_transform().get_basis().get_axis(2);
-			Plane grid_plane = Plane(Vector3(), normal);
+			Plane grid_plane = Plane(normal);
 			Vector3 intersection;
 			if (grid_plane.intersects_ray(camera_position, camera_direction, &intersection)) {
 				camera_position = intersection;
@@ -6469,7 +6534,7 @@ void Node3DEditor::snap_selected_nodes_to_floor() {
 			// We add a bit of margin to the from position to avoid it from snapping
 			// when the spatial is already on a floor and there's another floor under
 			// it
-			from = from + Vector3(0.0, 0.2, 0.0);
+			from = from + Vector3(0.0, 1, 0.0);
 
 			Dictionary d;
 
@@ -6485,7 +6550,7 @@ void Node3DEditor::snap_selected_nodes_to_floor() {
 	Array keys = snap_data.keys();
 
 	// The maximum height an object can travel to be snapped
-	const float max_snap_height = 20.0;
+	const float max_snap_height = 500.0;
 
 	// Will be set to `true` if at least one node from the selection was successfully snapped
 	bool snapped_to_floor = false;
@@ -7306,6 +7371,11 @@ Node3DEditor::Node3DEditor(EditorNode *p_editor) {
 	ED_SHORTCUT("spatial_editor/front_view", TTR("Front View"), KEY_KP_1);
 	ED_SHORTCUT("spatial_editor/left_view", TTR("Left View"), KEY_MASK_ALT + KEY_KP_3);
 	ED_SHORTCUT("spatial_editor/right_view", TTR("Right View"), KEY_KP_3);
+	ED_SHORTCUT("spatial_editor/orbit_view_down", TTR("Orbit View Down"), KEY_KP_2);
+	ED_SHORTCUT("spatial_editor/orbit_view_left", TTR("Orbit View Left"), KEY_KP_4);
+	ED_SHORTCUT("spatial_editor/orbit_view_right", TTR("Orbit View Right"), KEY_KP_6);
+	ED_SHORTCUT("spatial_editor/orbit_view_up", TTR("Orbit View Up"), KEY_KP_8);
+	ED_SHORTCUT("spatial_editor/orbit_view_180", TTR("Orbit View 180"), KEY_KP_9);
 	ED_SHORTCUT("spatial_editor/switch_perspective_orthogonal", TTR("Switch Perspective/Orthogonal View"), KEY_KP_5);
 	ED_SHORTCUT("spatial_editor/insert_anim_key", TTR("Insert Animation Key"), KEY_K);
 	ED_SHORTCUT("spatial_editor/focus_origin", TTR("Focus Origin"), KEY_O);
@@ -7313,6 +7383,9 @@ Node3DEditor::Node3DEditor(EditorNode *p_editor) {
 	ED_SHORTCUT("spatial_editor/align_transform_with_view", TTR("Align Transform with View"), KEY_MASK_ALT + KEY_MASK_CMD + KEY_M);
 	ED_SHORTCUT("spatial_editor/align_rotation_with_view", TTR("Align Rotation with View"), KEY_MASK_ALT + KEY_MASK_CMD + KEY_F);
 	ED_SHORTCUT("spatial_editor/freelook_toggle", TTR("Toggle Freelook"), KEY_MASK_SHIFT + KEY_F);
+	ED_SHORTCUT("spatial_editor/decrease_fov", TTR("Decrease Field of View"), KEY_MASK_CMD + KEY_EQUAL); // Usually direct access key for `KEY_PLUS`.
+	ED_SHORTCUT("spatial_editor/increase_fov", TTR("Increase Field of View"), KEY_MASK_CMD + KEY_MINUS);
+	ED_SHORTCUT("spatial_editor/reset_fov", TTR("Reset Field of View to Default"), KEY_MASK_CMD + KEY_0);
 
 	PopupMenu *p;
 
@@ -7460,7 +7533,7 @@ Node3DEditor::Node3DEditor(EditorNode *p_editor) {
 	settings_vbc->add_margin_child(TTR("View Z-Far:"), settings_zfar);
 
 	for (uint32_t i = 0; i < VIEWPORTS_COUNT; ++i) {
-		settings_dialog->connect("confirmed", callable_mp(viewports[i], &Node3DEditorViewport::_update_camera), varray(0.0));
+		settings_dialog->connect("confirmed", callable_mp(viewports[i], &Node3DEditorViewport::_view_settings_confirmed), varray(0.0));
 	}
 
 	/* XFORM DIALOG */

@@ -126,6 +126,8 @@ private:
 
 	bool virtual_keyboard_enabled = true;
 
+	bool middle_mouse_paste_enabled = true;
+
 	Ref<Texture2D> right_icon;
 
 	struct Selection {
@@ -187,7 +189,6 @@ private:
 	void _toggle_draw_caret();
 
 	void clear_internal();
-	void changed_internal();
 
 	void _editor_settings_changed();
 
@@ -317,6 +318,9 @@ public:
 
 	void set_virtual_keyboard_enabled(bool p_enable);
 	bool is_virtual_keyboard_enabled() const;
+
+	void set_middle_mouse_paste_enabled(bool p_enabled);
+	bool is_middle_mouse_paste_enabled() const;
 
 	void set_selecting_enabled(bool p_enabled);
 	bool is_selecting_enabled() const;

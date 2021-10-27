@@ -31,6 +31,7 @@
 #include "visual_shader_editor_plugin.h"
 
 #include "core/config/project_settings.h"
+#include "core/core_string_names.h"
 #include "core/input/input.h"
 #include "core/io/resource_loader.h"
 #include "core/math/math_defs.h"
@@ -212,19 +213,27 @@ void VisualShaderGraphPlugin::set_uniform_name(VisualShader::Type p_type, int p_
 
 void VisualShaderGraphPlugin::update_curve(int p_node_id) {
 	if (links.has(p_node_id) && links[p_node_id].curve_editors[0]) {
-		if (((VisualShaderNodeCurveTexture *)links[p_node_id].visual_node)->get_texture().is_valid()) {
-			links[p_node_id].curve_editors[0]->set_curve(((VisualShaderNodeCurveTexture *)links[p_node_id].visual_node)->get_texture()->get_curve());
+		Ref<VisualShaderNodeCurveTexture> tex = Object::cast_to<VisualShaderNodeCurveTexture>(links[p_node_id].visual_node);
+		ERR_FAIL_COND(!tex.is_valid());
+
+		if (tex->get_texture().is_valid()) {
+			links[p_node_id].curve_editors[0]->set_curve(tex->get_texture()->get_curve());
 		}
+		tex->emit_signal(CoreStringNames::get_singleton()->changed);
 	}
 }
 
 void VisualShaderGraphPlugin::update_curve_xyz(int p_node_id) {
 	if (links.has(p_node_id) && links[p_node_id].curve_editors[0] && links[p_node_id].curve_editors[1] && links[p_node_id].curve_editors[2]) {
-		if (((VisualShaderNodeCurveXYZTexture *)links[p_node_id].visual_node)->get_texture().is_valid()) {
-			links[p_node_id].curve_editors[0]->set_curve(((VisualShaderNodeCurveXYZTexture *)links[p_node_id].visual_node)->get_texture()->get_curve_x());
-			links[p_node_id].curve_editors[1]->set_curve(((VisualShaderNodeCurveXYZTexture *)links[p_node_id].visual_node)->get_texture()->get_curve_y());
-			links[p_node_id].curve_editors[2]->set_curve(((VisualShaderNodeCurveXYZTexture *)links[p_node_id].visual_node)->get_texture()->get_curve_z());
+		Ref<VisualShaderNodeCurveXYZTexture> tex = Object::cast_to<VisualShaderNodeCurveXYZTexture>(links[p_node_id].visual_node);
+		ERR_FAIL_COND(!tex.is_valid());
+
+		if (tex->get_texture().is_valid()) {
+			links[p_node_id].curve_editors[0]->set_curve(tex->get_texture()->get_curve_x());
+			links[p_node_id].curve_editors[1]->set_curve(tex->get_texture()->get_curve_y());
+			links[p_node_id].curve_editors[2]->set_curve(tex->get_texture()->get_curve_z());
 		}
+		tex->emit_signal(CoreStringNames::get_singleton()->changed);
 	}
 }
 
@@ -491,6 +500,35 @@ void VisualShaderGraphPlugin::add_node(VisualShader::Type p_type, int p_id) {
 		bool is_curve = curve.is_valid() || curve_xyz.is_valid();
 
 		if (is_curve) {
+			// a default value handling
+			{
+				Variant default_value;
+				bool port_left_used = false;
+
+				for (const VisualShader::Connection &E : connections) {
+					if (E.to_node == p_id && E.to_port == 0) {
+						port_left_used = true;
+						break;
+					}
+				}
+
+				if (!port_left_used) {
+					default_value = vsnode->get_input_port_default_value(0);
+				}
+
+				Button *button = memnew(Button);
+				custom_editor->add_child(button);
+				register_default_input_button(p_id, 0, button);
+				custom_editor->move_child(button, 0);
+
+				button->connect("pressed", callable_mp(VisualShaderEditor::get_singleton(), &VisualShaderEditor::_edit_port_default_input), varray(button, p_id, 0));
+				if (default_value.get_type() != Variant::NIL) {
+					set_input_port_default_value(p_type, p_id, 0, default_value);
+				} else {
+					button->hide();
+				}
+			}
+
 			VisualShaderEditor::get_singleton()->graph->add_child(node);
 			VisualShaderEditor::get_singleton()->_update_created_node(node);
 
@@ -643,6 +681,7 @@ void VisualShaderGraphPlugin::add_node(VisualShader::Type p_type, int p_id) {
 			for (const VisualShader::Connection &E : connections) {
 				if (E.to_node == p_id && E.to_port == j) {
 					port_left_used = true;
+					break;
 				}
 			}
 		}
@@ -777,7 +816,7 @@ void VisualShaderGraphPlugin::add_node(VisualShader::Type p_type, int p_id) {
 				expand->connect("pressed", callable_mp(VisualShaderEditor::get_singleton(), &VisualShaderEditor::_expand_output_port), varray(p_id, i, !vsnode->_is_output_port_expanded(i)), CONNECT_DEFERRED);
 				hb->add_child(expand);
 			}
-			if (visual_shader->get_shader_type() == VisualShader::TYPE_FRAGMENT && port_right != VisualShaderNode::PORT_TYPE_TRANSFORM && port_right != VisualShaderNode::PORT_TYPE_SAMPLER) {
+			if (vsnode->has_output_port_preview(i) && port_right != VisualShaderNode::PORT_TYPE_TRANSFORM && port_right != VisualShaderNode::PORT_TYPE_SAMPLER) {
 				TextureButton *preview = memnew(TextureButton);
 				preview->set_toggle_mode(true);
 				preview->set_normal_texture(VisualShaderEditor::get_singleton()->get_theme_icon(SNAME("GuiVisibilityHidden"), SNAME("EditorIcons")));

@@ -73,6 +73,7 @@ void CPUParticles3D::set_amount(int p_amount) {
 	}
 
 	particle_data.resize((12 + 4 + 4) * p_amount);
+	RS::get_singleton()->multimesh_set_visible_instances(multimesh, -1);
 	RS::get_singleton()->multimesh_allocate_data(multimesh, p_amount, RS::MULTIMESH_TRANSFORM_3D, true, true);
 
 	particle_order.resize(p_amount);
@@ -531,6 +532,8 @@ void CPUParticles3D::_validate_property(PropertyInfo &property) const {
 	if (property.name.begins_with("scale_curve_") && !split_scale) {
 		property.usage = PROPERTY_USAGE_NONE;
 	}
+
+	Node3D::_validate_property(property);
 }
 
 static uint32_t idhash(uint32_t x) {

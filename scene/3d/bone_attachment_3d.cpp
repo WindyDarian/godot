@@ -58,6 +58,8 @@ void BoneAttachment3D::_validate_property(PropertyInfo &property) const {
 			property.hint_string = "";
 		}
 	}
+
+	Node3D::_validate_property(property);
 }
 
 bool BoneAttachment3D::_set(const StringName &p_path, const Variant &p_value) {
@@ -215,8 +217,6 @@ void BoneAttachment3D::_transform_changed() {
 			sk->set_bone_global_pose_override(bone_idx, our_trans, 1.0, true);
 		} else if (override_mode == OVERRIDE_MODES::MODE_LOCAL_POSE) {
 			sk->set_bone_local_pose_override(bone_idx, sk->global_pose_to_local_pose(bone_idx, our_trans), 1.0, true);
-		} else if (override_mode == OVERRIDE_MODES::MODE_CUSTOM_POSE) {
-			sk->set_bone_custom_pose(bone_idx, sk->global_pose_to_local_pose(bone_idx, our_trans));
 		}
 	}
 }
@@ -273,8 +273,6 @@ void BoneAttachment3D::set_override_pose(bool p_override) {
 				sk->set_bone_global_pose_override(bone_idx, Transform3D(), 0.0, false);
 			} else if (override_mode == OVERRIDE_MODES::MODE_LOCAL_POSE) {
 				sk->set_bone_local_pose_override(bone_idx, Transform3D(), 0.0, false);
-			} else if (override_mode == OVERRIDE_MODES::MODE_CUSTOM_POSE) {
-				sk->set_bone_custom_pose(bone_idx, Transform3D());
 			}
 		}
 		_transform_changed();
@@ -294,8 +292,6 @@ void BoneAttachment3D::set_override_mode(int p_mode) {
 				sk->set_bone_global_pose_override(bone_idx, Transform3D(), 0.0, false);
 			} else if (override_mode == OVERRIDE_MODES::MODE_LOCAL_POSE) {
 				sk->set_bone_local_pose_override(bone_idx, Transform3D(), 0.0, false);
-			} else if (override_mode == OVERRIDE_MODES::MODE_CUSTOM_POSE) {
-				sk->set_bone_custom_pose(bone_idx, Transform3D());
 			}
 		}
 		override_mode = p_mode;

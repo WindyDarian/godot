@@ -1942,6 +1942,7 @@ void RenderingServer::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("directional_shadow_atlas_set_size", "size", "is_16bits"), &RenderingServer::directional_shadow_atlas_set_size);
 
 	BIND_ENUM_CONSTANT(SHADOW_QUALITY_HARD);
+	BIND_ENUM_CONSTANT(SHADOW_QUALITY_SOFT_VERY_LOW);
 	BIND_ENUM_CONSTANT(SHADOW_QUALITY_SOFT_LOW);
 	BIND_ENUM_CONSTANT(SHADOW_QUALITY_SOFT_MEDIUM);
 	BIND_ENUM_CONSTANT(SHADOW_QUALITY_SOFT_HIGH);
@@ -2793,14 +2794,14 @@ RenderingServer::RenderingServer() {
 	GLOBAL_DEF("rendering/shadows/directional_shadow/size", 4096);
 	GLOBAL_DEF("rendering/shadows/directional_shadow/size.mobile", 2048);
 	ProjectSettings::get_singleton()->set_custom_property_info("rendering/shadows/directional_shadow/size", PropertyInfo(Variant::INT, "rendering/shadows/directional_shadow/size", PROPERTY_HINT_RANGE, "256,16384"));
-	GLOBAL_DEF("rendering/shadows/directional_shadow/soft_shadow_quality", 2);
+	GLOBAL_DEF("rendering/shadows/directional_shadow/soft_shadow_quality", 3);
 	GLOBAL_DEF("rendering/shadows/directional_shadow/soft_shadow_quality.mobile", 0);
-	ProjectSettings::get_singleton()->set_custom_property_info("rendering/shadows/directional_shadow/soft_shadow_quality", PropertyInfo(Variant::INT, "rendering/shadows/directional_shadow/soft_shadow_quality", PROPERTY_HINT_ENUM, "Hard (Fastest),Soft Low (Fast),Soft Medium (Average),Soft High (Slow),Soft Ultra (Slowest)"));
+	ProjectSettings::get_singleton()->set_custom_property_info("rendering/shadows/directional_shadow/soft_shadow_quality", PropertyInfo(Variant::INT, "rendering/shadows/directional_shadow/soft_shadow_quality", PROPERTY_HINT_ENUM, "Hard (Fastest),Soft Very Low (Faster),Soft Low (Fast),Soft Medium (Average),Soft High (Slow),Soft Ultra (Slowest)"));
 	GLOBAL_DEF("rendering/shadows/directional_shadow/16_bits", true);
 
-	GLOBAL_DEF("rendering/shadows/shadows/soft_shadow_quality", 2);
+	GLOBAL_DEF("rendering/shadows/shadows/soft_shadow_quality", 3);
 	GLOBAL_DEF("rendering/shadows/shadows/soft_shadow_quality.mobile", 0);
-	ProjectSettings::get_singleton()->set_custom_property_info("rendering/shadows/shadows/soft_shadow_quality", PropertyInfo(Variant::INT, "rendering/shadows/shadows/soft_shadow_quality", PROPERTY_HINT_ENUM, "Hard (Fastest),Soft Low (Fast),Soft Medium (Average),Soft High (Slow),Soft Ultra (Slowest)"));
+	ProjectSettings::get_singleton()->set_custom_property_info("rendering/shadows/shadows/soft_shadow_quality", PropertyInfo(Variant::INT, "rendering/shadows/shadows/soft_shadow_quality", PROPERTY_HINT_ENUM, "Hard (Fastest),Soft Very Low (Faster),Soft Low (Fast),Soft Medium (Average),Soft High (Slow),Soft Ultra (Slowest)"));
 
 	GLOBAL_DEF("rendering/2d/shadow_atlas/size", 2048);
 
@@ -2810,6 +2811,12 @@ RenderingServer::RenderingServer() {
 			PropertyInfo(Variant::INT,
 					"rendering/vulkan/rendering/back_end",
 					PROPERTY_HINT_ENUM, "Forward Clustered (Supports Desktop Only),Forward Mobile (Supports Desktop and Mobile)"));
+	// Already defined in RenderingDeviceVulkan::initialize which runs before this code.
+	// We re-define them here just for doctool's sake. Make sure to keep default values in sync.
+	GLOBAL_DEF("rendering/vulkan/staging_buffer/block_size_kb", 256);
+	GLOBAL_DEF("rendering/vulkan/staging_buffer/max_size_mb", 128);
+	GLOBAL_DEF("rendering/vulkan/staging_buffer/texture_upload_region_size_px", 64);
+	GLOBAL_DEF("rendering/vulkan/descriptor_pools/max_descriptors_per_pool", 64);
 
 	GLOBAL_DEF("rendering/3d/viewport/scale", 1.0);
 	ProjectSettings::get_singleton()->set_custom_property_info("rendering/3d/viewport/scale",
