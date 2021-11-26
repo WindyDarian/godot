@@ -4920,7 +4920,9 @@ ShaderLanguage::Node *ShaderLanguage::_parse_expression(BlockNode *p_block, cons
 										bool error = false;
 										Node *n = func->arguments[argidx];
 										if (n->type == Node::TYPE_CONSTANT || n->type == Node::TYPE_OPERATOR) {
-											error = true;
+											if (!call_function->arguments[i].is_const) {
+												error = true;
+											}
 										} else if (n->type == Node::TYPE_ARRAY) {
 											ArrayNode *an = static_cast<ArrayNode *>(n);
 											if (an->call_expression != nullptr || an->is_const) {
@@ -6071,7 +6073,7 @@ ShaderLanguage::Node *ShaderLanguage::_parse_expression(BlockNode *p_block, cons
 					_set_error("Invalid arguments to unary operator '" + get_operator_text(op->op) + "' :" + at);
 					return nullptr;
 				}
-				expression.remove(i + 1);
+				expression.remove_at(i + 1);
 			}
 
 		} else if (is_ternary) {
@@ -6111,7 +6113,7 @@ ShaderLanguage::Node *ShaderLanguage::_parse_expression(BlockNode *p_block, cons
 			}
 
 			for (int i = 0; i < 4; i++) {
-				expression.remove(next_op);
+				expression.remove_at(next_op);
 			}
 
 		} else {
@@ -6172,8 +6174,8 @@ ShaderLanguage::Node *ShaderLanguage::_parse_expression(BlockNode *p_block, cons
 				return nullptr;
 			}
 
-			expression.remove(next_op);
-			expression.remove(next_op);
+			expression.remove_at(next_op);
+			expression.remove_at(next_op);
 		}
 	}
 
@@ -7188,11 +7190,6 @@ Error ShaderLanguage::_parse_block(BlockNode *p_block, const FunctionInfo &p_fun
 			//check return type
 			BlockNode *b = p_block;
 
-			if (b && b->parent_function && p_function_info.main_function) {
-				_set_error(vformat("Using 'return' in '%s' processor function results in undefined behavior!", b->parent_function->name));
-				return ERR_PARSE_ERROR;
-			}
-
 			while (b && !b->parent_function) {
 				b = b->parent_block;
 			}
@@ -7200,6 +7197,11 @@ Error ShaderLanguage::_parse_block(BlockNode *p_block, const FunctionInfo &p_fun
 			if (!b) {
 				_set_error("Bug");
 				return ERR_BUG;
+			}
+
+			if (b && b->parent_function && p_function_info.main_function) {
+				_set_error(vformat("Using 'return' in '%s' processor function results in undefined behavior!", b->parent_function->name));
+				return ERR_PARSE_ERROR;
 			}
 
 			String return_struct_name = String(b->parent_function->return_struct_name);

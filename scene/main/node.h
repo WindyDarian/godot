@@ -256,7 +256,7 @@ public:
 		NOTIFICATION_INSTANCED = 20,
 		NOTIFICATION_DRAG_BEGIN = 21,
 		NOTIFICATION_DRAG_END = 22,
-		NOTIFICATION_PATH_CHANGED = 23,
+		NOTIFICATION_PATH_RENAMED = 23,
 		//NOTIFICATION_TRANSLATION_CHANGED = 24, moved below
 		NOTIFICATION_INTERNAL_PROCESS = 25,
 		NOTIFICATION_INTERNAL_PHYSICS_PROCESS = 26,
@@ -362,6 +362,13 @@ public:
 	void set_editable_instance(Node *p_node, bool p_editable);
 	bool is_editable_instance(const Node *p_node) const;
 	Node *get_deepest_editable_node(Node *p_start_node) const;
+
+#ifdef TOOLS_ENABLED
+	void set_property_pinned(const String &p_property, bool p_pinned);
+	bool is_property_pinned(const StringName &p_property) const;
+	virtual StringName get_property_store_alias(const StringName &p_property) const;
+#endif
+	void get_storable_properties(Set<StringName> &r_storable_properties) const;
 
 	virtual String to_string() override;
 

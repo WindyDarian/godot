@@ -628,7 +628,10 @@ void Object::get_property_list(List<PropertyInfo> *p_list, bool p_reversed) cons
 		script_instance->get_property_list(p_list);
 	}
 
-	_get_property_listv(p_list, p_reversed);
+	if (_extension) {
+		p_list->push_back(PropertyInfo(Variant::NIL, _extension->class_name, PROPERTY_HINT_NONE, String(), PROPERTY_USAGE_CATEGORY));
+		ClassDB::get_property_list(_extension->class_name, p_list, true, this);
+	}
 
 	if (_extension && _extension->get_property_list) {
 		uint32_t pcount;
@@ -640,6 +643,8 @@ void Object::get_property_list(List<PropertyInfo> *p_list, bool p_reversed) cons
 			_extension->free_property_list(_extension_instance, pinfo);
 		}
 	}
+
+	_get_property_listv(p_list, p_reversed);
 
 	if (!is_class("Script")) { // can still be set, but this is for user-friendliness
 		p_list->push_back(PropertyInfo(Variant::OBJECT, "script", PROPERTY_HINT_RESOURCE_TYPE, "Script", PROPERTY_USAGE_DEFAULT));
@@ -1405,7 +1410,7 @@ void Object::_disconnect(const StringName &p_signal, const Callable &p_callable,
 
 	ERR_FAIL_COND_MSG(!s->slot_map.has(*p_callable.get_base_comparator()), "Disconnecting nonexistent signal '" + p_signal + "', callable: " + p_callable + ".");
 
-	SignalData::Slot *slot = &s->slot_map[p_callable];
+	SignalData::Slot *slot = &s->slot_map[*p_callable.get_base_comparator()];
 
 	if (!p_force) {
 		slot->reference_count--; // by default is zero, if it was not referenced it will go below it
@@ -1475,7 +1480,7 @@ void Object::_clear_internal_resource_paths(const Variant &p_var) {
 				return;
 			}
 
-			if (!r->get_path().begins_with("res://") || r->get_path().find("::") == -1) {
+			if (!r->is_built_in()) {
 				return; //not an internal resource
 			}
 

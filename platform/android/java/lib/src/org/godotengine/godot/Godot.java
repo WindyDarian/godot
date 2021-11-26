@@ -119,7 +119,6 @@ public class Godot extends Fragment implements SensorEventListener, IDownloaderC
 	private Button mWiFiSettingsButton;
 
 	private XRMode xrMode = XRMode.REGULAR;
-	private boolean use_32_bits = false;
 	private boolean use_immersive = false;
 	private boolean use_debug_opengl = false;
 	private boolean mStatePaused;
@@ -266,8 +265,7 @@ public class Godot extends Fragment implements SensorEventListener, IDownloaderC
 		if (videoDriver.equals("vulkan")) {
 			mRenderView = new GodotVulkanRenderView(activity, this);
 		} else {
-			mRenderView = new GodotGLRenderView(activity, this, xrMode, use_32_bits,
-					use_debug_opengl);
+			mRenderView = new GodotGLRenderView(activity, this, xrMode, use_debug_opengl);
 		}
 
 		View view = mRenderView.getView();
@@ -504,10 +502,8 @@ public class Godot extends Fragment implements SensorEventListener, IDownloaderC
 			boolean has_extra = i < command_line.length - 1;
 			if (command_line[i].equals(XRMode.REGULAR.cmdLineArg)) {
 				xrMode = XRMode.REGULAR;
-			} else if (command_line[i].equals(XRMode.OVR.cmdLineArg)) {
-				xrMode = XRMode.OVR;
-			} else if (command_line[i].equals("--use_depth_32")) {
-				use_32_bits = true;
+			} else if (command_line[i].equals(XRMode.OPENXR.cmdLineArg)) {
+				xrMode = XRMode.OPENXR;
 			} else if (command_line[i].equals("--debug_opengl")) {
 				use_debug_opengl = true;
 			} else if (command_line[i].equals("--use_immersive")) {

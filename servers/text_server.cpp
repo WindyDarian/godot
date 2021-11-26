@@ -78,7 +78,7 @@ void TextServerManager::remove_interface(const Ref<TextServer> &p_interface) {
 	ERR_FAIL_COND(idx == -1);
 	print_verbose("TextServer: Removed interface \"" + p_interface->get_name() + "\"");
 	emit_signal(SNAME("interface_removed"), p_interface->get_name());
-	interfaces.remove(idx);
+	interfaces.remove_at(idx);
 }
 
 int TextServerManager::get_interface_count() const {
@@ -141,7 +141,7 @@ TextServerManager::~TextServerManager() {
 		primary_interface.unref();
 	}
 	while (interfaces.size() > 0) {
-		interfaces.remove(0);
+		interfaces.remove_at(0);
 	}
 	singleton = nullptr;
 }
@@ -207,6 +207,15 @@ void TextServer::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("create_font"), &TextServer::create_font);
 
 	ClassDB::bind_method(D_METHOD("font_set_data", "font_rid", "data"), &TextServer::font_set_data);
+
+	ClassDB::bind_method(D_METHOD("font_set_style", "font_rid", "style"), &TextServer::font_set_style);
+	ClassDB::bind_method(D_METHOD("font_get_style", "font_rid"), &TextServer::font_get_style);
+
+	ClassDB::bind_method(D_METHOD("font_set_name", "font_rid", "name"), &TextServer::font_set_name);
+	ClassDB::bind_method(D_METHOD("font_get_name", "font_rid"), &TextServer::font_get_name);
+
+	ClassDB::bind_method(D_METHOD("font_set_style_name", "font_rid", "name"), &TextServer::font_set_style_name);
+	ClassDB::bind_method(D_METHOD("font_get_style_name", "font_rid"), &TextServer::font_get_style_name);
 
 	ClassDB::bind_method(D_METHOD("font_set_antialiased", "font_rid", "antialiased"), &TextServer::font_set_antialiased);
 	ClassDB::bind_method(D_METHOD("font_is_antialiased", "font_rid"), &TextServer::font_is_antialiased);
@@ -338,6 +347,9 @@ void TextServer::_bind_methods() {
 
 	ClassDB::bind_method(D_METHOD("shaped_text_set_bidi_override", "shaped", "override"), &TextServer::shaped_text_set_bidi_override);
 
+	ClassDB::bind_method(D_METHOD("shaped_text_set_custom_punctuation", "shaped", "punct"), &TextServer::shaped_text_set_custom_punctuation);
+	ClassDB::bind_method(D_METHOD("shaped_text_get_custom_punctuation", "shaped"), &TextServer::shaped_text_get_custom_punctuation);
+
 	ClassDB::bind_method(D_METHOD("shaped_text_set_orientation", "shaped", "orientation"), &TextServer::shaped_text_set_orientation, DEFVAL(ORIENTATION_HORIZONTAL));
 	ClassDB::bind_method(D_METHOD("shaped_text_get_orientation", "shaped"), &TextServer::shaped_text_get_orientation);
 
@@ -391,6 +403,7 @@ void TextServer::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("shaped_text_hit_test_grapheme", "shaped", "coords"), &TextServer::shaped_text_hit_test_grapheme);
 	ClassDB::bind_method(D_METHOD("shaped_text_hit_test_position", "shaped", "coords"), &TextServer::shaped_text_hit_test_position);
 
+	ClassDB::bind_method(D_METHOD("shaped_text_get_grapheme_bounds", "shaped", "pos"), &TextServer::shaped_text_get_grapheme_bounds);
 	ClassDB::bind_method(D_METHOD("shaped_text_next_grapheme_pos", "shaped", "pos"), &TextServer::shaped_text_next_grapheme_pos);
 	ClassDB::bind_method(D_METHOD("shaped_text_prev_grapheme_pos", "shaped", "pos"), &TextServer::shaped_text_prev_grapheme_pos);
 
@@ -470,11 +483,16 @@ void TextServer::_bind_methods() {
 	BIND_ENUM_CONSTANT(CONTOUR_CURVE_TAG_OFF_CONIC);
 	BIND_ENUM_CONSTANT(CONTOUR_CURVE_TAG_OFF_CUBIC);
 
-	/* Font Spacing*/
+	/* Font Spacing */
 	BIND_ENUM_CONSTANT(SPACING_GLYPH);
 	BIND_ENUM_CONSTANT(SPACING_SPACE);
 	BIND_ENUM_CONSTANT(SPACING_TOP);
 	BIND_ENUM_CONSTANT(SPACING_BOTTOM);
+
+	/* Font Style */
+	BIND_ENUM_CONSTANT(FONT_BOLD);
+	BIND_ENUM_CONSTANT(FONT_ITALIC);
+	BIND_ENUM_CONSTANT(FONT_FIXED_WIDTH);
 }
 
 Vector2 TextServer::get_hex_code_box_size(int p_size, char32_t p_index) const {
@@ -1006,7 +1024,7 @@ Vector<Vector2> TextServer::shaped_text_get_selection(RID p_shaped, int p_start,
 		while (j < ranges.size()) {
 			if (Math::is_equal_approx(ranges[i].y, ranges[j].x, (real_t)UNIT_EPSILON)) {
 				ranges.write[i].y = ranges[j].y;
-				ranges.remove(j);
+				ranges.remove_at(j);
 				continue;
 			}
 			j++;
@@ -1101,6 +1119,27 @@ int TextServer::shaped_text_hit_test_position(RID p_shaped, real_t p_coords) con
 		off += glyphs[i].advance * glyphs[i].repeat;
 	}
 	return 0;
+}
+
+Vector2 TextServer::shaped_text_get_grapheme_bounds(RID p_shaped, int p_pos) const {
+	int v_size = shaped_text_get_glyph_count(p_shaped);
+	const Glyph *glyphs = shaped_text_get_glyphs(p_shaped);
+
+	real_t off = 0.0f;
+	for (int i = 0; i < v_size; i++) {
+		if ((glyphs[i].count > 0) && ((glyphs[i].index != 0) || ((glyphs[i].flags & GRAPHEME_IS_SPACE) == GRAPHEME_IS_SPACE))) {
+			if (glyphs[i].start <= p_pos && glyphs[i].end >= p_pos) {
+				real_t advance = 0.f;
+				for (int j = 0; j < glyphs[i].count; j++) {
+					advance += glyphs[i + j].advance;
+				}
+				return Vector2(off, off + advance);
+			}
+		}
+		off += glyphs[i].advance * glyphs[i].repeat;
+	}
+
+	return Vector2();
 }
 
 int TextServer::shaped_text_next_grapheme_pos(RID p_shaped, int p_pos) const {

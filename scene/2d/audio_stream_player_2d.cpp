@@ -97,7 +97,7 @@ void AudioStreamPlayer2D::_notification(int p_what) {
 
 		while (stream_playbacks.size() > max_polyphony) {
 			AudioServer::get_singleton()->stop_playback_stream(stream_playbacks[0]);
-			stream_playbacks.remove(0);
+			stream_playbacks.remove_at(0);
 		}
 	}
 }
@@ -112,7 +112,13 @@ StringName AudioStreamPlayer2D::_get_actual_bus() {
 	PhysicsDirectSpaceState2D *space_state = PhysicsServer2D::get_singleton()->space_get_direct_state(world_2d->get_space());
 	PhysicsDirectSpaceState2D::ShapeResult sr[MAX_INTERSECT_AREAS];
 
-	int areas = space_state->intersect_point(global_pos, sr, MAX_INTERSECT_AREAS, Set<RID>(), area_mask, false, true);
+	PhysicsDirectSpaceState2D::PointParameters point_params;
+	point_params.position = global_pos;
+	point_params.collision_mask = area_mask;
+	point_params.collide_with_bodies = false;
+	point_params.collide_with_areas = true;
+
+	int areas = space_state->intersect_point(point_params, sr, MAX_INTERSECT_AREAS);
 
 	for (int i = 0; i < areas; i++) {
 		Area2D *area2d = Object::cast_to<Area2D>(sr[i].collider);

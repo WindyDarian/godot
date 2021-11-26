@@ -132,7 +132,7 @@ void VisualShaderGraphPlugin::show_port_preview(VisualShader::Type p_type, int p
 		if (links[p_node_id].preview_visible && !is_dirty() && links[p_node_id].preview_box != nullptr) {
 			links[p_node_id].graph_node->remove_child(links[p_node_id].preview_box);
 			memdelete(links[p_node_id].preview_box);
-			links[p_node_id].graph_node->set_size(Vector2(-1, -1));
+			links[p_node_id].graph_node->reset_size();
 			links[p_node_id].preview_visible = false;
 		}
 
@@ -256,7 +256,7 @@ void VisualShaderGraphPlugin::update_node_size(int p_node_id) {
 	if (!links.has(p_node_id)) {
 		return;
 	}
-	links[p_node_id].graph_node->set_size(Size2(-1, -1));
+	links[p_node_id].graph_node->reset_size();
 }
 
 void VisualShaderGraphPlugin::register_default_input_button(int p_node_id, int p_port_id, Button *p_button) {
@@ -1061,7 +1061,7 @@ void VisualShaderEditor::remove_plugin(const Ref<VisualShaderNodePlugin> &p_plug
 void VisualShaderEditor::clear_custom_types() {
 	for (int i = 0; i < add_options.size(); i++) {
 		if (add_options[i].is_custom) {
-			add_options.remove(i);
+			add_options.remove_at(i);
 			i--;
 		}
 	}
@@ -1976,7 +1976,7 @@ void VisualShaderEditor::_set_node_size(int p_type, int p_node, const Vector2 &p
 		}
 
 		gn->set_custom_minimum_size(size);
-		gn->set_size(Size2(1, 1));
+		gn->reset_size();
 
 		if (!expression_node.is_null() && text_box) {
 			Size2 box_size = size;
@@ -1990,7 +1990,7 @@ void VisualShaderEditor::_set_node_size(int p_type, int p_node, const Vector2 &p
 			box_size.y -= text_box->get_offset(SIDE_TOP);
 			box_size.y -= 28 * EDSCALE;
 			text_box->set_custom_minimum_size(box_size);
-			text_box->set_size(Size2(1, 1));
+			text_box->reset_size();
 		}
 	}
 }
@@ -2038,8 +2038,8 @@ void VisualShaderEditor::_comment_title_popup_show(const Point2 &p_position, int
 }
 
 void VisualShaderEditor::_comment_title_text_changed(const String &p_new_text) {
-	comment_title_change_edit->set_size(Size2(-1, -1));
-	comment_title_change_popup->set_size(Size2(-1, -1));
+	comment_title_change_edit->reset_size();
+	comment_title_change_popup->reset_size();
 }
 
 void VisualShaderEditor::_comment_title_text_submitted(const String &p_new_text) {
@@ -2083,8 +2083,8 @@ void VisualShaderEditor::_comment_desc_popup_show(const Point2 &p_position, int 
 }
 
 void VisualShaderEditor::_comment_desc_text_changed() {
-	comment_desc_change_edit->set_size(Size2(-1, -1));
-	comment_desc_change_popup->set_size(Size2(-1, -1));
+	comment_desc_change_edit->reset_size();
+	comment_desc_change_popup->reset_size();
 }
 
 void VisualShaderEditor::_comment_desc_confirm() {
@@ -3051,7 +3051,7 @@ void VisualShaderEditor::_graph_gui_input(const Ref<InputEvent> &p_event) {
 	Ref<InputEventMouseButton> mb = p_event;
 	VisualShader::Type type = get_current_shader_type();
 
-	if (mb.is_valid() && mb->is_pressed() && mb->get_button_index() == MOUSE_BUTTON_RIGHT) {
+	if (mb.is_valid() && mb->is_pressed() && mb->get_button_index() == MouseButton::RIGHT) {
 		selected_constants.clear();
 		selected_uniforms.clear();
 		selected_comment = -1;
@@ -3167,7 +3167,7 @@ void VisualShaderEditor::_graph_gui_input(const Ref<InputEvent> &p_event) {
 			menu_point = graph->get_local_mouse_position();
 			Point2 gpos = Input::get_singleton()->get_mouse_position();
 			popup_menu->set_position(gpos);
-			popup_menu->set_size(Size2(-1, -1));
+			popup_menu->reset_size();
 			popup_menu->popup();
 		}
 	}
@@ -3211,7 +3211,7 @@ void VisualShaderEditor::_show_members_dialog(bool at_mouse_pos, VisualShaderNod
 
 void VisualShaderEditor::_sbox_input(const Ref<InputEvent> &p_ie) {
 	Ref<InputEventKey> ie = p_ie;
-	if (ie.is_valid() && (ie->get_keycode() == KEY_UP || ie->get_keycode() == KEY_DOWN || ie->get_keycode() == KEY_ENTER || ie->get_keycode() == KEY_KP_ENTER)) {
+	if (ie.is_valid() && (ie->get_keycode() == Key::UP || ie->get_keycode() == Key::DOWN || ie->get_keycode() == Key::ENTER || ie->get_keycode() == Key::KP_ENTER)) {
 		members->gui_input(ie);
 		node_filter->accept_event();
 	}
@@ -4258,8 +4258,8 @@ VisualShaderEditor::VisualShaderEditor() {
 	comment_title_change_edit->connect("text_changed", callable_mp(this, &VisualShaderEditor::_comment_title_text_changed));
 	comment_title_change_edit->connect("text_submitted", callable_mp(this, &VisualShaderEditor::_comment_title_text_submitted));
 	comment_title_change_popup->add_child(comment_title_change_edit);
-	comment_title_change_edit->set_size(Size2(-1, -1));
-	comment_title_change_popup->set_size(Size2(-1, -1));
+	comment_title_change_edit->reset_size();
+	comment_title_change_popup->reset_size();
 	comment_title_change_popup->connect("focus_exited", callable_mp(this, &VisualShaderEditor::_comment_title_popup_focus_out));
 	comment_title_change_popup->connect("popup_hide", callable_mp(this, &VisualShaderEditor::_comment_title_popup_hide));
 	add_child(comment_title_change_popup);
@@ -4271,8 +4271,8 @@ VisualShaderEditor::VisualShaderEditor() {
 	comment_desc_change_edit->connect("text_changed", callable_mp(this, &VisualShaderEditor::_comment_desc_text_changed));
 	comment_desc_vbox->add_child(comment_desc_change_edit);
 	comment_desc_change_edit->set_custom_minimum_size(Size2(300 * EDSCALE, 150 * EDSCALE));
-	comment_desc_change_edit->set_size(Size2(-1, -1));
-	comment_desc_change_popup->set_size(Size2(-1, -1));
+	comment_desc_change_edit->reset_size();
+	comment_desc_change_popup->reset_size();
 	comment_desc_change_popup->connect("focus_exited", callable_mp(this, &VisualShaderEditor::_comment_desc_confirm));
 	comment_desc_change_popup->connect("popup_hide", callable_mp(this, &VisualShaderEditor::_comment_desc_popup_hide));
 	Button *comment_desc_confirm_button = memnew(Button);
@@ -4527,6 +4527,7 @@ VisualShaderEditor::VisualShaderEditor() {
 	add_options.push_back(AddOption("MultiplyByAxisAngle", "Particles", "Transform", "VisualShaderNodeParticleMultiplyByAxisAngle", "A node for help to multiply a position input vector by rotation using specific axis. Intended to work with emitters.", -1, VisualShaderNode::PORT_TYPE_VECTOR, TYPE_FLAGS_EMIT | TYPE_FLAGS_PROCESS | TYPE_FLAGS_COLLIDE, Shader::MODE_PARTICLES));
 
 	add_options.push_back(AddOption("BoxEmitter", "Particles", "Emitters", "VisualShaderNodeParticleBoxEmitter", "", -1, VisualShaderNode::PORT_TYPE_VECTOR, TYPE_FLAGS_EMIT, Shader::MODE_PARTICLES));
+	add_options.push_back(AddOption("MeshEmitter", "Particles", "Emitters", "VisualShaderNodeParticleMeshEmitter", "", -1, VisualShaderNode::PORT_TYPE_VECTOR, TYPE_FLAGS_EMIT, Shader::MODE_PARTICLES));
 	add_options.push_back(AddOption("RingEmitter", "Particles", "Emitters", "VisualShaderNodeParticleRingEmitter", "", -1, VisualShaderNode::PORT_TYPE_VECTOR, TYPE_FLAGS_EMIT, Shader::MODE_PARTICLES));
 	add_options.push_back(AddOption("SphereEmitter", "Particles", "Emitters", "VisualShaderNodeParticleSphereEmitter", "", -1, VisualShaderNode::PORT_TYPE_VECTOR, TYPE_FLAGS_EMIT, Shader::MODE_PARTICLES));
 
@@ -4977,7 +4978,7 @@ public:
 		}
 	}
 
-	void setup(Ref<Resource> p_parent_resource, Vector<EditorProperty *> p_properties, const Vector<StringName> &p_names, Ref<VisualShaderNode> p_node) {
+	void setup(Ref<Resource> p_parent_resource, Vector<EditorProperty *> p_properties, const Vector<StringName> &p_names, const Map<StringName, String> &p_overrided_names, Ref<VisualShaderNode> p_node) {
 		parent_resource = p_parent_resource;
 		updating = false;
 		node = p_node;
@@ -4993,7 +4994,11 @@ public:
 
 			Label *prop_name = memnew(Label);
 			String prop_name_str = p_names[i];
-			prop_name_str = prop_name_str.capitalize() + ":";
+			if (p_overrided_names.has(p_names[i])) {
+				prop_name_str = p_overrided_names[p_names[i]] + ":";
+			} else {
+				prop_name_str = prop_name_str.capitalize() + ":";
+			}
 			prop_name->set_text(prop_name_str);
 			prop_name->set_visible(false);
 			hbox->add_child(prop_name);
@@ -5085,7 +5090,7 @@ Control *VisualShaderNodePluginDefault::create_editor(const Ref<Resource> &p_par
 		properties.push_back(pinfo[i].name);
 	}
 	VisualShaderNodePluginDefaultEditor *editor = memnew(VisualShaderNodePluginDefaultEditor);
-	editor->setup(p_parent_resource, editors, properties, p_node);
+	editor->setup(p_parent_resource, editors, properties, p_node->get_editable_properties_names(), p_node);
 	return editor;
 }
 
@@ -5182,11 +5187,7 @@ EditorPropertyShaderMode::EditorPropertyShaderMode() {
 }
 
 bool EditorInspectorShaderModePlugin::can_handle(Object *p_object) {
-	return true; //can handle everything
-}
-
-void EditorInspectorShaderModePlugin::parse_begin(Object *p_object) {
-	//do none
+	return true; // Can handle everything.
 }
 
 bool EditorInspectorShaderModePlugin::parse_property(Object *p_object, const Variant::Type p_type, const String &p_path, const PropertyHint p_hint, const String &p_hint_text, const uint32_t p_usage, const bool p_wide) {
@@ -5199,11 +5200,7 @@ bool EditorInspectorShaderModePlugin::parse_property(Object *p_object, const Var
 		return true;
 	}
 
-	return false; //can be overridden, although it will most likely be last anyway
-}
-
-void EditorInspectorShaderModePlugin::parse_end() {
-	//do none
+	return false;
 }
 
 //////////////////////////////////
@@ -5220,7 +5217,9 @@ void VisualShaderNodePortPreview::_shader_changed() {
 	preview_shader.instantiate();
 	preview_shader->set_code(shader_code);
 	for (int i = 0; i < default_textures.size(); i++) {
-		preview_shader->set_default_texture_param(default_textures[i].name, default_textures[i].param);
+		for (int j = 0; j < default_textures[i].params.size(); j++) {
+			preview_shader->set_default_texture_param(default_textures[i].name, default_textures[i].params[j], j);
+		}
 	}
 
 	Ref<ShaderMaterial> material;

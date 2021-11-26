@@ -68,7 +68,7 @@
 #include "scene/resources/multimesh.h"
 #include "scene/resources/surface_tool.h"
 
-#include "modules/modules_enabled.gen.h"
+#include "modules/modules_enabled.gen.h" // For csg, gridmap.
 
 #ifdef MODULE_CSG_ENABLED
 #include "modules/csg/csg_shape.h"
@@ -5856,7 +5856,7 @@ void GLTFDocument::_import_animation(Ref<GLTFState> state, AnimationPlayer *ap, 
 	animation->set_name(name);
 
 	if (anim->get_loop()) {
-		animation->set_loop(true);
+		animation->set_loop_mode(Animation::LOOP_LINEAR);
 	}
 
 	float length = 0.0;
@@ -6115,7 +6115,10 @@ void GLTFDocument::_convert_mesh_instances(Ref<GLTFState> state) {
 			int bone_cnt = skeleton->get_bone_count();
 			ERR_FAIL_COND(bone_cnt != gltf_skeleton->joints.size());
 
-			ObjectID gltf_skin_key = skin->get_instance_id();
+			ObjectID gltf_skin_key;
+			if (skin.is_valid()) {
+				gltf_skin_key = skin->get_instance_id();
+			}
 			ObjectID gltf_skel_key = godot_skeleton->get_instance_id();
 			GLTFSkinIndex skin_gltf_i = -1;
 			GLTFNodeIndex root_gltf_i = -1;

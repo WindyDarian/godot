@@ -71,6 +71,9 @@ void ThemeEditorPreview::_preview_visibility_changed() {
 
 void ThemeEditorPreview::_picker_button_cbk() {
 	picker_overlay->set_visible(picker_button->is_pressed());
+	if (picker_button->is_pressed()) {
+		_reset_picker_overlay();
+	}
 }
 
 Control *ThemeEditorPreview::_find_hovered_control(Control *p_parent, Vector2 p_mouse_position) {
@@ -144,7 +147,7 @@ void ThemeEditorPreview::_gui_input_picker_overlay(const Ref<InputEvent> &p_even
 
 	Ref<InputEventMouseButton> mb = p_event;
 
-	if (mb.is_valid() && mb->is_pressed() && mb->get_button_index() == MOUSE_BUTTON_LEFT) {
+	if (mb.is_valid() && mb->is_pressed() && mb->get_button_index() == MouseButton::LEFT) {
 		if (hovered_control) {
 			StringName theme_type = hovered_control->get_theme_type_variation();
 			if (theme_type == StringName()) {
