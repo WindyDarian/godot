@@ -827,24 +827,9 @@ GDScriptParser::VariableNode *GDScriptParser::parse_variable(bool p_allow_proper
 		return nullptr;
 	}
 
-	GDScriptParser::IdentifierNode *identifier = parse_identifier();
-
-#ifdef DEBUG_ENABLED
-	List<MethodInfo> gdscript_funcs;
-	GDScriptLanguage::get_singleton()->get_public_functions(&gdscript_funcs);
-	for (MethodInfo &info : gdscript_funcs) {
-		if (info.name == identifier->name) {
-			push_warning(identifier, GDScriptWarning::SHADOWED_GLOBAL_IDENTIFIER, "local variable", identifier->name, "built-in function");
-		}
-	}
-	if (Variant::has_utility_function(identifier->name)) {
-		push_warning(identifier, GDScriptWarning::SHADOWED_GLOBAL_IDENTIFIER, "local variable", identifier->name, "built-in function");
-	}
-#endif
-
 	VariableNode *variable = alloc_node<VariableNode>();
-	variable->identifier = identifier;
-	variable->export_info.name = identifier->name;
+	variable->identifier = parse_identifier();
+	variable->export_info.name = variable->identifier->name;
 
 	if (match(GDScriptTokenizer::Token::COLON)) {
 		if (check(GDScriptTokenizer::Token::NEWLINE)) {
@@ -1097,24 +1082,8 @@ GDScriptParser::ParameterNode *GDScriptParser::parse_parameter() {
 		return nullptr;
 	}
 
-	GDScriptParser::IdentifierNode *identifier = parse_identifier();
-#ifdef DEBUG_ENABLED
-	List<MethodInfo> gdscript_funcs;
-	GDScriptLanguage::get_singleton()->get_public_functions(&gdscript_funcs);
-	for (MethodInfo &info : gdscript_funcs) {
-		if (info.name == identifier->name) {
-			push_warning(identifier, GDScriptWarning::SHADOWED_GLOBAL_IDENTIFIER, "parameter", identifier->name, "built-in function");
-		}
-	}
-	if (Variant::has_utility_function(identifier->name)) {
-		push_warning(identifier, GDScriptWarning::SHADOWED_GLOBAL_IDENTIFIER, "parameter", identifier->name, "built-in function");
-	} else if (ClassDB::class_exists(identifier->name)) {
-		push_warning(identifier, GDScriptWarning::SHADOWED_GLOBAL_IDENTIFIER, "parameter", identifier->name, "global class");
-	}
-#endif
-
 	ParameterNode *parameter = alloc_node<ParameterNode>();
-	parameter->identifier = identifier;
+	parameter->identifier = parse_identifier();
 
 	if (match(GDScriptTokenizer::Token::COLON)) {
 		if (check((GDScriptTokenizer::Token::EQUAL))) {
@@ -3100,7 +3069,7 @@ void GDScriptParser::get_class_doc_comment(int p_line, String &p_brief, String &
 	if (!comments.has(p_line)) {
 		return;
 	}
-	ERR_FAIL_COND(p_brief != "" || p_desc != "" || p_tutorials.size() != 0);
+	ERR_FAIL_COND(!p_brief.is_empty() || !p_desc.is_empty() || p_tutorials.size() != 0);
 
 	int line = p_line;
 	bool in_codeblock = false;
@@ -3132,7 +3101,7 @@ void GDScriptParser::get_class_doc_comment(int p_line, String &p_brief, String &
 		String striped_line = doc_line.strip_edges();
 
 		// Set the read mode.
-		if (striped_line.begins_with("@desc:") && p_desc == "") {
+		if (striped_line.begins_with("@desc:") && p_desc.is_empty()) {
 			mode = DESC;
 			striped_line = striped_line.trim_prefix("@desc:");
 			in_codeblock = _in_codeblock(doc_line, in_codeblock);
@@ -3413,7 +3382,7 @@ bool GDScriptParser::validate_annotation_arguments(AnnotationNode *p_annotation)
 					Variant::construct(parameter.type, r, &(name), 1, error);
 					p_annotation->resolved_arguments.push_back(r);
 					if (error.error != Callable::CallError::CALL_OK) {
-						push_error(vformat(R"(Expected %s as argument %d of annotation "%s").)", Variant::get_type_name(parameter.type), i + 1, p_annotation->name));
+						push_error(vformat(R"(Expected %s as argument %d of annotation "%s".)", Variant::get_type_name(parameter.type), i + 1, p_annotation->name));
 						p_annotation->resolved_arguments.remove_at(p_annotation->resolved_arguments.size() - 1);
 						return false;
 					}
@@ -3422,13 +3391,13 @@ bool GDScriptParser::validate_annotation_arguments(AnnotationNode *p_annotation)
 				[[fallthrough]];
 			default: {
 				if (argument->type != Node::LITERAL) {
-					push_error(vformat(R"(Expected %s as argument %d of annotation "%s").)", Variant::get_type_name(parameter.type), i + 1, p_annotation->name));
+					push_error(vformat(R"(Expected %s as argument %d of annotation "%s".)", Variant::get_type_name(parameter.type), i + 1, p_annotation->name));
 					return false;
 				}
 
 				Variant value = static_cast<LiteralNode *>(argument)->value;
 				if (!Variant::can_convert_strict(value.get_type(), parameter.type)) {
-					push_error(vformat(R"(Expected %s as argument %d of annotation "%s").)", Variant::get_type_name(parameter.type), i + 1, p_annotation->name));
+					push_error(vformat(R"(Expected %s as argument %d of annotation "%s".)", Variant::get_type_name(parameter.type), i + 1, p_annotation->name));
 					return false;
 				}
 				Callable::CallError error;
@@ -3437,7 +3406,7 @@ bool GDScriptParser::validate_annotation_arguments(AnnotationNode *p_annotation)
 				Variant::construct(parameter.type, r, &(args), 1, error);
 				p_annotation->resolved_arguments.push_back(r);
 				if (error.error != Callable::CallError::CALL_OK) {
-					push_error(vformat(R"(Expected %s as argument %d of annotation "%s").)", Variant::get_type_name(parameter.type), i + 1, p_annotation->name));
+					push_error(vformat(R"(Expected %s as argument %d of annotation "%s".)", Variant::get_type_name(parameter.type), i + 1, p_annotation->name));
 					p_annotation->resolved_arguments.remove_at(p_annotation->resolved_arguments.size() - 1);
 					return false;
 				}
