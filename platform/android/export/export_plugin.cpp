@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2021 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2021 Godot Engine contributors (cf. AUTHORS.md).   */
+/* Copyright (c) 2007-2022 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2022 Godot Engine contributors (cf. AUTHORS.md).   */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -2794,7 +2794,7 @@ Error EditorExportPlatformAndroid::export_project_helper(const Ref<EditorExportP
 
 		bool skip = false;
 
-		String file = fname;
+		String file = String::utf8(fname);
 
 		Vector<uint8_t> data;
 		data.resize(info.uncompressed_size);
@@ -2976,7 +2976,7 @@ Error EditorExportPlatformAndroid::export_project_helper(const Ref<EditorExportP
 		char extra[16384];
 		ret = unzGetCurrentFileInfo(tmp_unaligned, &info, fname, 16384, extra, 16384 - ZIP_ALIGNMENT, nullptr, 0);
 
-		String file = fname;
+		String file = String::utf8(fname);
 
 		Vector<uint8_t> data;
 		data.resize(info.compressed_size);

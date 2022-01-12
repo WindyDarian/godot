@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2021 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2021 Godot Engine contributors (cf. AUTHORS.md).   */
+/* Copyright (c) 2007-2022 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2022 Godot Engine contributors (cf. AUTHORS.md).   */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -126,7 +126,8 @@ void Button::_notification(int p_what) {
 					}
 				} break;
 				case DRAW_HOVER_PRESSED: {
-					if (has_theme_stylebox(SNAME("hover_pressed")) && has_theme_stylebox_override("hover_pressed")) {
+					// Edge case for CheckButton and CheckBox.
+					if (has_theme_stylebox("hover_pressed")) {
 						if (rtl && has_theme_stylebox(SNAME("hover_pressed_mirrored"))) {
 							style = get_theme_stylebox(SNAME("hover_pressed_mirrored"));
 						} else {
@@ -138,8 +139,6 @@ void Button::_notification(int p_what) {
 						}
 						if (has_theme_color(SNAME("font_hover_pressed_color"))) {
 							color = get_theme_color(SNAME("font_hover_pressed_color"));
-						} else {
-							color = get_theme_color(SNAME("font_color"));
 						}
 						if (has_theme_color(SNAME("icon_hover_pressed_color"))) {
 							color_icon = get_theme_color(SNAME("icon_hover_pressed_color"));
@@ -303,6 +302,8 @@ void Button::_notification(int p_what) {
 
 			Point2 text_ofs = (size - style->get_minimum_size() - icon_ofs - text_buf->get_size() - Point2(_internal_margin[SIDE_RIGHT] - _internal_margin[SIDE_LEFT], 0)) / 2.0;
 
+			text_buf->set_alignment(align_rtl_checked);
+			text_buf->set_width(text_width);
 			switch (align_rtl_checked) {
 				case HORIZONTAL_ALIGNMENT_FILL:
 				case HORIZONTAL_ALIGNMENT_LEFT: {
@@ -498,7 +499,7 @@ bool Button::_set(const StringName &p_name, const Variant &p_value) {
 	if (str.begins_with("opentype_features/")) {
 		String name = str.get_slicec('/', 1);
 		int32_t tag = TS->name_to_tag(name);
-		double value = p_value;
+		int value = p_value;
 		if (value == -1) {
 			if (opentype_features.has(tag)) {
 				opentype_features.erase(tag);
@@ -506,7 +507,7 @@ bool Button::_set(const StringName &p_name, const Variant &p_value) {
 				update();
 			}
 		} else {
-			if ((double)opentype_features[tag] != value) {
+			if (!opentype_features.has(tag) || (int)opentype_features[tag] != value) {
 				opentype_features[tag] = value;
 				_shape();
 				update();
@@ -538,7 +539,7 @@ bool Button::_get(const StringName &p_name, Variant &r_ret) const {
 void Button::_get_property_list(List<PropertyInfo> *p_list) const {
 	for (const Variant *ftr = opentype_features.next(nullptr); ftr != nullptr; ftr = opentype_features.next(ftr)) {
 		String name = TS->tag_to_name(*ftr);
-		p_list->push_back(PropertyInfo(Variant::FLOAT, "opentype_features/" + name));
+		p_list->push_back(PropertyInfo(Variant::INT, "opentype_features/" + name));
 	}
 	p_list->push_back(PropertyInfo(Variant::NIL, "opentype_features/_new", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_EDITOR));
 }

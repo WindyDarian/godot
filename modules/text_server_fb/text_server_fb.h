@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2021 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2021 Godot Engine contributors (cf. AUTHORS.md).   */
+/* Copyright (c) 2007-2022 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2022 Godot Engine contributors (cf. AUTHORS.md).   */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -150,6 +150,7 @@ class TextServerFallback : public TextServer {
 
 		bool face_init = false;
 		Dictionary supported_varaitions;
+		Dictionary feature_overrides;
 
 		// Language/script support override.
 		Map<String, bool> language_support_overrides;
@@ -356,6 +357,9 @@ public:
 	virtual bool font_get_script_support_override(RID p_font_rid, const String &p_script) override;
 	virtual void font_remove_script_support_override(RID p_font_rid, const String &p_script) override;
 	virtual Vector<String> font_get_script_support_overrides(RID p_font_rid) override;
+
+	virtual void font_set_opentype_feature_overrides(RID p_font_rid, const Dictionary &p_overrides) override;
+	virtual Dictionary font_get_opentype_feature_overrides(RID p_font_rid) const override;
 
 	virtual Dictionary font_supported_feature_list(RID p_font_rid) const override;
 	virtual Dictionary font_supported_variation_list(RID p_font_rid) const override;

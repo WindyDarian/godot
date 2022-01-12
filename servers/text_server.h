@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2021 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2021 Godot Engine contributors (cf. AUTHORS.md).   */
+/* Copyright (c) 2007-2022 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2022 Godot Engine contributors (cf. AUTHORS.md).   */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -349,6 +349,9 @@ public:
 	virtual bool font_get_script_support_override(RID p_font_rid, const String &p_script) = 0;
 	virtual void font_remove_script_support_override(RID p_font_rid, const String &p_script) = 0;
 	virtual Vector<String> font_get_script_support_overrides(RID p_font_rid) = 0;
+
+	virtual void font_set_opentype_feature_overrides(RID p_font_rid, const Dictionary &p_overrides) = 0;
+	virtual Dictionary font_get_opentype_feature_overrides(RID p_font_rid) const = 0;
 
 	virtual Dictionary font_supported_feature_list(RID p_font_rid) const = 0;
 	virtual Dictionary font_supported_variation_list(RID p_font_rid) const = 0;

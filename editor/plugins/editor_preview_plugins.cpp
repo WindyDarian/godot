@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2021 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2021 Godot Engine contributors (cf. AUTHORS.md).   */
+/* Copyright (c) 2007-2022 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2022 Godot Engine contributors (cf. AUTHORS.md).   */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -514,11 +514,7 @@ Ref<Texture2D> EditorScriptPreviewPlugin::generate(const RES &p_from, const Size
 	}
 	bg_color.a = MAX(bg_color.a, 0.2); // some background
 
-	for (int i = 0; i < thumbnail_size; i++) {
-		for (int j = 0; j < thumbnail_size; j++) {
-			img->set_pixel(i, j, bg_color);
-		}
-	}
+	img->fill(bg_color);
 
 	const int x0 = thumbnail_size / 8;
 	const int y0 = thumbnail_size / 8;

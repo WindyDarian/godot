@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2021 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2021 Godot Engine contributors (cf. AUTHORS.md).   */
+/* Copyright (c) 2007-2022 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2022 Godot Engine contributors (cf. AUTHORS.md).   */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -294,7 +294,7 @@ Ref<Theme> create_editor_theme(const Ref<Theme> p_theme) {
 	Ref<Theme> theme = Ref<Theme>(memnew(Theme));
 
 	// Controls may rely on the scale for their internal drawing logic.
-	theme->set_default_theme_base_scale(EDSCALE);
+	theme->set_default_base_scale(EDSCALE);
 
 	// Theme settings
 	Color accent_color = EDITOR_GET("interface/theme/accent_color");

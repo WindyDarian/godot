@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2021 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2021 Godot Engine contributors (cf. AUTHORS.md).   */
+/* Copyright (c) 2007-2022 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2022 Godot Engine contributors (cf. AUTHORS.md).   */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -666,7 +666,7 @@ class EditorPropertyResource : public EditorProperty {
 
 	void _viewport_selected(const NodePath &p_path);
 
-	void _sub_inspector_property_keyed(const String &p_property, const Variant &p_value, bool);
+	void _sub_inspector_property_keyed(const String &p_property, const Variant &p_value, bool p_advance);
 	void _sub_inspector_resource_selected(const RES &p_resource, const String &p_property);
 	void _sub_inspector_object_id_selected(int p_id);
 

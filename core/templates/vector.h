@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2021 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2021 Godot Engine contributors (cf. AUTHORS.md).   */
+/* Copyright (c) 2007-2022 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2022 Godot Engine contributors (cf. AUTHORS.md).   */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -42,6 +42,8 @@
 #include "core/templates/cowdata.h"
 #include "core/templates/search_array.h"
 #include "core/templates/sort_array.h"
+
+#include <initializer_list>
 
 template <class T>
 class VectorWriteProxy {
@@ -258,6 +260,15 @@ public:
 	}
 
 	_FORCE_INLINE_ Vector() {}
+	_FORCE_INLINE_ Vector(std::initializer_list<T> p_init) {
+		Error err = _cowdata.resize(p_init.size());
+		ERR_FAIL_COND(err);
+
+		int i = 0;
+		for (const T &element : p_init) {
+			_cowdata.set(i++, element);
+		}
+	}
 	_FORCE_INLINE_ Vector(const Vector &p_from) { _cowdata._ref(p_from._cowdata); }
 
 	_FORCE_INLINE_ ~Vector() {}

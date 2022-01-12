@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2021 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2021 Godot Engine contributors (cf. AUTHORS.md).   */
+/* Copyright (c) 2007-2022 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2022 Godot Engine contributors (cf. AUTHORS.md).   */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -230,7 +230,7 @@ void DisplayServerJavaScript::mouse_move_callback(double p_x, double p_y, double
 
 	ev->set_relative(Vector2(p_rel_x, p_rel_y));
 	Input::get_singleton()->set_mouse_position(ev->get_position());
-	ev->set_speed(Input::get_singleton()->get_last_mouse_speed());
+	ev->set_velocity(Input::get_singleton()->get_last_mouse_velocity());
 
 	Input::get_singleton()->parse_input_event(ev);
 }
@@ -500,7 +500,7 @@ void DisplayServerJavaScript::vk_input_text_callback(const char *p_text, int p_c
 		return;
 	}
 	// Call input_text
-	Variant event = String(p_text);
+	Variant event = String::utf8(p_text);
 	Variant *eventp = &event;
 	Variant ret;
 	Callable::CallError ce;
@@ -590,7 +590,7 @@ Vector<String> DisplayServerJavaScript::get_rendering_drivers_func() {
 
 // Clipboard
 void DisplayServerJavaScript::update_clipboard_callback(const char *p_text) {
-	get_singleton()->clipboard = p_text;
+	get_singleton()->clipboard = String::utf8(p_text);
 }
 
 void DisplayServerJavaScript::clipboard_set(const String &p_text) {

@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2021 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2021 Godot Engine contributors (cf. AUTHORS.md).   */
+/* Copyright (c) 2007-2022 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2022 Godot Engine contributors (cf. AUTHORS.md).   */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -33,6 +33,7 @@
 #include "core/config/engine.h"
 #include "core/config/project_settings.h"
 #include "core/string/ustring.h"
+#include "core/templates/local_vector.h"
 #include "core/version.h"
 #include "servers/rendering/rendering_device.h"
 
@@ -41,7 +42,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <vector>
 
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof(a[0]))
 #define APP_SHORT_NAME "GodotEngine"
@@ -212,7 +212,7 @@ VkBool32 VulkanContext::_check_layers(uint32_t check_count, const char *const *c
 }
 
 Error VulkanContext::_get_preferred_validation_layers(uint32_t *count, const char *const **names) {
-	static const std::vector<std::vector<const char *>> instance_validation_layers_alt{
+	static const LocalVector<LocalVector<const char *>> instance_validation_layers_alt{
 		// Preferred set of validation layers
 		{ "VK_LAYER_KHRONOS_validation" },
 
@@ -249,10 +249,10 @@ Error VulkanContext::_get_preferred_validation_layers(uint32_t *count, const cha
 	}
 
 	for (uint32_t i = 0; i < instance_validation_layers_alt.size(); i++) {
-		if (_check_layers(instance_validation_layers_alt[i].size(), instance_validation_layers_alt[i].data(), instance_layer_count, instance_layers)) {
+		if (_check_layers(instance_validation_layers_alt[i].size(), instance_validation_layers_alt[i].ptr(), instance_layer_count, instance_layers)) {
 			*count = instance_validation_layers_alt[i].size();
 			if (names != nullptr) {
-				*names = instance_validation_layers_alt[i].data();
+				*names = instance_validation_layers_alt[i].ptr();
 			}
 			break;
 		}
@@ -628,15 +628,13 @@ Error VulkanContext::_create_physical_device() {
 	}
 
 	CharString cs = ProjectSettings::get_singleton()->get("application/config/name").operator String().utf8();
-	String name = "GodotEngine " + String(VERSION_FULL_NAME);
-	CharString namecs = name.utf8();
 	const VkApplicationInfo app = {
 		/*sType*/ VK_STRUCTURE_TYPE_APPLICATION_INFO,
 		/*pNext*/ nullptr,
 		/*pApplicationName*/ cs.get_data(),
 		/*applicationVersion*/ 0,
-		/*pEngineName*/ namecs.get_data(),
-		/*engineVersion*/ 0,
+		/*pEngineName*/ VERSION_NAME,
+		/*engineVersion*/ VK_MAKE_VERSION(VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH),
 		/*apiVersion*/ VK_MAKE_VERSION(vulkan_major, vulkan_minor, 0)
 	};
 	VkInstanceCreateInfo inst_info{};
@@ -762,6 +760,7 @@ Error VulkanContext::_create_physical_device() {
 		{ 0, nullptr },
 	};
 	device_name = gpu_props.deviceName;
+	device_type = gpu_props.deviceType;
 	pipeline_cache_id = String::hex_encode_buffer(gpu_props.pipelineCacheUUID, VK_UUID_SIZE);
 	pipeline_cache_id += "-driver-" + itos(gpu_props.driverVersion);
 	{
@@ -2210,6 +2209,11 @@ String VulkanContext::get_device_vendor_name() const {
 String VulkanContext::get_device_name() const {
 	return device_name;
 }
+
+RenderingDevice::DeviceType VulkanContext::get_device_type() const {
+	return RenderingDevice::DeviceType(device_type);
+}
+
 String VulkanContext::get_device_pipeline_cache_uuid() const {
 	return pipeline_cache_id;
 }

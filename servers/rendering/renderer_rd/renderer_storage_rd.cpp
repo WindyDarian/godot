@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2021 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2021 Godot Engine contributors (cf. AUTHORS.md).   */
+/* Copyright (c) 2007-2022 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2022 Godot Engine contributors (cf. AUTHORS.md).   */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -971,12 +971,7 @@ void RendererStorageRD::texture_2d_placeholder_initialize(RID p_texture) {
 	Ref<Image> image;
 	image.instantiate();
 	image->create(4, 4, false, Image::FORMAT_RGBA8);
-
-	for (int i = 0; i < 4; i++) {
-		for (int j = 0; j < 4; j++) {
-			image->set_pixel(i, j, Color(1, 0, 1, 1));
-		}
-	}
+	image->fill(Color(1, 0, 1, 1));
 
 	texture_2d_initialize(p_texture, image);
 }
@@ -987,12 +982,7 @@ void RendererStorageRD::texture_2d_layered_placeholder_initialize(RID p_texture,
 	Ref<Image> image;
 	image.instantiate();
 	image->create(4, 4, false, Image::FORMAT_RGBA8);
-
-	for (int i = 0; i < 4; i++) {
-		for (int j = 0; j < 4; j++) {
-			image->set_pixel(i, j, Color(1, 0, 1, 1));
-		}
-	}
+	image->fill(Color(1, 0, 1, 1));
 
 	Vector<Ref<Image>> images;
 	if (p_layered_type == RS::TEXTURE_LAYERED_2D_ARRAY) {
@@ -1013,12 +1003,7 @@ void RendererStorageRD::texture_3d_placeholder_initialize(RID p_texture) {
 	Ref<Image> image;
 	image.instantiate();
 	image->create(4, 4, false, Image::FORMAT_RGBA8);
-
-	for (int i = 0; i < 4; i++) {
-		for (int j = 0; j < 4; j++) {
-			image->set_pixel(i, j, Color(1, 0, 1, 1));
-		}
-	}
+	image->fill(Color(1, 0, 1, 1));
 
 	Vector<Ref<Image>> images;
 	//cube
@@ -1639,14 +1624,14 @@ void RendererStorageRD::material_initialize(RID p_rid) {
 }
 
 void RendererStorageRD::_material_queue_update(Material *material, bool p_uniform, bool p_texture) {
+	material->uniform_dirty = material->uniform_dirty || p_uniform;
+	material->texture_dirty = material->texture_dirty || p_texture;
+
 	if (material->update_element.in_list()) {
 		return;
 	}
 
 	material_update_list.add(&material->update_element);
-
-	material->uniform_dirty = material->uniform_dirty || p_uniform;
-	material->texture_dirty = material->texture_dirty || p_texture;
 }
 
 void RendererStorageRD::material_set_shader(RID p_material, RID p_shader) {
@@ -2655,13 +2640,13 @@ void RendererStorageRD::MaterialData::update_uniform_buffer(const Map<StringName
 		uint32_t size = 0U;
 		// The following code enforces a 16-byte alignment of uniform arrays.
 		if (E.value.array_size > 0) {
-			size = ShaderLanguage::get_type_size(E.value.type) * E.value.array_size;
+			size = ShaderLanguage::get_datatype_size(E.value.type) * E.value.array_size;
 			int m = (16 * E.value.array_size);
 			if ((size % m) != 0U) {
 				size += m - (size % m);
 			}
 		} else {
-			size = ShaderLanguage::get_type_size(E.value.type);
+			size = ShaderLanguage::get_datatype_size(E.value.type);
 		}
 		ERR_CONTINUE(offset + size > p_buffer_size);
 #endif
@@ -2818,11 +2803,14 @@ void RendererStorageRD::MaterialData::update_textures(const Map<StringName, Vari
 						case ShaderLanguage::ShaderNode::Uniform::HINT_BLACK_ALBEDO: {
 							rd_texture = singleton->texture_rd_get_default(DEFAULT_RD_TEXTURE_BLACK);
 						} break;
-						case ShaderLanguage::ShaderNode::Uniform::HINT_NONE: {
-							rd_texture = singleton->texture_rd_get_default(DEFAULT_RD_TEXTURE_NORMAL);
-						} break;
 						case ShaderLanguage::ShaderNode::Uniform::HINT_ANISOTROPY: {
 							rd_texture = singleton->texture_rd_get_default(DEFAULT_RD_TEXTURE_ANISO);
+						} break;
+						case ShaderLanguage::ShaderNode::Uniform::HINT_NORMAL: {
+							rd_texture = singleton->texture_rd_get_default(DEFAULT_RD_TEXTURE_NORMAL);
+						} break;
+						case ShaderLanguage::ShaderNode::Uniform::HINT_ROUGHNESS_NORMAL: {
+							rd_texture = singleton->texture_rd_get_default(DEFAULT_RD_TEXTURE_NORMAL);
 						} break;
 						default: {
 							rd_texture = singleton->texture_rd_get_default(DEFAULT_RD_TEXTURE_WHITE);
@@ -3875,7 +3863,7 @@ void RendererStorageRD::_mesh_surface_generate_version_for_input_mask(Mesh::Surf
 				} break;
 				case RS::ARRAY_WEIGHTS: {
 					//assumed weights too
-					vd.format = RD::DATA_FORMAT_R32G32B32A32_UINT;
+					vd.format = RD::DATA_FORMAT_R32G32B32A32_SFLOAT;
 				} break;
 			}
 		} else {
@@ -6877,11 +6865,11 @@ void RendererStorageRD::reflection_probe_set_resolution(RID p_probe, int p_resol
 	reflection_probe->resolution = p_resolution;
 }
 
-void RendererStorageRD::reflection_probe_set_lod_threshold(RID p_probe, float p_ratio) {
+void RendererStorageRD::reflection_probe_set_mesh_lod_threshold(RID p_probe, float p_ratio) {
 	ReflectionProbe *reflection_probe = reflection_probe_owner.get_or_null(p_probe);
 	ERR_FAIL_COND(!reflection_probe);
 
-	reflection_probe->lod_threshold = p_ratio;
+	reflection_probe->mesh_lod_threshold = p_ratio;
 
 	reflection_probe->dependency.changed_notify(DEPENDENCY_CHANGED_REFLECTION_PROBE);
 }
@@ -6939,11 +6927,11 @@ float RendererStorageRD::reflection_probe_get_origin_max_distance(RID p_probe) c
 	return reflection_probe->max_distance;
 }
 
-float RendererStorageRD::reflection_probe_get_lod_threshold(RID p_probe) const {
+float RendererStorageRD::reflection_probe_get_mesh_lod_threshold(RID p_probe) const {
 	const ReflectionProbe *reflection_probe = reflection_probe_owner.get_or_null(p_probe);
 	ERR_FAIL_COND_V(!reflection_probe, 0);
 
-	return reflection_probe->lod_threshold;
+	return reflection_probe->mesh_lod_threshold;
 }
 
 int RendererStorageRD::reflection_probe_get_resolution(RID p_probe) const {
@@ -9234,7 +9222,7 @@ void RendererStorageRD::_update_global_variables() {
 
 			for (uint32_t i = 0; i < total_regions; i++) {
 				if (global_variables.buffer_dirty_regions[i]) {
-					RD::get_singleton()->buffer_update(global_variables.buffer, i * region_byte_size, region_byte_size, global_variables.buffer_values);
+					RD::get_singleton()->buffer_update(global_variables.buffer, i * region_byte_size, region_byte_size, &global_variables.buffer_values[i * GlobalVariables::BUFFER_DIRTY_REGION_SIZE]);
 
 					global_variables.buffer_dirty_regions[i] = false;
 				}
@@ -9529,8 +9517,13 @@ uint64_t RendererStorageRD::get_rendering_info(RS::RenderingInfo p_info) {
 String RendererStorageRD::get_video_adapter_name() const {
 	return RenderingDevice::get_singleton()->get_device_name();
 }
+
 String RendererStorageRD::get_video_adapter_vendor() const {
 	return RenderingDevice::get_singleton()->get_device_vendor_name();
+}
+
+RenderingDevice::DeviceType RendererStorageRD::get_video_adapter_type() const {
+	return RenderingDevice::get_singleton()->get_device_type();
 }
 
 RendererStorageRD *RendererStorageRD::base_singleton = nullptr;

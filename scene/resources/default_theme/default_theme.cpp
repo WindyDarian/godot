@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2021 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2021 Godot Engine contributors (cf. AUTHORS.md).   */
+/* Copyright (c) 2007-2022 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2022 Godot Engine contributors (cf. AUTHORS.md).   */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -994,7 +994,7 @@ void fill_default_theme(Ref<Theme> &theme, const Ref<Font> &default_font, const 
 	// Visual Node Ports
 
 	theme->set_constant("port_grab_distance_horizontal", "GraphEdit", 24 * scale);
-	theme->set_constant("port_grab_distance_vertical", "GraphEdit", 6 * scale);
+	theme->set_constant("port_grab_distance_vertical", "GraphEdit", 26 * scale);
 
 	theme->set_stylebox("bg", "GraphEditMinimap", make_flat_stylebox(Color(0.24, 0.24, 0.24), 0, 0, 0, 0));
 	Ref<StyleBoxFlat> style_minimap_camera = make_flat_stylebox(Color(0.65, 0.65, 0.65, 0.2), 0, 0, 0, 0);
@@ -1053,17 +1053,17 @@ void make_default_theme(bool p_hidpi, Ref<Font> p_font) {
 	fill_default_theme(t, default_font, large_font, default_icon, default_style, default_scale);
 
 	Theme::set_default(t);
-	Theme::set_default_base_scale(default_scale);
-	Theme::set_default_icon(default_icon);
-	Theme::set_default_style(default_style);
-	Theme::set_default_font(default_font);
-	Theme::set_default_font_size(default_font_size);
+	Theme::set_fallback_base_scale(default_scale);
+	Theme::set_fallback_icon(default_icon);
+	Theme::set_fallback_style(default_style);
+	Theme::set_fallback_font(default_font);
+	Theme::set_fallback_font_size(default_font_size);
 }
 
 void clear_default_theme() {
 	Theme::set_project_default(nullptr);
 	Theme::set_default(nullptr);
-	Theme::set_default_icon(nullptr);
-	Theme::set_default_style(nullptr);
-	Theme::set_default_font(nullptr);
+	Theme::set_fallback_icon(nullptr);
+	Theme::set_fallback_style(nullptr);
+	Theme::set_fallback_font(nullptr);
 }

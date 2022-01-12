@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2021 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2021 Godot Engine contributors (cf. AUTHORS.md).   */
+/* Copyright (c) 2007-2022 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2022 Godot Engine contributors (cf. AUTHORS.md).   */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -2316,10 +2316,12 @@ void VisualScriptEmitSignal::_validate_property(PropertyInfo &property) const {
 		property.hint = PROPERTY_HINT_ENUM;
 
 		List<StringName> sigs;
+		List<MethodInfo> base_sigs;
 
 		Ref<VisualScript> vs = get_visual_script();
 		if (vs.is_valid()) {
 			vs->get_custom_signal_list(&sigs);
+			ClassDB::get_signal_list(vs->get_instance_base_type(), &base_sigs);
 		}
 
 		String ml;
@@ -2328,6 +2330,12 @@ void VisualScriptEmitSignal::_validate_property(PropertyInfo &property) const {
 				ml += ",";
 			}
 			ml += E;
+		}
+		for (const MethodInfo &E : base_sigs) {
+			if (!ml.is_empty()) {
+				ml += ",";
+			}
+			ml += E.name;
 		}
 
 		property.hint_string = ml;

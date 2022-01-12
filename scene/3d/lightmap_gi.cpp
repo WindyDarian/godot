@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2021 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2021 Godot Engine contributors (cf. AUTHORS.md).   */
+/* Copyright (c) 2007-2022 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2022 Godot Engine contributors (cf. AUTHORS.md).   */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -942,11 +942,7 @@ LightmapGI::BakeError LightmapGI::bake(Node *p_from_node, String p_image_data_pa
 				c.r *= environment_custom_energy;
 				c.g *= environment_custom_energy;
 				c.b *= environment_custom_energy;
-				for (int i = 0; i < 128; i++) {
-					for (int j = 0; j < 64; j++) {
-						environment_image->set_pixel(i, j, c);
-					}
-				}
+				environment_image->fill(c);
 
 			} break;
 		}

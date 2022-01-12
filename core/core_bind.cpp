@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2021 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2021 Godot Engine contributors (cf. AUTHORS.md).   */
+/* Copyright (c) 2007-2022 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2022 Godot Engine contributors (cf. AUTHORS.md).   */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -1672,9 +1672,9 @@ void Directory::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("rename", "from", "to"), &Directory::rename);
 	ClassDB::bind_method(D_METHOD("remove", "path"), &Directory::remove);
 
-	ClassDB::bind_method(D_METHOD("set_include_navigational"), &Directory::set_include_navigational);
+	ClassDB::bind_method(D_METHOD("set_include_navigational", "enable"), &Directory::set_include_navigational);
 	ClassDB::bind_method(D_METHOD("get_include_navigational"), &Directory::get_include_navigational);
-	ClassDB::bind_method(D_METHOD("set_include_hidden"), &Directory::set_include_hidden);
+	ClassDB::bind_method(D_METHOD("set_include_hidden", "enable"), &Directory::set_include_hidden);
 	ClassDB::bind_method(D_METHOD("get_include_hidden"), &Directory::get_include_hidden);
 
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "include_navigational"), "set_include_navigational", "get_include_navigational");
@@ -1894,7 +1894,7 @@ void Thread::_start_func(void *ud) {
 
 Error Thread::start(const Callable &p_callable, const Variant &p_userdata, Priority p_priority) {
 	ERR_FAIL_COND_V_MSG(is_started(), ERR_ALREADY_IN_USE, "Thread already started.");
-	ERR_FAIL_COND_V(p_callable.is_null(), ERR_INVALID_PARAMETER);
+	ERR_FAIL_COND_V(!p_callable.is_valid(), ERR_INVALID_PARAMETER);
 	ERR_FAIL_INDEX_V(p_priority, PRIORITY_MAX, ERR_INVALID_PARAMETER);
 
 	ret = Variant();
@@ -2297,7 +2297,7 @@ void Engine::register_singleton(const StringName &p_name, Object *p_object) {
 	;
 }
 void Engine::unregister_singleton(const StringName &p_name) {
-	ERR_FAIL_COND_MSG(!has_singleton(p_name), "Attempt to remove unregisteres singleton: " + String(p_name));
+	ERR_FAIL_COND_MSG(!has_singleton(p_name), "Attempt to remove unregistered singleton: " + String(p_name));
 	ERR_FAIL_COND_MSG(!::Engine::get_singleton()->is_singleton_user_created(p_name), "Attempt to remove non-user created singleton: " + String(p_name));
 	::Engine::get_singleton()->remove_singleton(p_name);
 }

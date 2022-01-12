@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2021 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2021 Godot Engine contributors (cf. AUTHORS.md).   */
+/* Copyright (c) 2007-2022 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2022 Godot Engine contributors (cf. AUTHORS.md).   */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -1513,6 +1513,8 @@ static void _register_variant_builtin_methods() {
 	bind_method(Vector2i, aspect, sarray(), varray());
 	bind_method(Vector2i, max_axis_index, sarray(), varray());
 	bind_method(Vector2i, min_axis_index, sarray(), varray());
+	bind_method(Vector2i, length, sarray(), varray());
+	bind_method(Vector2i, length_squared, sarray(), varray());
 	bind_method(Vector2i, sign, sarray(), varray());
 	bind_method(Vector2i, abs, sarray(), varray());
 	bind_method(Vector2i, clamp, sarray("min", "max"), varray());
@@ -1594,6 +1596,8 @@ static void _register_variant_builtin_methods() {
 
 	bind_method(Vector3i, min_axis_index, sarray(), varray());
 	bind_method(Vector3i, max_axis_index, sarray(), varray());
+	bind_method(Vector3i, length, sarray(), varray());
+	bind_method(Vector3i, length_squared, sarray(), varray());
 	bind_method(Vector3i, sign, sarray(), varray());
 	bind_method(Vector3i, abs, sarray(), varray());
 	bind_method(Vector3i, clamp, sarray("min", "max"), varray());

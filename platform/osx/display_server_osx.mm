@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2021 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2021 Godot Engine contributors (cf. AUTHORS.md).   */
+/* Copyright (c) 2007-2022 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2022 Godot Engine contributors (cf. AUTHORS.md).   */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -787,7 +787,7 @@ static void _mouseDownEvent(DisplayServer::WindowID window_id, NSEvent *event, M
 		mm->set_tilt(Vector2(p.x, p.y));
 	}
 	mm->set_global_position(pos);
-	mm->set_speed(Input::get_singleton()->get_last_mouse_speed());
+	mm->set_velocity(Input::get_singleton()->get_last_mouse_velocity());
 	const Vector2i relativeMotion = Vector2i(delta.x, delta.y) * DS_OSX->screen_get_max_scale();
 	mm->set_relative(relativeMotion);
 	_get_key_modifier_state([event modifierFlags], mm);

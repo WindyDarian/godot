@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2021 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2021 Godot Engine contributors (cf. AUTHORS.md).   */
+/* Copyright (c) 2007-2022 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2022 Godot Engine contributors (cf. AUTHORS.md).   */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -273,8 +273,8 @@ void editor_register_fonts(Ref<Theme> p_theme) {
 
 	// Default font
 	MAKE_DEFAULT_FONT(df, String());
-	p_theme->set_default_theme_font(df); // Default theme font
-	p_theme->set_default_theme_font_size(default_font_size);
+	p_theme->set_default_font(df); // Default theme font
+	p_theme->set_default_font_size(default_font_size);
 
 	p_theme->set_font_size("main_size", "EditorFonts", default_font_size);
 	p_theme->set_font("main", "EditorFonts", df);
