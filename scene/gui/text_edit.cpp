@@ -1244,7 +1244,7 @@ void TextEdit::_notification(int p_what) {
 					}
 
 					// Carets.
-					int caret_width = Math::round(1 * get_theme_default_base_scale());
+					const int caret_width = get_theme_constant(SNAME("caret_width")) * get_theme_default_base_scale();
 
 					if (!clipped && caret.line == line && line_wrap_index == caret_wrap_index) {
 						caret.draw_pos.y = ofs_y + ldata->get_line_descent(line_wrap_index);
@@ -2812,6 +2812,17 @@ void TextEdit::clear() {
 }
 
 void TextEdit::_clear() {
+	if (editable && undo_enabled) {
+		_move_caret_document_start(false);
+		begin_complex_operation();
+
+		_remove_text(0, 0, MAX(0, get_line_count() - 1), MAX(get_line(MAX(get_line_count() - 1, 0)).size() - 1, 0));
+		insert_text_at_caret("");
+		text.clear();
+
+		end_complex_operation();
+		return;
+	}
 	clear_undo_history();
 	text.clear();
 	caret.column = 0;
