@@ -48,6 +48,8 @@
 #include "servers/display_server.h"
 #include "shader_create_dialog.h"
 
+FileSystemDock *FileSystemDock::singleton = nullptr;
+
 Ref<Texture2D> FileSystemDock::_get_tree_item_icon(bool p_is_valid, String p_file_type) {
 	Ref<Texture2D> file_icon;
 	if (!p_is_valid) {
@@ -2335,7 +2337,7 @@ void FileSystemDock::drop_data_fw(const Point2 &p_point, const Variant &p_data, 
 		String to_dir;
 		bool favorite;
 		_get_drag_target_folder(to_dir, favorite, p_point, p_from);
-		EditorNode::get_singleton()->get_scene_tree_dock()->save_branch_to_file(to_dir);
+		SceneTreeDock::get_singleton()->save_branch_to_file(to_dir);
 	}
 }
 
@@ -2506,6 +2508,7 @@ void FileSystemDock::_file_and_folders_fill_popup(PopupMenu *p_popup, Vector<Str
 		String fpath = p_paths[0];
 		String item_text = fpath.ends_with("/") ? TTR("Open in File Manager") : TTR("Show in File Manager");
 		p_popup->add_icon_item(get_theme_icon(SNAME("Filesystem"), SNAME("EditorIcons")), item_text, FILE_SHOW_IN_EXPLORER);
+		path = fpath;
 	}
 }
 
@@ -2542,6 +2545,9 @@ void FileSystemDock::_tree_rmb_empty(const Vector2 &p_pos) {
 	tree_popup->add_icon_item(get_theme_icon(SNAME("Script"), SNAME("EditorIcons")), TTR("New Script..."), FILE_NEW_SCRIPT);
 	tree_popup->add_icon_item(get_theme_icon(SNAME("Object"), SNAME("EditorIcons")), TTR("New Resource..."), FILE_NEW_RESOURCE);
 	tree_popup->add_icon_item(get_theme_icon(SNAME("TextFile"), SNAME("EditorIcons")), TTR("New TextFile..."), FILE_NEW_TEXTFILE);
+	tree_popup->add_separator();
+	tree_popup->add_icon_item(get_theme_icon(SNAME("Filesystem"), SNAME("EditorIcons")), TTR("Open in File Manager"), FILE_SHOW_IN_EXPLORER);
+
 	tree_popup->set_position(tree->get_screen_position() + p_pos);
 	tree_popup->reset_size();
 	tree_popup->popup();
@@ -2580,6 +2586,8 @@ void FileSystemDock::_file_list_rmb_pressed(const Vector2 &p_pos) {
 	if (searched_string.length() > 0) {
 		return;
 	}
+
+	path = current_path->get_text();
 
 	file_list_popup->clear();
 	file_list_popup->reset_size();
@@ -2737,11 +2745,11 @@ void FileSystemDock::_update_import_dock() {
 	}
 
 	if (imports.size() == 0) {
-		EditorNode::get_singleton()->get_import_dock()->clear();
+		ImportDock::get_singleton()->clear();
 	} else if (imports.size() == 1) {
-		EditorNode::get_singleton()->get_import_dock()->set_edit_path(imports[0]);
+		ImportDock::get_singleton()->set_edit_path(imports[0]);
 	} else {
-		EditorNode::get_singleton()->get_import_dock()->set_edit_multiple_paths(imports);
+		ImportDock::get_singleton()->set_edit_multiple_paths(imports);
 	}
 
 	import_dock_needs_update = false;
@@ -2810,6 +2818,7 @@ void FileSystemDock::_bind_methods() {
 }
 
 FileSystemDock::FileSystemDock(EditorNode *p_editor) {
+	singleton = this;
 	set_name("FileSystem");
 	editor = p_editor;
 	path = "res://";
@@ -3045,4 +3054,5 @@ FileSystemDock::FileSystemDock(EditorNode *p_editor) {
 }
 
 FileSystemDock::~FileSystemDock() {
+	singleton = nullptr;
 }

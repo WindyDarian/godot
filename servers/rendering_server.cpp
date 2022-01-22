@@ -1927,8 +1927,8 @@ void RenderingServer::_bind_methods() {
 	BIND_ENUM_CONSTANT(LIGHT_PARAM_MAX);
 
 	BIND_ENUM_CONSTANT(LIGHT_BAKE_DISABLED);
-	BIND_ENUM_CONSTANT(LIGHT_BAKE_DYNAMIC);
 	BIND_ENUM_CONSTANT(LIGHT_BAKE_STATIC);
+	BIND_ENUM_CONSTANT(LIGHT_BAKE_DYNAMIC);
 
 	BIND_ENUM_CONSTANT(LIGHT_OMNI_SHADOW_DUAL_PARABOLOID);
 	BIND_ENUM_CONSTANT(LIGHT_OMNI_SHADOW_CUBE);
@@ -2388,10 +2388,6 @@ void RenderingServer::_bind_methods() {
 	BIND_ENUM_CONSTANT(ENV_SSIL_QUALITY_HIGH);
 	BIND_ENUM_CONSTANT(ENV_SSIL_QUALITY_ULTRA);
 
-	BIND_ENUM_CONSTANT(ENV_SDFGI_CASCADES_4);
-	BIND_ENUM_CONSTANT(ENV_SDFGI_CASCADES_6);
-	BIND_ENUM_CONSTANT(ENV_SDFGI_CASCADES_8);
-
 	BIND_ENUM_CONSTANT(ENV_SDFGI_Y_SCALE_DISABLED);
 	BIND_ENUM_CONSTANT(ENV_SDFGI_Y_SCALE_75_PERCENT);
 	BIND_ENUM_CONSTANT(ENV_SDFGI_Y_SCALE_50_PERCENT);
@@ -2775,13 +2771,14 @@ void RenderingServer::mesh_add_surface_from_mesh_data(RID p_mesh, const Geometry
 		const Geometry3D::MeshData::Face &f = p_mesh_data.faces[i];
 
 		for (int j = 2; j < f.indices.size(); j++) {
-#define _ADD_VERTEX(m_idx)                                      \
-	vertices.push_back(p_mesh_data.vertices[f.indices[m_idx]]); \
-	normals.push_back(f.plane.normal);
+			vertices.push_back(p_mesh_data.vertices[f.indices[0]]);
+			normals.push_back(f.plane.normal);
 
-			_ADD_VERTEX(0);
-			_ADD_VERTEX(j - 1);
-			_ADD_VERTEX(j);
+			vertices.push_back(p_mesh_data.vertices[f.indices[j - 1]]);
+			normals.push_back(f.plane.normal);
+
+			vertices.push_back(p_mesh_data.vertices[f.indices[j]]);
+			normals.push_back(f.plane.normal);
 		}
 	}
 

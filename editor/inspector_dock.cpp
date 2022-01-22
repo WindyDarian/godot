@@ -33,6 +33,8 @@
 #include "editor/editor_scale.h"
 #include "editor/plugins/animation_player_editor_plugin.h"
 
+InspectorDock *InspectorDock::singleton = nullptr;
+
 void InspectorDock::_menu_option(int p_option) {
 	_menu_option_confirm(p_option, false);
 }
@@ -108,7 +110,7 @@ void InspectorDock::_menu_option_confirm(int p_option, bool p_confirmed) {
 						Variant v = current->get(E->get().name);
 						REF ref = v;
 						RES res = ref;
-						if (v.is_ref() && ref.is_valid() && res.is_valid()) {
+						if (v.is_ref_counted() && ref.is_valid() && res.is_valid()) {
 							// Valid resource which would be duplicated if action is confirmed.
 							resource_propnames.append(E->get().name);
 						}
@@ -145,7 +147,7 @@ void InspectorDock::_menu_option_confirm(int p_option, bool p_confirmed) {
 						}
 
 						Variant v = current->get(prop_info.name);
-						if (v.is_ref()) {
+						if (v.is_ref_counted()) {
 							REF ref = v;
 							if (ref.is_valid()) {
 								RES res = ref;
@@ -156,7 +158,7 @@ void InspectorDock::_menu_option_confirm(int p_option, bool p_confirmed) {
 									res = duplicates[res];
 
 									current->set(prop_info.name, res);
-									editor->get_inspector()->update_property(prop_info.name);
+									get_inspector_singleton()->update_property(prop_info.name);
 								}
 							}
 						}
@@ -382,20 +384,6 @@ void InspectorDock::_menu_expandall() {
 	inspector->expand_all_folding();
 }
 
-void InspectorDock::_property_keyed(const String &p_keyed, const Variant &p_value, bool p_advance) {
-	AnimationPlayerEditor::get_singleton()->get_track_editor()->insert_value_key(p_keyed, p_value, p_advance);
-}
-
-void InspectorDock::_transform_keyed(Object *sp, const String &p_sub, const Transform3D &p_key) {
-	Node3D *s = Object::cast_to<Node3D>(sp);
-	if (!s) {
-		return;
-	}
-	AnimationPlayerEditor::get_singleton()->get_track_editor()->insert_transform_key(s, p_sub, Animation::TYPE_POSITION_3D, p_key.origin);
-	AnimationPlayerEditor::get_singleton()->get_track_editor()->insert_transform_key(s, p_sub, Animation::TYPE_ROTATION_3D, p_key.basis.get_rotation_quaternion());
-	AnimationPlayerEditor::get_singleton()->get_track_editor()->insert_transform_key(s, p_sub, Animation::TYPE_SCALE_3D, p_key.basis.get_scale());
-}
-
 void InspectorDock::_warning_pressed() {
 	warning_dialog->popup_centered();
 }
@@ -440,9 +428,6 @@ void InspectorDock::_notification(int p_what) {
 }
 
 void InspectorDock::_bind_methods() {
-	ClassDB::bind_method("update_keying", &InspectorDock::update_keying);
-	ClassDB::bind_method("_transform_keyed", &InspectorDock::_transform_keyed); // Still used by some connect_compat.
-
 	ClassDB::bind_method("_unref_resource", &InspectorDock::_unref_resource);
 	ClassDB::bind_method("_paste_resource", &InspectorDock::_paste_resource);
 	ClassDB::bind_method("_copy_resource", &InspectorDock::_copy_resource);
@@ -547,23 +532,8 @@ void InspectorDock::go_back() {
 	_edit_back();
 }
 
-void InspectorDock::update_keying() {
-	bool valid = false;
-
-	if (AnimationPlayerEditor::get_singleton()->get_track_editor()->has_keying()) {
-		EditorHistory *editor_history = EditorNode::get_singleton()->get_editor_history();
-		if (editor_history->get_path_size() >= 1) {
-			Object *obj = ObjectDB::get_instance(editor_history->get_path_object(0));
-			if (Object::cast_to<Node>(obj)) {
-				valid = true;
-			}
-		}
-	}
-
-	inspector->set_keying(valid);
-}
-
 InspectorDock::InspectorDock(EditorNode *p_editor, EditorData &p_editor_data) {
+	singleton = this;
 	set_name("Inspector");
 
 	editor = p_editor;
@@ -716,8 +686,8 @@ InspectorDock::InspectorDock(EditorNode *p_editor, EditorData &p_editor_data) {
 	inspector->set_use_filter(true); // TODO: check me
 
 	inspector->connect("resource_selected", callable_mp(this, &InspectorDock::_resource_selected));
-	inspector->connect("property_keyed", callable_mp(this, &InspectorDock::_property_keyed));
 }
 
 InspectorDock::~InspectorDock() {
+	singleton = nullptr;
 }

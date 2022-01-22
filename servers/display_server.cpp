@@ -139,10 +139,6 @@ void DisplayServer::mouse_warp_to_position(const Point2i &p_to) {
 	WARN_PRINT("Mouse warping is not supported by this display server.");
 }
 
-Point2i DisplayServer::mouse_get_absolute_position() const {
-	ERR_FAIL_V_MSG(Point2i(), "Mouse is not supported by this display server.");
-}
-
 Point2i DisplayServer::mouse_get_position() const {
 	ERR_FAIL_V_MSG(Point2i(), "Mouse is not supported by this display server.");
 }
@@ -157,6 +153,10 @@ void DisplayServer::clipboard_set(const String &p_text) {
 
 String DisplayServer::clipboard_get() const {
 	ERR_FAIL_V_MSG(String(), "Clipboard is not supported by this display server.");
+}
+
+bool DisplayServer::clipboard_has() const {
+	return !clipboard_get().is_empty();
 }
 
 void DisplayServer::clipboard_set_primary(const String &p_text) {
@@ -359,11 +359,11 @@ void DisplayServer::_bind_methods() {
 
 	ClassDB::bind_method(D_METHOD("mouse_warp_to_position", "position"), &DisplayServer::mouse_warp_to_position);
 	ClassDB::bind_method(D_METHOD("mouse_get_position"), &DisplayServer::mouse_get_position);
-	ClassDB::bind_method(D_METHOD("mouse_get_absolute_position"), &DisplayServer::mouse_get_absolute_position);
 	ClassDB::bind_method(D_METHOD("mouse_get_button_state"), &DisplayServer::mouse_get_button_state);
 
 	ClassDB::bind_method(D_METHOD("clipboard_set", "clipboard"), &DisplayServer::clipboard_set);
 	ClassDB::bind_method(D_METHOD("clipboard_get"), &DisplayServer::clipboard_get);
+	ClassDB::bind_method(D_METHOD("clipboard_has"), &DisplayServer::clipboard_has);
 	ClassDB::bind_method(D_METHOD("clipboard_set_primary", "clipboard_primary"), &DisplayServer::clipboard_set_primary);
 	ClassDB::bind_method(D_METHOD("clipboard_get_primary"), &DisplayServer::clipboard_get_primary);
 
