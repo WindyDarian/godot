@@ -321,6 +321,7 @@ static NSCursor *_cursorFromSelector(SEL selector, SEL fallback = nil) {
 	}
 
 	DS_OSX->window_focused = true;
+	DS_OSX->last_focused_window = window_id;
 	DS_OSX->_send_window_event(wd, DisplayServerOSX::WINDOW_EVENT_FOCUS_IN);
 }
 
@@ -355,6 +356,7 @@ static NSCursor *_cursorFromSelector(SEL selector, SEL fallback = nil) {
 	DisplayServerOSX::WindowData &wd = DS_OSX->windows[window_id];
 
 	DS_OSX->window_focused = true;
+	DS_OSX->last_focused_window = window_id;
 	DS_OSX->_send_window_event(wd, DisplayServerOSX::WINDOW_EVENT_FOCUS_IN);
 }
 
@@ -1913,7 +1915,8 @@ void DisplayServerOSX::mouse_set_mode(MouseMode p_mode) {
 		return;
 	}
 
-	WindowData &wd = windows[MAIN_WINDOW_ID];
+	WindowID window_id = windows.has(last_focused_window) ? last_focused_window : MAIN_WINDOW_ID;
+	WindowData &wd = windows[window_id];
 	if (p_mode == MOUSE_MODE_CAPTURED) {
 		// Apple Docs state that the display parameter is not used.
 		// "This parameter is not used. By default, you may pass kCGDirectMainDisplay."
@@ -1972,7 +1975,8 @@ void DisplayServerOSX::mouse_warp_to_position(const Point2i &p_to) {
 	if (mouse_mode == MOUSE_MODE_CAPTURED) {
 		last_mouse_pos = p_to;
 	} else {
-		WindowData &wd = windows[MAIN_WINDOW_ID];
+		WindowID window_id = windows.has(last_focused_window) ? last_focused_window : MAIN_WINDOW_ID;
+		WindowData &wd = windows[window_id];
 
 		//local point in window coords
 		const NSRect contentRect = [wd.window_view frame];
@@ -2197,6 +2201,24 @@ Rect2i DisplayServerOSX::screen_get_usable_rect(int p_screen) const {
 	}
 
 	return Rect2i();
+}
+
+float DisplayServerOSX::screen_get_refresh_rate(int p_screen) const {
+	_THREAD_SAFE_METHOD_
+
+	if (p_screen == SCREEN_OF_MAIN_WINDOW) {
+		p_screen = window_get_current_screen();
+	}
+
+	NSArray *screenArray = [NSScreen screens];
+	if ((NSUInteger)p_screen < [screenArray count]) {
+		NSDictionary *description = [[screenArray objectAtIndex:p_screen] deviceDescription];
+		const CGDisplayModeRef displayMode = CGDisplayCopyDisplayMode([[description objectForKey:@"NSScreenNumber"] unsignedIntValue]);
+		const double displayRefreshRate = CGDisplayModeGetRefreshRate(displayMode);
+		return (float)displayRefreshRate;
+	}
+	ERR_PRINT("An error occured while trying to get the screen refresh rate.");
+	return SCREEN_REFRESH_RATE_FALLBACK;
 }
 
 Vector<DisplayServer::WindowID> DisplayServerOSX::get_window_list() const {
@@ -2648,6 +2670,7 @@ void DisplayServerOSX::window_set_mode(WindowMode p_mode, WindowID p_window) {
 		case WINDOW_MODE_MINIMIZED: {
 			[wd.window_object deminiaturize:nil];
 		} break;
+		case WINDOW_MODE_EXCLUSIVE_FULLSCREEN:
 		case WINDOW_MODE_FULLSCREEN: {
 			[wd.window_object setLevel:NSNormalWindowLevel];
 			if (wd.layered_window) {
@@ -2681,6 +2704,7 @@ void DisplayServerOSX::window_set_mode(WindowMode p_mode, WindowID p_window) {
 		case WINDOW_MODE_MINIMIZED: {
 			[wd.window_object performMiniaturize:nil];
 		} break;
+		case WINDOW_MODE_EXCLUSIVE_FULLSCREEN:
 		case WINDOW_MODE_FULLSCREEN: {
 			if (wd.layered_window)
 				_set_window_per_pixel_transparency_enabled(false, p_window);

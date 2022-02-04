@@ -206,7 +206,7 @@ Files extracted from upstream source:
 ## harfbuzz
 
 - Upstream: https://github.com/harfbuzz/harfbuzz
-- Version: 3.2.0 (be91d2917d9860326cb5fd1d03ffe1042a72f6d3, 2021)
+- Version: 3.3.1 (45df259538c204540819d74456d30ffb40df488a, 2022)
 - License: MIT
 
 Files extracted from upstream source:
@@ -309,17 +309,13 @@ Files extracted from upstream source:
 ## libwebp
 
 - Upstream: https://chromium.googlesource.com/webm/libwebp/
-- Version: 1.2.1 (9ce5843dbabcfd3f7c39ec7ceba9cbeb213cbfdf, 2021)
+- Version: 1.2.2 (b0a860891dcd4c0c2d7c6149e5cccb6eb881cc21, 2022)
 - License: BSD-3-Clause
 
 Files extracted from upstream source:
 
 - `src/*` except from: `.am`, `.rc` and `.in` files
 - `AUTHORS`, `COPYING`, `PATENTS`
-
-Important: The files `utils/bit_reader_utils.{c,h}` have Godot-made
-changes to ensure they build for Javascript/HTML5. Those
-changes are marked with `// -- GODOT --` comments.
 
 
 ## mbedtls
@@ -606,15 +602,13 @@ instead of `miniz.h` as an external dependency.
 ## thorvg
 
 - Upstream: https://github.com/Samsung/thorvg
-- Version: 0.7.0 (e527f565b770f0a41df821e6618ccaeea94f465e, 2021)
+- Version: 0.7.1 (d53eb2a880002cb770ace1c1ace9c5dfcfc28252, 2022)
 - License: MIT
 
 Files extracted from upstream source:
 
 See `thorvg/update-thorvg.sh` for extraction instructions. Set the version
 number and run the script.
-
-Patches in the `patches` directory should be re-applied after updates.
 
 
 ## vhacd

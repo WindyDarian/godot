@@ -145,6 +145,8 @@ public:
 
 	Map<WindowID, WindowData> windows;
 
+	WindowID last_focused_window = INVALID_WINDOW_ID;
+
 	WindowID window_id_counter = MAIN_WINDOW_ID;
 
 	WindowID _create_window(WindowMode p_mode, VSyncMode p_vsync_mode, const Rect2i &p_rect);
@@ -228,6 +230,7 @@ public:
 	virtual float screen_get_scale(int p_screen = SCREEN_OF_MAIN_WINDOW) const override;
 	virtual float screen_get_max_scale() const override;
 	virtual Rect2i screen_get_usable_rect(int p_screen = SCREEN_OF_MAIN_WINDOW) const override;
+	virtual float screen_get_refresh_rate(int p_screen = SCREEN_OF_MAIN_WINDOW) const override;
 
 	virtual Vector<int> get_window_list() const override;
 

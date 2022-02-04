@@ -251,7 +251,7 @@ void EditorProperty::_notification(int p_what) {
 		} else {
 			color = get_theme_color(is_read_only() ? SNAME("readonly_color") : SNAME("property_color"));
 		}
-		if (label.find(".") != -1) {
+		if (label.contains(".")) {
 			// FIXME: Move this to the project settings editor, as this is only used
 			// for project settings feature tag overrides.
 			color.a = 0.5;
@@ -833,28 +833,40 @@ void EditorProperty::_update_pin_flags() {
 	}
 }
 
-Control *EditorProperty::make_custom_tooltip(const String &p_text) const {
-	tooltip_text = p_text;
+static Control *make_help_bit(const String &p_text, bool p_property) {
 	EditorHelpBit *help_bit = memnew(EditorHelpBit);
-	//help_bit->add_theme_style_override("panel", get_theme_stylebox(SNAME("panel"), SNAME("TooltipPanel")));
 	help_bit->get_rich_text()->set_fixed_size_to_width(360 * EDSCALE);
 
-	String text;
 	PackedStringArray slices = p_text.split("::", false);
-	if (!slices.is_empty()) {
-		String property_name = slices[0].strip_edges();
-		text = TTR("Property:") + " [u][b]" + property_name + "[/b][/u]";
-
-		if (slices.size() > 1) {
-			String property_doc = slices[1].strip_edges();
-			if (property_name != property_doc) {
-				text += "\n" + property_doc;
-			}
-		}
-		help_bit->call_deferred(SNAME("set_text"), text); //hack so it uses proper theme once inside scene
+	if (slices.is_empty()) {
+		// Shouldn't happen here, but just in case pass the text along.
+		help_bit->set_text(p_text);
+		return help_bit;
 	}
 
+	String property_name = slices[0].strip_edges();
+	String text;
+	if (p_property) {
+		text = TTR("Property:") + " ";
+	}
+	text += "[u][b]" + property_name + "[/b][/u]";
+
+	if (slices.size() > 1) {
+		String property_doc = slices[1].strip_edges();
+		if (property_name != property_doc) {
+			text += "\n" + property_doc;
+		}
+	} else {
+		text += "\n[i]" + TTR("No description.") + "[/i]";
+	}
+	help_bit->set_text(text);
+
 	return help_bit;
+}
+
+Control *EditorProperty::make_custom_tooltip(const String &p_text) const {
+	tooltip_text = p_text;
+	return make_help_bit(p_text, true);
 }
 
 String EditorProperty::get_tooltip_text() const {
@@ -919,6 +931,7 @@ void EditorProperty::_bind_methods() {
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "draw_warning"), "set_draw_warning", "is_draw_warning");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "keying"), "set_keying", "is_keying");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "deletable"), "set_deletable", "is_deletable");
+
 	ADD_SIGNAL(MethodInfo("property_changed", PropertyInfo(Variant::STRING_NAME, "property"), PropertyInfo(Variant::NIL, "value", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NIL_IS_VARIANT)));
 	ADD_SIGNAL(MethodInfo("multiple_properties_changed", PropertyInfo(Variant::PACKED_STRING_ARRAY, "properties"), PropertyInfo(Variant::ARRAY, "value")));
 	ADD_SIGNAL(MethodInfo("property_keyed", PropertyInfo(Variant::STRING_NAME, "property")));
@@ -1093,25 +1106,7 @@ void EditorInspectorCategory::_notification(int p_what) {
 
 Control *EditorInspectorCategory::make_custom_tooltip(const String &p_text) const {
 	tooltip_text = p_text;
-	EditorHelpBit *help_bit = memnew(EditorHelpBit);
-	help_bit->add_theme_style_override("panel", get_theme_stylebox(SNAME("panel"), SNAME("TooltipPanel")));
-	help_bit->get_rich_text()->set_fixed_size_to_width(360 * EDSCALE);
-
-	PackedStringArray slices = p_text.split("::", false);
-	if (!slices.is_empty()) {
-		String property_name = slices[0].strip_edges();
-		String text = "[u][b]" + property_name + "[/b][/u]";
-
-		if (slices.size() > 1) {
-			String property_doc = slices[1].strip_edges();
-			if (property_name != property_doc) {
-				text += "\n" + property_doc;
-			}
-		}
-		help_bit->call_deferred(SNAME("set_text"), text); //hack so it uses proper theme once inside scene
-	}
-
-	return help_bit;
+	return make_help_bit(p_text, false);
 }
 
 Size2 EditorInspectorCategory::get_minimum_size() const {
@@ -1785,7 +1780,7 @@ Array EditorInspectorArray::_extract_properties_as_array(const List<PropertyInfo
 
 			int to_char_index = 0;
 			while (to_char_index < str.length()) {
-				if (str[to_char_index] < '0' || str[to_char_index] > '9') {
+				if (!is_digit(str[to_char_index])) {
 					break;
 				}
 				to_char_index++;
@@ -2304,7 +2299,7 @@ void EditorInspector::update_tree() {
 	if (property_focusable != -1) {
 		//check focusable is really focusable
 		bool restore_focus = false;
-		Control *focused = get_focus_owner();
+		Control *focused = get_viewport() ? get_viewport()->gui_get_focus_owner() : nullptr;
 		if (focused) {
 			Node *parent = focused->get_parent();
 			while (parent) {
@@ -2517,7 +2512,7 @@ void EditorInspector::update_tree() {
 			String str = p.name.trim_prefix(array_prefix);
 			int to_char_index = 0;
 			while (to_char_index < str.length()) {
-				if (str[to_char_index] < '0' || str[to_char_index] > '9') {
+				if (!is_digit(str[to_char_index])) {
 					break;
 				}
 				to_char_index++;
@@ -2571,7 +2566,7 @@ void EditorInspector::update_tree() {
 		}
 
 		// Get the property label's string.
-		String property_label_string = (path.find("/") != -1) ? path.substr(path.rfind("/") + 1) : path;
+		String property_label_string = (path.contains("/")) ? path.substr(path.rfind("/") + 1) : path;
 		if (capitalize_paths) {
 			// Capitalize paths.
 			int dot = property_label_string.find(".");
@@ -2595,7 +2590,7 @@ void EditorInspector::update_tree() {
 
 		// Ignore properties that do not fit the filter.
 		if (use_filter && !filter.is_empty()) {
-			if (!filter.is_subsequence_ofn(path) && !filter.is_subsequence_ofn(property_label_string) && property_prefix.to_lower().find(filter.to_lower()) == -1) {
+			if (!filter.is_subsequence_ofn(path) && !filter.is_subsequence_ofn(property_label_string) && !property_prefix.to_lower().contains(filter.to_lower())) {
 				continue;
 			}
 		}
@@ -2669,7 +2664,7 @@ void EditorInspector::update_tree() {
 				array_element_prefix = p.class_name;
 				editor_inspector_array = memnew(EditorInspectorArray);
 
-				String array_label = (path.find("/") != -1) ? path.substr(path.rfind("/") + 1) : path;
+				String array_label = path.contains("/") ? path.substr(path.rfind("/") + 1) : path;
 				array_label = property_label_string.capitalize();
 				int page = per_array_page.has(array_element_prefix) ? per_array_page[array_element_prefix] : 0;
 				editor_inspector_array->setup_with_move_element_function(object, array_label, array_element_prefix, page, c, use_folding);
@@ -3543,7 +3538,7 @@ void EditorInspector::_bind_methods() {
 	ADD_SIGNAL(MethodInfo("property_selected", PropertyInfo(Variant::STRING, "property")));
 	ADD_SIGNAL(MethodInfo("property_keyed", PropertyInfo(Variant::STRING, "property"), PropertyInfo(Variant::NIL, "value", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NIL_IS_VARIANT), PropertyInfo(Variant::BOOL, "advance")));
 	ADD_SIGNAL(MethodInfo("property_deleted", PropertyInfo(Variant::STRING, "property")));
-	ADD_SIGNAL(MethodInfo("resource_selected", PropertyInfo(Variant::OBJECT, "res"), PropertyInfo(Variant::STRING, "prop")));
+	ADD_SIGNAL(MethodInfo("resource_selected", PropertyInfo(Variant::OBJECT, "resource", PROPERTY_HINT_RESOURCE_TYPE, "Resource"), PropertyInfo(Variant::STRING, "path")));
 	ADD_SIGNAL(MethodInfo("object_id_selected", PropertyInfo(Variant::INT, "id")));
 	ADD_SIGNAL(MethodInfo("property_edited", PropertyInfo(Variant::STRING, "property")));
 	ADD_SIGNAL(MethodInfo("property_toggled", PropertyInfo(Variant::STRING, "property"), PropertyInfo(Variant::BOOL, "checked")));
