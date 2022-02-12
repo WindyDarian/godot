@@ -273,9 +273,9 @@ Error VulkanContext::_obtain_vulkan_version() {
 		uint32_t api_version;
 		VkResult res = func(&api_version);
 		if (res == VK_SUCCESS) {
-			vulkan_major = VK_VERSION_MAJOR(api_version);
-			vulkan_minor = VK_VERSION_MINOR(api_version);
-			vulkan_patch = VK_VERSION_PATCH(api_version);
+			vulkan_major = VK_API_VERSION_MAJOR(api_version);
+			vulkan_minor = VK_API_VERSION_MINOR(api_version);
+			vulkan_patch = VK_API_VERSION_PATCH(api_version);
 		} else {
 			// according to the documentation this shouldn't fail with anything except a memory allocation error
 			// in which case we're in deep trouble anyway
@@ -860,7 +860,7 @@ Error VulkanContext::_create_physical_device(VkSurfaceKHR p_surface) {
 		free(device_queue_props);
 		print_verbose("  #" + itos(i) + ": " + vendor + " " + name + " - " + (present_supported ? "Supported" : "Unsupported") + ", " + dev_type);
 
-		if (present_supported) { // Select first supported device of preffered type: Discrete > Integrated > Virtual > CPU > Other.
+		if (present_supported) { // Select first supported device of preferred type: Discrete > Integrated > Virtual > CPU > Other.
 			switch (props.deviceType) {
 				case VkPhysicalDeviceType::VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU: {
 					if (type_selected < 4) {

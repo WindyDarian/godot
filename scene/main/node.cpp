@@ -30,6 +30,7 @@
 
 #include "node.h"
 
+#include "core/config/project_settings.h"
 #include "core/core_string_names.h"
 #include "core/io/resource_loader.h"
 #include "core/multiplayer/multiplayer_api.h"
@@ -612,14 +613,15 @@ Variant Node::_rpc_bind(const Variant **p_args, int p_argcount, Callable::CallEr
 		return Variant();
 	}
 
-	if (p_args[0]->get_type() != Variant::STRING_NAME) {
+	Variant::Type type = p_args[0]->get_type();
+	if (type != Variant::STRING_NAME && type != Variant::STRING) {
 		r_error.error = Callable::CallError::CALL_ERROR_INVALID_ARGUMENT;
 		r_error.argument = 0;
 		r_error.expected = Variant::STRING_NAME;
 		return Variant();
 	}
 
-	StringName method = *p_args[0];
+	StringName method = (*p_args[0]).operator StringName();
 
 	rpcp(0, method, &p_args[1], p_argcount - 1);
 
@@ -641,7 +643,8 @@ Variant Node::_rpc_id_bind(const Variant **p_args, int p_argcount, Callable::Cal
 		return Variant();
 	}
 
-	if (p_args[1]->get_type() != Variant::STRING_NAME) {
+	Variant::Type type = p_args[1]->get_type();
+	if (type != Variant::STRING_NAME && type != Variant::STRING) {
 		r_error.error = Callable::CallError::CALL_ERROR_INVALID_ARGUMENT;
 		r_error.argument = 1;
 		r_error.expected = Variant::STRING_NAME;
@@ -649,7 +652,7 @@ Variant Node::_rpc_id_bind(const Variant **p_args, int p_argcount, Callable::Cal
 	}
 
 	int peer_id = *p_args[0];
-	StringName method = *p_args[1];
+	StringName method = (*p_args[1]).operator StringName();
 
 	rpcp(peer_id, method, &p_args[2], p_argcount - 2);
 

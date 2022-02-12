@@ -37,6 +37,7 @@
 #include "core/os/keyboard.h"
 #include "editor/debugger/editor_debugger_node.h"
 #include "editor/editor_feature_profile.h"
+#include "editor/editor_file_dialog.h"
 #include "editor/editor_node.h"
 #include "editor/editor_scale.h"
 #include "editor/editor_settings.h"
@@ -1560,7 +1561,7 @@ void SceneTreeDock::perform_node_renames(Node *p_base, Map<Node *, NodePath> *p_
 
 					for (int i = 0; i < anim->get_track_count(); i++) {
 						NodePath track_np = anim->track_get_path(i);
-						Node *n = root->get_node(track_np);
+						Node *n = root->get_node_or_null(track_np);
 						if (!n) {
 							continue;
 						}

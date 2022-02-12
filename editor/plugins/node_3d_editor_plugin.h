@@ -31,19 +31,24 @@
 #ifndef NODE_3D_EDITOR_PLUGIN_H
 #define NODE_3D_EDITOR_PLUGIN_H
 
-#include "editor/editor_node.h"
 #include "editor/editor_plugin.h"
 #include "editor/editor_scale.h"
+#include "editor/editor_spin_slider.h"
 #include "editor/plugins/node_3d_editor_gizmos.h"
 #include "scene/3d/camera_3d.h"
 #include "scene/3d/light_3d.h"
 #include "scene/3d/visual_instance_3d.h"
 #include "scene/3d/world_environment.h"
+#include "scene/gui/color_picker.h"
 #include "scene/gui/panel_container.h"
+#include "scene/gui/spin_box.h"
+#include "scene/gui/split_container.h"
 #include "scene/resources/environment.h"
 #include "scene/resources/fog_material.h"
 #include "scene/resources/sky_material.h"
 
+class EditorNode;
+class EditorData;
 class Node3DEditor;
 class Node3DEditorViewport;
 class SubViewportContainer;
@@ -85,19 +90,6 @@ protected:
 
 public:
 	void set_viewport(Node3DEditorViewport *p_viewport);
-};
-
-class GizmoOffScreenLine : public Control {
-	GDCLASS(GizmoOffScreenLine, Control);
-
-public:
-	Vector2 point1;
-	Vector2 point2;
-	void _notification(int p_what) {
-		if (p_what == NOTIFICATION_DRAW && is_visible()) {
-			draw_line(point1, point2, Color(0.0f, 0.75f, 0.75f), 2);
-		}
-	}
 };
 
 class Node3DEditorViewport : public Control {
@@ -214,7 +206,6 @@ private:
 
 	CheckBox *preview_camera;
 	SubViewportContainer *subviewport_container;
-	GizmoOffScreenLine *gizmo_offscreen_line;
 
 	MenuButton *view_menu;
 	PopupMenu *display_submenu;
@@ -251,7 +242,7 @@ private:
 	};
 
 	void _update_name();
-	void _compute_edit(const Point2 &p_point, const bool p_auto_center = true);
+	void _compute_edit(const Point2 &p_point);
 	void _clear_selected();
 	void _select_clicked(bool p_allow_locked);
 	ObjectID _select_ray(const Point2 &p_pos);
@@ -283,6 +274,7 @@ private:
 	ObjectID clicked;
 	Vector<_RayResult> selection_results;
 	bool clicked_wants_append;
+	bool selection_in_progress = false;
 
 	PopupMenu *selection_menu;
 
@@ -423,6 +415,7 @@ private:
 	void begin_transform(TransformMode p_mode, bool instant);
 	void commit_transform();
 	void update_transform(Point2 p_mousepos, bool p_shift);
+	void finish_transform();
 
 protected:
 	void _notification(int p_what);
@@ -521,35 +514,6 @@ class Node3DEditor : public VBoxContainer {
 public:
 	static const unsigned int VIEWPORTS_COUNT = 4;
 
-	enum MenuOption {
-		MENU_GROUP_SELECTED,
-		MENU_KEEP_GIZMO_ONSCREEN,
-		MENU_LOCK_SELECTED,
-		MENU_SNAP_TO_FLOOR,
-		MENU_TOOL_LIST_SELECT,
-		MENU_TOOL_LOCAL_COORDS,
-		MENU_TOOL_MOVE,
-		MENU_TOOL_OVERRIDE_CAMERA,
-		MENU_TOOL_ROTATE,
-		MENU_TOOL_SCALE,
-		MENU_TOOL_SELECT,
-		MENU_TOOL_USE_SNAP,
-		MENU_TRANSFORM_CONFIGURE_SNAP,
-		MENU_TRANSFORM_DIALOG,
-		MENU_UNGROUP_SELECTED,
-		MENU_UNLOCK_SELECTED,
-		MENU_VIEW_CAMERA_SETTINGS,
-		MENU_VIEW_GIZMOS_3D_ICONS,
-		MENU_VIEW_GRID,
-		MENU_VIEW_ORIGIN,
-		MENU_VIEW_USE_1_VIEWPORT,
-		MENU_VIEW_USE_2_VIEWPORTS,
-		MENU_VIEW_USE_2_VIEWPORTS_ALT,
-		MENU_VIEW_USE_3_VIEWPORTS,
-		MENU_VIEW_USE_3_VIEWPORTS_ALT,
-		MENU_VIEW_USE_4_VIEWPORTS,
-	};
-
 	enum ToolMode {
 		TOOL_MODE_SELECT,
 		TOOL_MODE_MOVE,
@@ -568,6 +532,7 @@ public:
 		TOOL_OPT_USE_SNAP,
 		TOOL_OPT_OVERRIDE_CAMERA,
 		TOOL_OPT_MAX
+
 	};
 
 private:
@@ -596,7 +561,6 @@ private:
 	Camera3D::Projection grid_camera_last_update_perspective = Camera3D::PROJECTION_PERSPECTIVE;
 	Vector3 grid_camera_last_update_position = Vector3();
 
-	bool keep_gizmo_onscreen = true;
 	Ref<ArrayMesh> move_gizmo[3], move_plane_gizmo[3], rotate_gizmo[4], scale_gizmo[3], scale_plane_gizmo[3], axis_gizmo[3];
 	Ref<StandardMaterial3D> gizmo_color[3];
 	Ref<StandardMaterial3D> plane_gizmo_color[3];
@@ -630,9 +594,36 @@ private:
 	struct Gizmo {
 		bool visible = false;
 		real_t scale = 0;
-		Vector3 target_center;
 		Transform3D transform;
 	} gizmo;
+
+	enum MenuOption {
+		MENU_TOOL_SELECT,
+		MENU_TOOL_MOVE,
+		MENU_TOOL_ROTATE,
+		MENU_TOOL_SCALE,
+		MENU_TOOL_LIST_SELECT,
+		MENU_TOOL_LOCAL_COORDS,
+		MENU_TOOL_USE_SNAP,
+		MENU_TOOL_OVERRIDE_CAMERA,
+		MENU_TRANSFORM_CONFIGURE_SNAP,
+		MENU_TRANSFORM_DIALOG,
+		MENU_VIEW_USE_1_VIEWPORT,
+		MENU_VIEW_USE_2_VIEWPORTS,
+		MENU_VIEW_USE_2_VIEWPORTS_ALT,
+		MENU_VIEW_USE_3_VIEWPORTS,
+		MENU_VIEW_USE_3_VIEWPORTS_ALT,
+		MENU_VIEW_USE_4_VIEWPORTS,
+		MENU_VIEW_ORIGIN,
+		MENU_VIEW_GRID,
+		MENU_VIEW_GIZMOS_3D_ICONS,
+		MENU_VIEW_CAMERA_SETTINGS,
+		MENU_LOCK_SELECTED,
+		MENU_UNLOCK_SELECTED,
+		MENU_GROUP_SELECTED,
+		MENU_UNGROUP_SELECTED,
+		MENU_SNAP_TO_FLOOR
+	};
 
 	Button *tool_button[TOOL_MAX];
 	Button *tool_option_button[TOOL_OPT_MAX];
@@ -792,10 +783,7 @@ public:
 	float get_zfar() const { return settings_zfar->get_value(); }
 	float get_fov() const { return settings_fov->get_value(); }
 
-	Vector3 get_gizmo_target_center() const { return gizmo.target_center; }
 	Transform3D get_gizmo_transform() const { return gizmo.transform; }
-	void set_gizmo_transform(const Transform3D &p_transform) { gizmo.transform = p_transform; }
-	bool is_keep_gizmo_onscreen_enabled() const { return keep_gizmo_onscreen; }
 	bool is_gizmo_visible() const;
 
 	ToolMode get_tool_mode() const { return tool_mode; }

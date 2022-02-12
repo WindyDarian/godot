@@ -30,6 +30,7 @@
 
 #include "window.h"
 
+#include "core/config/project_settings.h"
 #include "core/debugger/engine_debugger.h"
 #include "core/string/translation.h"
 #include "scene/gui/control.h"
@@ -254,6 +255,7 @@ void Window::_make_window() {
 #endif
 	DisplayServer::get_singleton()->window_set_title(tr_title, window_id);
 	DisplayServer::get_singleton()->window_attach_instance_id(get_instance_id(), window_id);
+	DisplayServer::get_singleton()->window_set_exclusive(window_id, exclusive);
 
 	_update_window_size();
 
@@ -521,6 +523,10 @@ void Window::set_exclusive(bool p_exclusive) {
 	}
 
 	exclusive = p_exclusive;
+
+	if (!embedder && window_id != DisplayServer::INVALID_WINDOW_ID) {
+		DisplayServer::get_singleton()->window_set_exclusive(window_id, exclusive);
+	}
 
 	if (transient_parent) {
 		if (p_exclusive && is_inside_tree() && is_visible()) {

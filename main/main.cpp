@@ -50,7 +50,6 @@
 #include "core/register_core_types.h"
 #include "core/string/translation.h"
 #include "core/version.h"
-#include "core/version_hash.gen.h"
 #include "drivers/register_driver_types.h"
 #include "main/app_icon.gen.h"
 #include "main/main_timer_sync.h"
@@ -183,13 +182,6 @@ bool profile_gpu = false;
 
 /* Helper methods */
 
-// Used by Mono module, should likely be registered in Engine singleton instead
-// FIXME: This is also not 100% accurate, `project_manager` is only true when it was requested,
-// but not if e.g. we fail to load and project and fallback to the manager.
-bool Main::is_project_manager() {
-	return project_manager;
-}
-
 bool Main::is_cmdline_tool() {
 	return cmdline_tool;
 }
@@ -200,7 +192,7 @@ static String unescape_cmdline(const String &p_str) {
 
 static String get_full_version_string() {
 	String hash = String(VERSION_HASH);
-	if (hash.length() != 0) {
+	if (!hash.is_empty()) {
 		hash = "." + hash.left(9);
 	}
 	return String(VERSION_FULL_BUILD) + hash;
@@ -935,7 +927,6 @@ Error Main::setup(const char *execpath, int argc, char *argv[], bool p_second_ph
 
 			editor = true;
 		} else if (I->get() == "-p" || I->get() == "--project-manager") { // starts project manager
-
 			project_manager = true;
 		} else if (I->get() == "--debug-server") {
 			if (I->next()) {
@@ -2549,6 +2540,7 @@ bool Main::start() {
 #ifdef TOOLS_ENABLED
 		if (project_manager) {
 			Engine::get_singleton()->set_editor_hint(true);
+			Engine::get_singleton()->set_project_manager_hint(true);
 			ProjectManager *pmanager = memnew(ProjectManager);
 			ProgressDialog *progress_dialog = memnew(ProgressDialog);
 			pmanager->add_child(progress_dialog);
@@ -2790,8 +2782,6 @@ void Main::cleanup(bool p_force) {
 		ERR_FAIL_COND(!_start_success);
 	}
 
-	EngineDebugger::deinitialize();
-
 	ResourceLoader::remove_custom_loaders();
 	ResourceSaver::remove_custom_savers();
 
@@ -2833,6 +2823,8 @@ void Main::cleanup(bool p_force) {
 	unregister_platform_apis();
 	unregister_scene_types();
 	unregister_server_types();
+
+	EngineDebugger::deinitialize();
 
 	if (xr_server) {
 		memdelete(xr_server);
