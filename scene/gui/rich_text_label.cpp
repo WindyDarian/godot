@@ -1502,15 +1502,17 @@ void RichTextLabel::_notification(int p_what) {
 				update();
 			}
 		} break;
+
 		case NOTIFICATION_RESIZED: {
 			main->first_resized_line = 0; //invalidate ALL
 			update();
-
 		} break;
+
 		case NOTIFICATION_THEME_CHANGED: {
 			main->first_invalid_font_line = 0; //invalidate ALL
 			update();
 		} break;
+
 		case NOTIFICATION_ENTER_TREE: {
 			if (!text.is_empty()) {
 				set_text(text);
@@ -1519,11 +1521,13 @@ void RichTextLabel::_notification(int p_what) {
 			main->first_invalid_line = 0; //invalidate ALL
 			update();
 		} break;
+
 		case NOTIFICATION_LAYOUT_DIRECTION_CHANGED:
 		case NOTIFICATION_TRANSLATION_CHANGED: {
 			main->first_invalid_line = 0; //invalidate ALL
 			update();
 		} break;
+
 		case NOTIFICATION_DRAW: {
 			_validate_line_caches(main);
 			_update_scroll();
@@ -1578,6 +1582,7 @@ void RichTextLabel::_notification(int p_what) {
 				from_line++;
 			}
 		} break;
+
 		case NOTIFICATION_INTERNAL_PROCESS: {
 			if (is_visible_in_tree()) {
 				double dt = get_process_delta_time();
@@ -1585,12 +1590,14 @@ void RichTextLabel::_notification(int p_what) {
 				update();
 			}
 		} break;
+
 		case NOTIFICATION_FOCUS_EXIT: {
 			if (deselect_on_focus_loss_enabled) {
 				selection.active = false;
 				update();
 			}
 		} break;
+
 		case NOTIFICATION_DRAG_END: {
 			selection.drag_attempt = false;
 		} break;
@@ -4327,6 +4334,8 @@ void RichTextLabel::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_percent_visible", "percent_visible"), &RichTextLabel::set_percent_visible);
 	ClassDB::bind_method(D_METHOD("get_percent_visible"), &RichTextLabel::get_percent_visible);
 
+	ClassDB::bind_method(D_METHOD("get_character_line", "character"), &RichTextLabel::get_character_line);
+	ClassDB::bind_method(D_METHOD("get_character_paragraph", "character"), &RichTextLabel::get_character_paragraph);
 	ClassDB::bind_method(D_METHOD("get_total_character_count"), &RichTextLabel::get_total_character_count);
 
 	ClassDB::bind_method(D_METHOD("set_use_bbcode", "enable"), &RichTextLabel::set_use_bbcode);
@@ -4457,6 +4466,36 @@ void RichTextLabel::set_visible_characters(int p_visible) {
 
 int RichTextLabel::get_visible_characters() const {
 	return visible_characters;
+}
+
+int RichTextLabel::get_character_line(int p_char) {
+	int line_count = 0;
+	for (int i = 0; i < main->lines.size(); i++) {
+		if (main->lines[i].char_offset < p_char && p_char <= main->lines[i].char_offset + main->lines[i].char_count) {
+			for (int j = 0; j < main->lines[i].text_buf->get_line_count(); j++) {
+				Vector2i range = main->lines[i].text_buf->get_line_range(j);
+				if (main->lines[i].char_offset + range.x < p_char && p_char <= main->lines[i].char_offset + range.y) {
+					return line_count;
+				}
+				line_count++;
+			}
+		} else {
+			line_count += main->lines[i].text_buf->get_line_count();
+		}
+	}
+	return -1;
+}
+
+int RichTextLabel::get_character_paragraph(int p_char) {
+	int para_count = 0;
+	for (int i = 0; i < main->lines.size(); i++) {
+		if (main->lines[i].char_offset < p_char && p_char <= main->lines[i].char_offset + main->lines[i].char_count) {
+			return para_count;
+		} else {
+			para_count++;
+		}
+	}
+	return -1;
 }
 
 int RichTextLabel::get_total_character_count() const {

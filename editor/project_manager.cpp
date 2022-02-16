@@ -1863,6 +1863,8 @@ void ProjectList::_bind_methods() {
 	ADD_SIGNAL(MethodInfo(SIGNAL_PROJECT_ASK_OPEN));
 }
 
+ProjectManager *ProjectManager::singleton = nullptr;
+
 void ProjectManager::_notification(int p_what) {
 	switch (p_what) {
 		case NOTIFICATION_TRANSLATION_CHANGED:
@@ -1908,10 +1910,8 @@ void ProjectManager::_notification(int p_what) {
 	}
 }
 
-Map<String, Ref<Texture2D>> ProjectManager::icon_type_cache;
-
 Ref<Texture2D> ProjectManager::_file_dialog_get_icon(const String &p_path) {
-	return icon_type_cache["ObjectHR"];
+	return singleton->icon_type_cache["ObjectHR"];
 }
 
 void ProjectManager::_build_icon_type_cache(Ref<Theme> p_theme) {
@@ -2481,6 +2481,8 @@ void ProjectManager::_version_button_pressed() {
 }
 
 ProjectManager::ProjectManager() {
+	singleton = this;
+
 	// load settings
 	if (!EditorSettings::get_singleton()) {
 		EditorSettings::create();
@@ -2523,15 +2525,6 @@ ProjectManager::ProjectManager() {
 				editor_set_scale(EditorSettings::get_singleton()->get("interface/editor/custom_display_scale"));
 				break;
 		}
-
-		// Define a minimum window size to prevent UI elements from overlapping or being cut off
-		DisplayServer::get_singleton()->window_set_min_size(Size2(750, 420) * EDSCALE);
-
-		// TODO: Resize windows on hiDPI displays on Windows and Linux and remove the lines below
-		float scale_factor = MAX(1, EDSCALE);
-		Vector2i window_size = DisplayServer::get_singleton()->window_get_size();
-		DisplayServer::get_singleton()->window_set_size(Vector2i(window_size.x * scale_factor, window_size.y * scale_factor));
-
 		EditorFileDialog::get_icon_func = &ProjectManager::_file_dialog_get_icon;
 	}
 
@@ -2866,10 +2859,27 @@ ProjectManager::ProjectManager() {
 
 	SceneTree::get_singleton()->get_root()->connect("files_dropped", callable_mp(this, &ProjectManager::_files_dropped));
 
+	// Define a minimum window size to prevent UI elements from overlapping or being cut off
+	DisplayServer::get_singleton()->window_set_min_size(Size2(750, 420) * EDSCALE);
+
+	// Resize the bootsplash window based on Editor display scale EDSCALE.
+	float scale_factor = MAX(1, EDSCALE);
+	if (scale_factor > 1.0) {
+		Vector2i window_size = DisplayServer::get_singleton()->window_get_size();
+		Vector2i screen_size = DisplayServer::get_singleton()->screen_get_size();
+		window_size *= scale_factor;
+		Vector2i window_position;
+		window_position.x = (screen_size.x - window_size.x) / 2;
+		window_position.y = (screen_size.y - window_size.y) / 2;
+		DisplayServer::get_singleton()->window_set_size(window_size);
+		DisplayServer::get_singleton()->window_set_position(window_position);
+	}
+
 	OS::get_singleton()->set_low_processor_usage_mode(true);
 }
 
 ProjectManager::~ProjectManager() {
+	singleton = nullptr;
 	if (EditorSettings::get_singleton()) {
 		EditorSettings::destroy();
 	}

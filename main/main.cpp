@@ -81,6 +81,7 @@
 #include "editor/doc_data_class_path.gen.h"
 #include "editor/doc_tools.h"
 #include "editor/editor_node.h"
+#include "editor/editor_paths.h"
 #include "editor/editor_settings.h"
 #include "editor/editor_translation.h"
 #include "editor/progress_dialog.h"
@@ -1195,11 +1196,6 @@ Error Main::setup(const char *execpath, int argc, char *argv[], bool p_second_ph
 	if (editor) {
 		packed_data->set_disabled(true);
 		globals->set_disable_feature_overrides(true);
-	}
-#endif
-
-#ifdef TOOLS_ENABLED
-	if (editor) {
 		Engine::get_singleton()->set_editor_hint(true);
 		main_args.push_back("--editor");
 		if (!init_windowed) {
@@ -1211,6 +1207,10 @@ Error Main::setup(const char *execpath, int argc, char *argv[], bool p_second_ph
 	if (!project_manager && !editor) {
 		// If we didn't find a project, we fall back to the project manager.
 		project_manager = !found_project && !cmdline_tool;
+	}
+
+	if (project_manager) {
+		Engine::get_singleton()->set_project_manager_hint(true);
 	}
 #endif
 
@@ -2540,7 +2540,6 @@ bool Main::start() {
 #ifdef TOOLS_ENABLED
 		if (project_manager) {
 			Engine::get_singleton()->set_editor_hint(true);
-			Engine::get_singleton()->set_project_manager_hint(true);
 			ProjectManager *pmanager = memnew(ProjectManager);
 			ProgressDialog *progress_dialog = memnew(ProgressDialog);
 			pmanager->add_child(progress_dialog);
