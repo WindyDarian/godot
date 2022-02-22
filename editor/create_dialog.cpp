@@ -235,19 +235,19 @@ void CreateDialog::_add_type(const String &p_type, const TypeCategory p_type_cat
 		}
 	} else {
 		if (ScriptServer::is_global_class(p_type)) {
-			inherits = EditorNode::get_editor_data().script_class_get_base(p_type);
-			if (inherits.is_empty()) {
-				Ref<Script> script = EditorNode::get_editor_data().script_class_load_script(p_type);
-				ERR_FAIL_COND(script.is_null());
+			Ref<Script> script = EditorNode::get_editor_data().script_class_load_script(p_type);
+			ERR_FAIL_COND(script.is_null());
 
-				Ref<Script> base = script->get_base_script();
-				if (base.is_null()) {
-					String extends;
-					script->get_language()->get_global_class_name(script->get_path(), &extends);
+			Ref<Script> base = script->get_base_script();
+			if (base.is_null()) {
+				String extends;
+				script->get_language()->get_global_class_name(script->get_path(), &extends);
 
-					inherits = extends;
-					inherited_type = TypeCategory::CPP_TYPE;
-				} else {
+				inherits = extends;
+				inherited_type = TypeCategory::CPP_TYPE;
+			} else {
+				inherits = script->get_language()->get_global_class_name(base->get_path());
+				if (inherits.is_empty()) {
 					inherits = base->get_path();
 					inherited_type = TypeCategory::PATH_TYPE;
 				}
@@ -429,9 +429,11 @@ void CreateDialog::_notification(int p_what) {
 			connect("confirmed", callable_mp(this, &CreateDialog::_confirmed));
 			_update_theme();
 		} break;
+
 		case NOTIFICATION_EXIT_TREE: {
 			disconnect("confirmed", callable_mp(this, &CreateDialog::_confirmed));
 		} break;
+
 		case NOTIFICATION_VISIBILITY_CHANGED: {
 			if (is_visible()) {
 				search_box->call_deferred(SNAME("grab_focus")); // still not visible
@@ -440,6 +442,7 @@ void CreateDialog::_notification(int p_what) {
 				EditorSettings::get_singleton()->get_project_metadata("dialog_bounds", "create_new_node", Rect2(get_position(), get_size()));
 			}
 		} break;
+
 		case NOTIFICATION_THEME_CHANGED: {
 			_update_theme();
 		} break;

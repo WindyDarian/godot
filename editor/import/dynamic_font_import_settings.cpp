@@ -560,7 +560,7 @@ void DynamicFontImportSettings::_variation_changed(const String &p_edited_proper
 void DynamicFontImportSettings::_variations_validate() {
 	String warn;
 	if (!vars_list_root->get_first_child()) {
-		warn = TTR("Warinig: There are no configurations specified, no glyphs will be pre-rendered.");
+		warn = TTR("Warning: There are no configurations specified, no glyphs will be pre-rendered.");
 	}
 	for (TreeItem *vars_item_a = vars_list_root->get_first_child(); vars_item_a; vars_item_a = vars_item_a->get_next()) {
 		Ref<DynamicFontImportSettingsData> import_variation_data_a = vars_item_a->get_metadata(0);
@@ -575,7 +575,7 @@ void DynamicFontImportSettings::_variations_validate() {
 					match = match && (import_variation_data_b->settings[E->key()] == E->get());
 				}
 				if (match) {
-					warn = TTR("Warinig: Multiple configurations have identical settings. Duplicates will be ignored.");
+					warn = TTR("Warning: Multiple configurations have identical settings. Duplicates will be ignored.");
 					break;
 				}
 			}
@@ -900,13 +900,18 @@ String DynamicFontImportSettings::_pad_zeros(const String &p_hex) const {
 }
 
 void DynamicFontImportSettings::_notification(int p_what) {
-	if (p_what == NOTIFICATION_READY) {
-		connect("confirmed", callable_mp(this, &DynamicFontImportSettings::_re_import));
-	} else if (p_what == NOTIFICATION_ENTER_TREE || p_what == NOTIFICATION_THEME_CHANGED) {
-		add_lang->set_icon(add_var->get_theme_icon(SNAME("Add"), SNAME("EditorIcons")));
-		add_script->set_icon(add_var->get_theme_icon(SNAME("Add"), SNAME("EditorIcons")));
-		add_var->set_icon(add_var->get_theme_icon(SNAME("Add"), SNAME("EditorIcons")));
-		add_ot->set_icon(add_var->get_theme_icon(SNAME("Add"), SNAME("EditorIcons")));
+	switch (p_what) {
+		case NOTIFICATION_READY: {
+			connect("confirmed", callable_mp(this, &DynamicFontImportSettings::_re_import));
+		} break;
+
+		case NOTIFICATION_ENTER_TREE:
+		case NOTIFICATION_THEME_CHANGED: {
+			add_lang->set_icon(add_var->get_theme_icon(SNAME("Add"), SNAME("EditorIcons")));
+			add_script->set_icon(add_var->get_theme_icon(SNAME("Add"), SNAME("EditorIcons")));
+			add_var->set_icon(add_var->get_theme_icon(SNAME("Add"), SNAME("EditorIcons")));
+			add_ot->set_icon(add_var->get_theme_icon(SNAME("Add"), SNAME("EditorIcons")));
+		} break;
 	}
 }
 
