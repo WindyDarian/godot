@@ -2371,10 +2371,10 @@ void RenderingServer::_bind_methods() {
 	BIND_ENUM_CONSTANT(ENV_TONE_MAPPER_FILMIC);
 	BIND_ENUM_CONSTANT(ENV_TONE_MAPPER_ACES);
 
-	BIND_ENUM_CONSTANT(ENV_SSR_ROUGNESS_QUALITY_DISABLED);
-	BIND_ENUM_CONSTANT(ENV_SSR_ROUGNESS_QUALITY_LOW);
-	BIND_ENUM_CONSTANT(ENV_SSR_ROUGNESS_QUALITY_MEDIUM);
-	BIND_ENUM_CONSTANT(ENV_SSR_ROUGNESS_QUALITY_HIGH);
+	BIND_ENUM_CONSTANT(ENV_SSR_ROUGHNESS_QUALITY_DISABLED);
+	BIND_ENUM_CONSTANT(ENV_SSR_ROUGHNESS_QUALITY_LOW);
+	BIND_ENUM_CONSTANT(ENV_SSR_ROUGHNESS_QUALITY_MEDIUM);
+	BIND_ENUM_CONSTANT(ENV_SSR_ROUGHNESS_QUALITY_HIGH);
 
 	BIND_ENUM_CONSTANT(ENV_SSAO_QUALITY_VERY_LOW);
 	BIND_ENUM_CONSTANT(ENV_SSAO_QUALITY_LOW);
@@ -2879,8 +2879,6 @@ RenderingServer::RenderingServer() {
 	GLOBAL_DEF("rendering/shading/overrides/force_vertex_shading.mobile", true);
 	GLOBAL_DEF("rendering/shading/overrides/force_lambert_over_burley", false);
 	GLOBAL_DEF("rendering/shading/overrides/force_lambert_over_burley.mobile", true);
-	GLOBAL_DEF("rendering/shading/overrides/force_blinn_over_ggx", false);
-	GLOBAL_DEF("rendering/shading/overrides/force_blinn_over_ggx.mobile", true);
 
 	GLOBAL_DEF("rendering/driver/depth_prepass/enable", true);
 
@@ -3001,7 +2999,7 @@ RenderingServer::RenderingServer() {
 	GLOBAL_DEF("rendering/limits/cluster_builder/max_clustered_elements", 512);
 	ProjectSettings::get_singleton()->set_custom_property_info("rendering/limits/cluster_builder/max_clustered_elements", PropertyInfo(Variant::FLOAT, "rendering/limits/cluster_builder/max_clustered_elements", PROPERTY_HINT_RANGE, "32,8192,1"));
 
-	GLOBAL_DEF_RST("rendering/xr/enabled", false);
+	GLOBAL_DEF_RST_BASIC("xr/shaders/enabled", false);
 
 	GLOBAL_DEF_RST("rendering/2d/options/use_software_skinning", true);
 	GLOBAL_DEF_RST("rendering/2d/options/ninepatch_mode", 1);
