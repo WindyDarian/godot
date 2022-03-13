@@ -63,7 +63,7 @@ void ProjectSettingsEditor::queue_save() {
 }
 
 void ProjectSettingsEditor::set_plugins_page() {
-	tab_container->set_current_tab(plugin_settings->get_index());
+	tab_container->set_current_tab(tab_container->get_tab_idx_from_control(plugin_settings));
 }
 
 void ProjectSettingsEditor::update_plugins() {
@@ -559,7 +559,7 @@ ProjectSettingsEditor::ProjectSettingsEditor(EditorData *p_data) {
 	data = p_data;
 
 	tab_container = memnew(TabContainer);
-	tab_container->set_tab_alignment(TabContainer::ALIGNMENT_LEFT);
+	tab_container->set_tab_alignment(TabBar::ALIGNMENT_LEFT);
 	tab_container->set_use_hidden_tabs_for_min_size(true);
 	add_child(tab_container);
 
@@ -663,7 +663,7 @@ ProjectSettingsEditor::ProjectSettingsEditor(EditorData *p_data) {
 	tab_container->add_child(localization_editor);
 
 	autoload_settings = memnew(EditorAutoloadSettings);
-	autoload_settings->set_name(TTR("AutoLoad"));
+	autoload_settings->set_name(TTR("Autoload"));
 	autoload_settings->connect("autoload_changed", callable_mp(this, &ProjectSettingsEditor::queue_save));
 	tab_container->add_child(autoload_settings);
 

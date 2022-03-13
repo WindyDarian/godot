@@ -520,7 +520,7 @@ void ShaderEditor::_check_for_external_edit() {
 		return;
 	}
 
-	bool use_autoreload = bool(EDITOR_DEF("text_editor/behavior/files/auto_reload_scripts_on_external_change", false));
+	bool use_autoreload = bool(EDITOR_GET("text_editor/behavior/files/auto_reload_scripts_on_external_change"));
 	if (shader->get_last_modified_time() != FileAccess::get_modified_time(shader->get_path())) {
 		if (use_autoreload) {
 			_reload_shader_from_disk();
@@ -647,7 +647,7 @@ void ShaderEditor::_update_bookmark_list() {
 		}
 
 		bookmarks_menu->add_item(String::num((int)bookmark_list[i] + 1) + " - \"" + line + "\"");
-		bookmarks_menu->set_item_metadata(bookmarks_menu->get_item_count() - 1, bookmark_list[i]);
+		bookmarks_menu->set_item_metadata(-1, bookmark_list[i]);
 	}
 }
 

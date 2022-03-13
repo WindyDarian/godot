@@ -599,6 +599,14 @@ void DisplayServerOSX::set_last_focused_window(WindowID p_window) {
 	last_focused_window = p_window;
 }
 
+void DisplayServerOSX::set_is_resizing(bool p_is_resizing) {
+	is_resizing = p_is_resizing;
+}
+
+bool DisplayServerOSX::get_is_resizing() const {
+	return is_resizing;
+}
+
 void DisplayServerOSX::window_update(WindowID p_window) {
 #if defined(GLES3_ENABLED)
 	if (gl_manager) {
@@ -1856,7 +1864,7 @@ void DisplayServerOSX::window_set_flag(WindowFlags p_flag, bool p_enabled, Windo
 		} break;
 		case WINDOW_FLAG_POPUP: {
 			ERR_FAIL_COND_MSG(p_window == MAIN_WINDOW_ID, "Main window can't be popup.");
-			ERR_FAIL_COND_MSG([wd.window_object isVisible] && (wd.is_popup != p_enabled), "Pupup flag can't changed while window is opened.");
+			ERR_FAIL_COND_MSG([wd.window_object isVisible] && (wd.is_popup != p_enabled), "Popup flag can't changed while window is opened.");
 			wd.is_popup = p_enabled;
 		} break;
 		default: {

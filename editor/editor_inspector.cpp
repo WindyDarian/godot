@@ -36,6 +36,7 @@
 #include "editor/doc_tools.h"
 #include "editor/editor_feature_profile.h"
 #include "editor/editor_node.h"
+#include "editor/editor_property_name_processor.h"
 #include "editor/editor_scale.h"
 #include "editor/editor_settings.h"
 #include "multi_node_edit.h"
@@ -99,7 +100,7 @@ void EditorProperty::emit_changed(const StringName &p_property, const Variant &p
 	const Variant *argptrs[4] = { &args[0], &args[1], &args[2], &args[3] };
 
 	cache[p_property] = p_value;
-	emit_signal(SNAME("property_changed"), (const Variant **)argptrs, 4);
+	emit_signalp(SNAME("property_changed"), (const Variant **)argptrs, 4);
 }
 
 void EditorProperty::_notification(int p_what) {
@@ -691,15 +692,11 @@ void EditorProperty::unhandled_key_input(const Ref<InputEvent> &p_event) {
 }
 
 const Color *EditorProperty::_get_property_colors() {
-	const Color base = get_theme_color(SNAME("accent_color"), SNAME("Editor"));
-	const float saturation = base.get_s() * 0.75;
-	const float value = base.get_v();
-
 	static Color c[4];
-	c[0].set_hsv(0.0 / 3.0 + 0.05, saturation, value);
-	c[1].set_hsv(1.0 / 3.0 + 0.05, saturation, value);
-	c[2].set_hsv(2.0 / 3.0 + 0.05, saturation, value);
-	c[3].set_hsv(1.5 / 3.0 + 0.05, saturation, value);
+	c[0] = get_theme_color(SNAME("property_color_x"), SNAME("Editor"));
+	c[1] = get_theme_color(SNAME("property_color_y"), SNAME("Editor"));
+	c[2] = get_theme_color(SNAME("property_color_z"), SNAME("Editor"));
+	c[3] = get_theme_color(SNAME("property_color_w"), SNAME("Editor"));
 	return c;
 }
 
@@ -885,7 +882,7 @@ void EditorProperty::menu_option(int p_option) {
 			emit_changed(property, InspectorDock::get_inspector_singleton()->get_property_clipboard());
 		} break;
 		case MENU_COPY_PROPERTY_PATH: {
-			DisplayServer::get_singleton()->clipboard_set(property);
+			DisplayServer::get_singleton()->clipboard_set(property_path);
 		} break;
 		case MENU_PIN_VALUE: {
 			emit_signal(SNAME("property_pinned"), property, !pinned);
@@ -951,31 +948,13 @@ void EditorProperty::_bind_methods() {
 }
 
 EditorProperty::EditorProperty() {
-	draw_top_bg = true;
 	object = nullptr;
 	split_ratio = 0.5;
-	selectable = true;
 	text_size = 0;
-	read_only = false;
-	checkable = false;
-	checked = false;
-	draw_warning = false;
-	keying = false;
-	deletable = false;
-	keying_hover = false;
-	revert_hover = false;
-	check_hover = false;
-	can_revert = false;
-	can_pin = false;
-	pin_hidden = false;
-	pinned = false;
-	use_folding = false;
 	property_usage = 0;
-	selected = false;
 	selected_focusable = -1;
 	label_reference = nullptr;
 	bottom_editor = nullptr;
-	delete_hover = false;
 	menu = nullptr;
 	set_process_unhandled_key_input(true);
 }
@@ -2335,6 +2314,7 @@ void EditorInspector::_parse_added_editors(VBoxContainer *current_vbox, Ref<Edit
 				if (F.properties.size() == 1) {
 					//since it's one, associate:
 					ep->property = F.properties[0];
+					ep->property_path = property_prefix + F.properties[0];
 					ep->property_usage = 0;
 				}
 
@@ -2684,10 +2664,10 @@ void EditorInspector::update_tree() {
 			if (dot != -1) {
 				String ov = property_label_string.substr(dot);
 				property_label_string = property_label_string.substr(0, dot);
-				property_label_string = property_label_string.capitalize();
+				property_label_string = EditorPropertyNameProcessor::get_singleton()->process_name(property_label_string);
 				property_label_string += ov;
 			} else {
-				property_label_string = property_label_string.capitalize();
+				property_label_string = EditorPropertyNameProcessor::get_singleton()->process_name(property_label_string);
 			}
 		}
 
@@ -2738,13 +2718,15 @@ void EditorInspector::update_tree() {
 				current_vbox->add_child(section);
 				sections.push_back(section);
 
+				String label = component;
 				if (capitalize_paths) {
-					component = component.capitalize();
+					label = EditorPropertyNameProcessor::get_singleton()->process_name(label);
 				}
 
 				Color c = sscolor;
 				c.a /= level;
-				section->setup(acc_path, component, object, c, use_folding, section_depth);
+				section->setup(acc_path, label, object, c, use_folding, section_depth);
+				section->set_tooltip(EditorPropertyNameProcessor::get_singleton()->make_tooltip_for_name(component));
 
 				// Add editors at the start of a group.
 				for (Ref<EditorInspectorPlugin> &ped : valid_plugins) {
@@ -2776,7 +2758,7 @@ void EditorInspector::update_tree() {
 				editor_inspector_array = memnew(EditorInspectorArray);
 
 				String array_label = path.contains("/") ? path.substr(path.rfind("/") + 1) : path;
-				array_label = property_label_string.capitalize();
+				array_label = EditorPropertyNameProcessor::get_singleton()->process_name(property_label_string);
 				int page = per_array_page.has(array_element_prefix) ? per_array_page[array_element_prefix] : 0;
 				editor_inspector_array->setup_with_move_element_function(object, array_label, array_element_prefix, page, c, use_folding);
 				editor_inspector_array->connect("page_change_request", callable_mp(this, &EditorInspector::_page_change_request), varray(array_element_prefix));
@@ -2893,6 +2875,7 @@ void EditorInspector::update_tree() {
 						if (F.properties.size() == 1) {
 							//since it's one, associate:
 							ep->property = F.properties[0];
+							ep->property_path = property_prefix + F.properties[0];
 							ep->property_usage = p.usage;
 							//and set label?
 						}
@@ -3318,7 +3301,7 @@ void EditorInspector::_property_keyed(const String &p_path, bool p_advance) {
 	// The second parameter could be null, causing the event to fire with less arguments, so use the pointer call which preserves it.
 	const Variant args[3] = { p_path, object->get(p_path), p_advance };
 	const Variant *argp[3] = { &args[0], &args[1], &args[2] };
-	emit_signal(SNAME("property_keyed"), argp, 3);
+	emit_signalp(SNAME("property_keyed"), argp, 3);
 }
 
 void EditorInspector::_property_deleted(const String &p_path) {
@@ -3337,7 +3320,7 @@ void EditorInspector::_property_keyed_with_value(const String &p_path, const Var
 	// The second parameter could be null, causing the event to fire with less arguments, so use the pointer call which preserves it.
 	const Variant args[3] = { p_path, p_value, p_advance };
 	const Variant *argp[3] = { &args[0], &args[1], &args[2] };
-	emit_signal(SNAME("property_keyed"), argp, 3);
+	emit_signalp(SNAME("property_keyed"), argp, 3);
 }
 
 void EditorInspector::_property_checked(const String &p_path, bool p_checked) {
@@ -3514,7 +3497,9 @@ void EditorInspector::_notification(int p_what) {
 		case EditorSettings::NOTIFICATION_EDITOR_SETTINGS_CHANGED: {
 			_update_inspector_bg();
 
-			update_tree();
+			if (EditorSettings::get_singleton()->check_changed_settings_in_group("interface/inspector")) {
+				update_tree();
+			}
 		} break;
 	}
 }
@@ -3674,25 +3659,11 @@ EditorInspector::EditorInspector() {
 	add_child(main_vbox);
 	set_horizontal_scroll_mode(SCROLL_MODE_DISABLED);
 
-	wide_editors = false;
-	show_categories = false;
-	hide_script = true;
-	use_doc_hints = false;
-	capitalize_paths = true;
-	use_filter = false;
-	autoclear = false;
 	changing = 0;
-	use_folding = false;
-	update_all_pending = false;
-	update_tree_pending = false;
-	read_only = false;
 	search_box = nullptr;
-	keying = false;
 	_prop_edited = "property_edited";
 	set_process(false);
 	property_focusable = -1;
-	sub_inspector = false;
-	deletable_properties = false;
 	property_clipboard = Variant();
 
 	get_v_scroll_bar()->connect("value_changed", callable_mp(this, &EditorInspector::_vscroll_changed));

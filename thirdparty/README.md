@@ -29,20 +29,6 @@ Files extracted from upstream source:
 - `LICENSE`
 
 
-## bullet
-
-- Upstream: https://github.com/bulletphysics/bullet3
-- Version: 3.17 (ebe1916b90acae8b13cd8c6b637d8327cdc64e94, 2021)
-- License: zlib
-
-Files extracted from upstream source:
-
-- `src/*` apart from CMakeLists.txt and premake4.lua files
-- `LICENSE.txt`, and `VERSION` as `VERSION.txt`
-
-Includes some patches in the `patches` folder which have been sent upstream.
-
-
 ## certs
 
 - Upstream: Mozilla, via https://github.com/bagder/ca-bundle
@@ -206,7 +192,7 @@ Files extracted from upstream source:
 ## harfbuzz
 
 - Upstream: https://github.com/harfbuzz/harfbuzz
-- Version: 3.3.2 (ac46c3248e8b0316235943175c4d4a11c24dd4a9, 2022)
+- Version: 4.0.0 (8d1b000a3edc90c12267b836b4ef3f81c0e53edc, 2022)
 - License: MIT
 
 Files extracted from upstream source:
@@ -627,7 +613,7 @@ instead of `miniz.h` as an external dependency.
 ## thorvg
 
 - Upstream: https://github.com/Samsung/thorvg
-- Version: 0.7.1 (d53eb2a880002cb770ace1c1ace9c5dfcfc28252, 2022)
+- Version: 0.8.0 (41093c17b3cac440bdcc53f8b69abeb5734696b5, 2022)
 - License: MIT
 
 Files extracted from upstream source:
