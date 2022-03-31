@@ -150,7 +150,7 @@ DisplayServer::MouseMode DisplayServerWindows::mouse_get_mode() const {
 	return mouse_mode;
 }
 
-void DisplayServerWindows::mouse_warp_to_position(const Point2i &p_to) {
+void DisplayServerWindows::warp_mouse(const Point2i &p_position) {
 	_THREAD_SAFE_METHOD_
 
 	if (!windows.has(last_focused_window)) {
@@ -158,12 +158,12 @@ void DisplayServerWindows::mouse_warp_to_position(const Point2i &p_to) {
 	}
 
 	if (mouse_mode == MOUSE_MODE_CAPTURED) {
-		old_x = p_to.x;
-		old_y = p_to.y;
+		old_x = p_position.x;
+		old_y = p_position.y;
 	} else {
 		POINT p;
-		p.x = p_to.x;
-		p.y = p_to.y;
+		p.x = p_position.x;
+		p.y = p_position.y;
 		ClientToScreen(windows[last_focused_window].hWnd, &p);
 
 		SetCursorPos(p.x, p.y);
@@ -2849,7 +2849,7 @@ LRESULT DisplayServerWindows::WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARA
 					}
 				}
 			} else {
-				// For reasons unknown to mankind, wheel comes in screen coordinates.
+				// For reasons unknown to humanity, wheel comes in screen coordinates.
 				POINT coords;
 				coords.x = mb->get_position().x;
 				coords.y = mb->get_position().y;
@@ -3626,7 +3626,11 @@ DisplayServerWindows::DisplayServerWindows(const String &p_rendering_driver, Win
 	}
 #endif
 
-	if (!OS::get_singleton()->is_in_low_processor_usage_mode()) {
+	if (!Engine::get_singleton()->is_editor_hint() && !OS::get_singleton()->is_in_low_processor_usage_mode()) {
+		// Increase priority for projects that are not in low-processor mode (typically games)
+		// to reduce the risk of frame stuttering.
+		// This is not done for the editor to prevent importers or resource bakers
+		// from making the system unresponsive.
 		SetPriorityClass(GetCurrentProcess(), ABOVE_NORMAL_PRIORITY_CLASS);
 		DWORD index = 0;
 		HANDLE handle = AvSetMmThreadCharacteristics("Games", &index);
