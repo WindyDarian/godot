@@ -137,6 +137,7 @@ class AnimationNodeStateMachineEditor : public AnimationTreeNodeEditorPlugin {
 
 	StringName selected_transition_from;
 	StringName selected_transition_to;
+	int selected_transition_occurrence;
 
 	StringName over_node;
 	int over_node_what;

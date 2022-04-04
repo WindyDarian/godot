@@ -699,13 +699,27 @@ bool AnimationNodeStateMachine::has_transition(const StringName &p_from, const S
 	return false;
 }
 
-int AnimationNodeStateMachine::find_transition(const StringName &p_from, const StringName &p_to) const {
+int AnimationNodeStateMachine::find_transition(const StringName &p_from, const StringName &p_to, int p_occurrence) const {
 	for (int i = 0; i < transitions.size(); i++) {
 		if (transitions[i].from == p_from && transitions[i].to == p_to) {
-			return i;
+			if (p_occurrence <= 0) {
+				return i;
+			} else {
+				--p_occurrence;
+			}
 		}
 	}
 	return -1;
+}
+
+int AnimationNodeStateMachine::get_transition_occurrence_count(const StringName &p_from, const StringName &p_to) const {
+	int count = 0;
+	for (int i = 0; i < transitions.size(); i++) {
+		if (transitions[i].from == p_from && transitions[i].to == p_to) {
+			++count;
+		}
+	}
+	return count;
 }
 
 void AnimationNodeStateMachine::add_transition(const StringName &p_from, const StringName &p_to, const Ref<AnimationNodeStateMachineTransition> &p_transition) {
@@ -713,10 +727,6 @@ void AnimationNodeStateMachine::add_transition(const StringName &p_from, const S
 	ERR_FAIL_COND(!states.has(p_from));
 	ERR_FAIL_COND(!states.has(p_to));
 	ERR_FAIL_COND(p_transition.is_null());
-
-	for (int i = 0; i < transitions.size(); i++) {
-		ERR_FAIL_COND(transitions[i].from == p_from && transitions[i].to == p_to);
-	}
 
 	Transition tr;
 	tr.from = p_from;
@@ -747,12 +757,16 @@ int AnimationNodeStateMachine::get_transition_count() const {
 	return transitions.size();
 }
 
-void AnimationNodeStateMachine::remove_transition(const StringName &p_from, const StringName &p_to) {
+void AnimationNodeStateMachine::remove_transition(const StringName &p_from, const StringName &p_to, int p_occurrence) {
 	for (int i = 0; i < transitions.size(); i++) {
 		if (transitions[i].from == p_from && transitions[i].to == p_to) {
-			transitions.write[i].transition->disconnect("advance_condition_changed", callable_mp(this, &AnimationNodeStateMachine::_tree_changed));
-			transitions.remove_at(i);
-			return;
+			if (p_occurrence <= 0) {
+				transitions.write[i].transition->disconnect("advance_condition_changed", callable_mp(this, &AnimationNodeStateMachine::_tree_changed));
+				transitions.remove_at(i);
+				return;
+			} else {
+				--p_occurrence;
+			}
 		}
 	}
 
@@ -961,7 +975,7 @@ void AnimationNodeStateMachine::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_transition_to", "idx"), &AnimationNodeStateMachine::get_transition_to);
 	ClassDB::bind_method(D_METHOD("get_transition_count"), &AnimationNodeStateMachine::get_transition_count);
 	ClassDB::bind_method(D_METHOD("remove_transition_by_index", "idx"), &AnimationNodeStateMachine::remove_transition_by_index);
-	ClassDB::bind_method(D_METHOD("remove_transition", "from", "to"), &AnimationNodeStateMachine::remove_transition);
+	ClassDB::bind_method(D_METHOD("remove_transition", "from", "to", "occurrence"), &AnimationNodeStateMachine::remove_transition);
 
 	ClassDB::bind_method(D_METHOD("set_start_node", "name"), &AnimationNodeStateMachine::set_start_node);
 	ClassDB::bind_method(D_METHOD("get_start_node"), &AnimationNodeStateMachine::get_start_node);

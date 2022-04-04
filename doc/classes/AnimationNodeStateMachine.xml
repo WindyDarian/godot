@@ -131,8 +131,9 @@
 			<return type="void" />
 			<argument index="0" name="from" type="StringName" />
 			<argument index="1" name="to" type="StringName" />
+			<argument index="2" name="occurrence" type="int" />
 			<description>
-				Deletes the transition between the two specified nodes.
+				Deletes a transition between the two specified nodes.
 			</description>
 		</method>
 		<method name="remove_transition_by_index">

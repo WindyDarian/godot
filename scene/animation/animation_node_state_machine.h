@@ -191,14 +191,15 @@ public:
 	virtual void get_child_nodes(List<ChildNode> *r_child_nodes) override;
 
 	bool has_transition(const StringName &p_from, const StringName &p_to) const;
-	int find_transition(const StringName &p_from, const StringName &p_to) const;
+	int find_transition(const StringName &p_from, const StringName &p_to, int p_occurrence) const;
+	int get_transition_occurrence_count(const StringName &p_from, const StringName &p_to) const;
 	void add_transition(const StringName &p_from, const StringName &p_to, const Ref<AnimationNodeStateMachineTransition> &p_transition);
 	Ref<AnimationNodeStateMachineTransition> get_transition(int p_transition) const;
 	StringName get_transition_from(int p_transition) const;
 	StringName get_transition_to(int p_transition) const;
 	int get_transition_count() const;
 	void remove_transition_by_index(int p_transition);
-	void remove_transition(const StringName &p_from, const StringName &p_to);
+	void remove_transition(const StringName &p_from, const StringName &p_to, int p_occurrence);
 
 	void set_start_node(const StringName &p_node);
 	String get_start_node() const;
