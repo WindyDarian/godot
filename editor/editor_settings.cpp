@@ -1365,7 +1365,7 @@ String EditorSettings::get_editor_layouts_config() const {
 }
 
 float EditorSettings::get_auto_display_scale() const {
-#ifdef OSX_ENABLED
+#if defined(OSX_ENABLED) || defined(ANDROID_ENABLED)
 	return DisplayServer::get_singleton()->screen_get_max_scale();
 #else
 	const int screen = DisplayServer::get_singleton()->window_get_current_screen();
@@ -1389,7 +1389,7 @@ float EditorSettings::get_auto_display_scale() const {
 
 // Shortcuts
 
-void EditorSettings::add_shortcut(const String &p_name, Ref<Shortcut> &p_shortcut) {
+void EditorSettings::add_shortcut(const String &p_name, const Ref<Shortcut> &p_shortcut) {
 	shortcuts[p_name] = p_shortcut;
 }
 
