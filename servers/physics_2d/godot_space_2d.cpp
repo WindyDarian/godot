@@ -710,7 +710,7 @@ bool GodotSpace2D::test_body_motion(GodotBody2D *p_body, const PhysicsServer2D::
 				break;
 			}
 
-			body_transform.elements[2] += recover_motion;
+			body_transform.columns[2] += recover_motion;
 			body_aabb.position += recover_motion;
 
 			recover_attempts--;
@@ -881,7 +881,7 @@ bool GodotSpace2D::test_body_motion(GodotBody2D *p_body, const PhysicsServer2D::
 
 		//it collided, let's get the rest info in unsafe advance
 		Transform2D ugt = body_transform;
-		ugt.elements[2] += p_parameters.motion * unsafe;
+		ugt.columns[2] += p_parameters.motion * unsafe;
 
 		_RestCallbackData2D rcd;
 
@@ -1033,9 +1033,9 @@ void GodotSpace2D::_broadphase_unpair(GodotCollisionObject2D *A, int p_subindex_
 		return;
 	}
 
-	GodotSpace2D *self = (GodotSpace2D *)p_self;
+	GodotSpace2D *self = static_cast<GodotSpace2D *>(p_self);
 	self->collision_pairs--;
-	GodotConstraint2D *c = (GodotConstraint2D *)p_data;
+	GodotConstraint2D *c = static_cast<GodotConstraint2D *>(p_data);
 	memdelete(c);
 }
 

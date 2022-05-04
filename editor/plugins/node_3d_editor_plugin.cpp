@@ -2087,9 +2087,8 @@ void Node3DEditorViewport::_nav_pan(Ref<InputEventWithModifiers> p_event, const 
 	const NavigationScheme nav_scheme = (NavigationScheme)EditorSettings::get_singleton()->get("editors/3d/navigation/navigation_scheme").operator int();
 
 	real_t pan_speed = 1 / 150.0;
-	int pan_speed_modifier = 10;
 	if (nav_scheme == NAVIGATION_MAYA && p_event->is_shift_pressed()) {
-		pan_speed *= pan_speed_modifier;
+		pan_speed *= 10;
 	}
 
 	Transform3D camera_transform;
@@ -2112,9 +2111,8 @@ void Node3DEditorViewport::_nav_zoom(Ref<InputEventWithModifiers> p_event, const
 	const NavigationScheme nav_scheme = (NavigationScheme)EditorSettings::get_singleton()->get("editors/3d/navigation/navigation_scheme").operator int();
 
 	real_t zoom_speed = 1 / 80.0;
-	int zoom_speed_modifier = 10;
 	if (nav_scheme == NAVIGATION_MAYA && p_event->is_shift_pressed()) {
-		zoom_speed *= zoom_speed_modifier;
+		zoom_speed *= 10;
 	}
 
 	NavigationZoomStyle zoom_style = (NavigationZoomStyle)EditorSettings::get_singleton()->get("editors/3d/navigation/zoom_style").operator int();
@@ -2818,7 +2816,7 @@ void Node3DEditorViewport::_draw() {
 				real_t scale_length = (max_speed - min_speed);
 
 				if (!Math::is_zero_approx(scale_length)) {
-					real_t logscale_t = 1.0 - Math::log(1 + freelook_speed - min_speed) / Math::log(1 + scale_length);
+					real_t logscale_t = 1.0 - Math::log1p(freelook_speed - min_speed) / Math::log1p(scale_length);
 
 					// Display the freelook speed to help the user get a better sense of scale.
 					const int precision = freelook_speed < 1.0 ? 2 : 1;
@@ -2841,7 +2839,7 @@ void Node3DEditorViewport::_draw() {
 				real_t scale_length = (max_distance - min_distance);
 
 				if (!Math::is_zero_approx(scale_length)) {
-					real_t logscale_t = 1.0 - Math::log(1 + cursor.distance - min_distance) / Math::log(1 + scale_length);
+					real_t logscale_t = 1.0 - Math::log1p(cursor.distance - min_distance) / Math::log1p(scale_length);
 
 					// Display the zoom center distance to help the user get a better sense of scale.
 					const int precision = cursor.distance < 1.0 ? 2 : 1;
@@ -2992,7 +2990,7 @@ void Node3DEditorViewport::_menu_option(int p_option) {
 			bool current = view_menu->get_popup()->is_item_checked(idx);
 			current = !current;
 			if (current) {
-				camera->set_environment(RES());
+				camera->set_environment(Ref<Resource>());
 			} else {
 				camera->set_environment(Node3DEditor::get_singleton()->get_viewport_environment());
 			}
@@ -3644,7 +3642,7 @@ void Node3DEditorViewport::focus_selection() {
 	Vector3 center;
 	int count = 0;
 
-	List<Node *> &selection = editor_selection->get_selected_node_list();
+	const List<Node *> &selection = editor_selection->get_selected_node_list();
 
 	for (Node *E : selection) {
 		Node3D *sp = Object::cast_to<Node3D>(E);
@@ -3769,7 +3767,7 @@ Node *Node3DEditorViewport::_sanitize_preview_node(Node *p_node) const {
 void Node3DEditorViewport::_create_preview(const Vector<String> &files) const {
 	for (int i = 0; i < files.size(); i++) {
 		String path = files[i];
-		RES res = ResourceLoader::load(path);
+		Ref<Resource> res = ResourceLoader::load(path);
 		ERR_CONTINUE(res.is_null());
 		Ref<PackedScene> scene = Ref<PackedScene>(Object::cast_to<PackedScene>(*res));
 		Ref<Mesh> mesh = Ref<Mesh>(Object::cast_to<Mesh>(*res));
@@ -3820,7 +3818,7 @@ bool Node3DEditorViewport::_cyclical_dependency_exists(const String &p_target_sc
 }
 
 bool Node3DEditorViewport::_create_instance(Node *parent, String &path, const Point2 &p_point) {
-	RES res = ResourceLoader::load(path);
+	Ref<Resource> res = ResourceLoader::load(path);
 	ERR_FAIL_COND_V(res.is_null(), false);
 
 	Ref<PackedScene> scene = Ref<PackedScene>(Object::cast_to<PackedScene>(*res));
@@ -3910,7 +3908,7 @@ void Node3DEditorViewport::_perform_drop_data() {
 
 	for (int i = 0; i < selected_files.size(); i++) {
 		String path = selected_files[i];
-		RES res = ResourceLoader::load(path);
+		Ref<Resource> res = ResourceLoader::load(path);
 		if (res.is_null()) {
 			continue;
 		}
@@ -3953,7 +3951,7 @@ bool Node3DEditorViewport::can_drop_data_fw(const Point2 &p_point, const Variant
 			for (int i = 0; i < files.size(); i++) {
 				// Check if dragged files with mesh or scene extension can be created at least once.
 				if (mesh_extensions.find(files[i].get_extension()) || scene_extensions.find(files[i].get_extension())) {
-					RES res = ResourceLoader::load(files[i]);
+					Ref<Resource> res = ResourceLoader::load(files[i]);
 					if (res.is_null()) {
 						continue;
 					}
@@ -5515,7 +5513,7 @@ void Node3DEditor::_xform_dialog_action() {
 
 	undo_redo->create_action(TTR("XForm Dialog"));
 
-	List<Node *> &selection = editor_selection->get_selected_node_list();
+	const List<Node *> &selection = editor_selection->get_selected_node_list();
 
 	for (Node *E : selection) {
 		Node3D *sp = Object::cast_to<Node3D>(E);
@@ -6720,7 +6718,7 @@ Set<RID> _get_physics_bodies_rid(Node *node) {
 }
 
 void Node3DEditor::snap_selected_nodes_to_floor() {
-	List<Node *> &selection = editor_selection->get_selected_node_list();
+	const List<Node *> &selection = editor_selection->get_selected_node_list();
 	Dictionary snap_data;
 
 	for (Node *E : selection) {
@@ -7278,6 +7276,7 @@ void Node3DEditor::_register_all_gizmos() {
 	add_gizmo_plugin(Ref<OccluderInstance3DGizmoPlugin>(memnew(OccluderInstance3DGizmoPlugin)));
 	add_gizmo_plugin(Ref<SoftDynamicBody3DGizmoPlugin>(memnew(SoftDynamicBody3DGizmoPlugin)));
 	add_gizmo_plugin(Ref<Sprite3DGizmoPlugin>(memnew(Sprite3DGizmoPlugin)));
+	add_gizmo_plugin(Ref<Label3DGizmoPlugin>(memnew(Label3DGizmoPlugin)));
 	add_gizmo_plugin(Ref<Position3DGizmoPlugin>(memnew(Position3DGizmoPlugin)));
 	add_gizmo_plugin(Ref<RayCast3DGizmoPlugin>(memnew(RayCast3DGizmoPlugin)));
 	add_gizmo_plugin(Ref<SpringArm3DGizmoPlugin>(memnew(SpringArm3DGizmoPlugin)));
