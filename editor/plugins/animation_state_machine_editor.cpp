@@ -1316,17 +1316,6 @@ void AnimationNodeStateMachineEditor::_state_machine_draw() {
 			tl.to += offset;
 		}
 
-		//offset if transition with the same direction exists
-		int occurrence = 0;
-		for (int j = 0; j < i; ++j) {
-			if (tl.from_node == state_machine->get_transition_from(j) && tl.to_node == state_machine->get_transition_to(j)) {
-				++occurrence;
-			}
-		}
-		Vector2 offset = -(tl.from - tl.to).normalized().orthogonal() * tr_bidi_offset * occurrence;
-		tl.from += offset;
-		tl.to += offset;
-
 		for (int j = 0; j < node_rects.size(); j++) {
 			if (node_rects[j].node_name == local_from) {
 				_clip_src_line_to_rect(tl.from, tl.to, node_rects[j].node);
