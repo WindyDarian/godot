@@ -2797,9 +2797,7 @@ Error GLTFDocument::_parse_meshes(Ref<GLTFState> state) {
 				print_verbose("glTF: Mesh has targets");
 				const Array &targets = p["targets"];
 
-				//ideally BLEND_SHAPE_MODE_RELATIVE since gltf2 stores in displacement
-				//but it could require a larger refactor?
-				import_mesh->set_blend_shape_mode(Mesh::BLEND_SHAPE_MODE_NORMALIZED);
+				import_mesh->set_blend_shape_mode(Mesh::BLEND_SHAPE_MODE_RELATIVE);
 
 				if (j == 0) {
 					const Array &target_names = extras.has("targetNames") ? (Array)extras["targetNames"] : Array();
@@ -2820,48 +2818,10 @@ Error GLTFDocument::_parse_meshes(Ref<GLTFState> state) {
 					}
 
 					if (t.has("POSITION")) {
-						Vector<Vector3> varr = _decode_accessor_as_vec3(state, t["POSITION"], true);
-						const Vector<Vector3> src_varr = array[Mesh::ARRAY_VERTEX];
-						const int size = src_varr.size();
-						ERR_FAIL_COND_V(size == 0, ERR_PARSE_ERROR);
-						{
-							const int max_idx = varr.size();
-							varr.resize(size);
-
-							Vector3 *w_varr = varr.ptrw();
-							const Vector3 *r_varr = varr.ptr();
-							const Vector3 *r_src_varr = src_varr.ptr();
-							for (int l = 0; l < size; l++) {
-								if (l < max_idx) {
-									w_varr[l] = r_varr[l] + r_src_varr[l];
-								} else {
-									w_varr[l] = r_src_varr[l];
-								}
-							}
-						}
-						array_copy[Mesh::ARRAY_VERTEX] = varr;
+						array_copy[Mesh::ARRAY_VERTEX] = _decode_accessor_as_vec3(state, t["POSITION"], true);
 					}
 					if (t.has("NORMAL")) {
-						Vector<Vector3> narr = _decode_accessor_as_vec3(state, t["NORMAL"], true);
-						const Vector<Vector3> src_narr = array[Mesh::ARRAY_NORMAL];
-						int size = src_narr.size();
-						ERR_FAIL_COND_V(size == 0, ERR_PARSE_ERROR);
-						{
-							int max_idx = narr.size();
-							narr.resize(size);
-
-							Vector3 *w_narr = narr.ptrw();
-							const Vector3 *r_narr = narr.ptr();
-							const Vector3 *r_src_narr = src_narr.ptr();
-							for (int l = 0; l < size; l++) {
-								if (l < max_idx) {
-									w_narr[l] = r_narr[l] + r_src_narr[l];
-								} else {
-									w_narr[l] = r_src_narr[l];
-								}
-							}
-						}
-						array_copy[Mesh::ARRAY_NORMAL] = narr;
+						array_copy[Mesh::ARRAY_NORMAL] = _decode_accessor_as_vec3(state, t["NORMAL"], true);
 					}
 					if (t.has("TANGENT")) {
 						const Vector<Vector3> tangents_v3 = _decode_accessor_as_vec3(state, t["TANGENT"], true);
@@ -2881,15 +2841,9 @@ Error GLTFDocument::_parse_meshes(Ref<GLTFState> state) {
 							const float *r4 = src_tangents.ptr();
 
 							for (int l = 0; l < size4 / 4; l++) {
-								if (l < max_idx) {
-									w4[l * 4 + 0] = r3[l].x + r4[l * 4 + 0];
-									w4[l * 4 + 1] = r3[l].y + r4[l * 4 + 1];
-									w4[l * 4 + 2] = r3[l].z + r4[l * 4 + 2];
-								} else {
-									w4[l * 4 + 0] = r4[l * 4 + 0];
-									w4[l * 4 + 1] = r4[l * 4 + 1];
-									w4[l * 4 + 2] = r4[l * 4 + 2];
-								}
+								w4[l * 4 + 0] = r3[l].x;
+								w4[l * 4 + 1] = r3[l].y;
+								w4[l * 4 + 2] = r3[l].z;
 								w4[l * 4 + 3] = r4[l * 4 + 3]; //copy flip value
 							}
 						}
