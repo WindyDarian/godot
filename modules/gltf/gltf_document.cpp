@@ -2818,10 +2818,48 @@ Error GLTFDocument::_parse_meshes(Ref<GLTFState> state) {
 					}
 
 					if (t.has("POSITION")) {
-						array_copy[Mesh::ARRAY_VERTEX] = _decode_accessor_as_vec3(state, t["POSITION"], true);
+						Vector<Vector3> varr = _decode_accessor_as_vec3(state, t["POSITION"], true);
+						const Vector<Vector3> src_varr = array[Mesh::ARRAY_VERTEX];
+						const int size = src_varr.size();
+						ERR_FAIL_COND_V(size == 0, ERR_PARSE_ERROR);
+						{
+							const int max_idx = varr.size();
+							varr.resize(size);
+
+							Vector3 *w_varr = varr.ptrw();
+							const Vector3 *r_varr = varr.ptr();
+							const Vector3 *r_src_varr = src_varr.ptr();
+							for (int l = 0; l < size; l++) {
+								if (l < max_idx) {
+									w_varr[l] = r_varr[l] + r_src_varr[l];
+								} else {
+									w_varr[l] = r_src_varr[l];
+								}
+							}
+						}
+						array_copy[Mesh::ARRAY_VERTEX] = varr;
 					}
 					if (t.has("NORMAL")) {
-						array_copy[Mesh::ARRAY_NORMAL] = _decode_accessor_as_vec3(state, t["NORMAL"], true);
+						Vector<Vector3> narr = _decode_accessor_as_vec3(state, t["NORMAL"], true);
+						const Vector<Vector3> src_narr = array[Mesh::ARRAY_NORMAL];
+						int size = src_narr.size();
+						ERR_FAIL_COND_V(size == 0, ERR_PARSE_ERROR);
+						{
+							int max_idx = narr.size();
+							narr.resize(size);
+
+							Vector3 *w_narr = narr.ptrw();
+							const Vector3 *r_narr = narr.ptr();
+							const Vector3 *r_src_narr = src_narr.ptr();
+							for (int l = 0; l < size; l++) {
+								if (l < max_idx) {
+									w_narr[l] = r_narr[l] + r_src_narr[l];
+								} else {
+									w_narr[l] = r_src_narr[l];
+								}
+							}
+						}
+						array_copy[Mesh::ARRAY_NORMAL] = narr;
 					}
 					if (t.has("TANGENT")) {
 						const Vector<Vector3> tangents_v3 = _decode_accessor_as_vec3(state, t["TANGENT"], true);
@@ -2841,9 +2879,15 @@ Error GLTFDocument::_parse_meshes(Ref<GLTFState> state) {
 							const float *r4 = src_tangents.ptr();
 
 							for (int l = 0; l < size4 / 4; l++) {
-								w4[l * 4 + 0] = r3[l].x;
-								w4[l * 4 + 1] = r3[l].y;
-								w4[l * 4 + 2] = r3[l].z;
+								if (l < max_idx) {
+									w4[l * 4 + 0] = r3[l].x + r4[l * 4 + 0];
+									w4[l * 4 + 1] = r3[l].y + r4[l * 4 + 1];
+									w4[l * 4 + 2] = r3[l].z + r4[l * 4 + 2];
+								} else {
+									w4[l * 4 + 0] = r4[l * 4 + 0];
+									w4[l * 4 + 1] = r4[l * 4 + 1];
+									w4[l * 4 + 2] = r4[l * 4 + 2];
+								}
 								w4[l * 4 + 3] = r4[l * 4 + 3]; //copy flip value
 							}
 						}
@@ -2862,6 +2906,52 @@ Error GLTFDocument::_parse_meshes(Ref<GLTFState> state) {
 						blend_surface_tool->generate_tangents();
 					}
 					array_copy = blend_surface_tool->commit_to_arrays();
+
+					if (import_mesh->get_blend_shape_mode() == Mesh::BLEND_SHAPE_MODE_RELATIVE) {
+						//convert positions, normals, tangents to offsets.
+						//can't store as offset in the beginning because generate_tangents() wants full vertex
+						if (t.has("POSITION")) {
+							Vector<Vector3> varr = array_copy[Mesh::ARRAY_VERTEX];
+							const Vector<Vector3> src_varr = array[Mesh::ARRAY_VERTEX];
+							const int size = src_varr.size();
+
+							Vector3 *w_varr = varr.ptrw();
+							const Vector3 *r_varr = varr.ptr();
+							const Vector3 *r_src_varr = src_varr.ptr();
+							for (int l = 0; l < size; l++) {
+								w_varr[l] = r_varr[l] - r_src_varr[l];
+							}
+							array_copy[Mesh::ARRAY_VERTEX] = varr;
+						}
+						if (t.has("NORMAL")) {
+							Vector<Vector3> narr = array_copy[Mesh::ARRAY_NORMAL];
+							const Vector<Vector3> src_narr = array[Mesh::ARRAY_NORMAL];
+							const int size = src_narr.size();
+
+							Vector3 *w_narr = narr.ptrw();
+							const Vector3 *r_narr = narr.ptr();
+							const Vector3 *r_src_narr = src_narr.ptr();
+							for (int l = 0; l < size; l++) {
+								w_narr[l] = r_narr[l] - r_src_narr[l];
+							}
+							array_copy[Mesh::ARRAY_NORMAL] = narr;
+						}
+						if (t.has("TANGENT")) {
+							Vector<float> tangents = array_copy[Mesh::ARRAY_TANGENT];
+							const Vector<Vector3> src_tangents_v3 = array[Mesh::ARRAY_TANGENT];
+
+							int size4 = src_tangents_v3.size();
+							float *w_tangents = tangents.ptrw();
+							const float *r_tangents = tangents.ptr();
+							const Vector3 *r_src_tangents = src_tangents_v3.ptr();
+							for (int l = 0; l < size4 / 4; l++) {
+								w_tangents[l * 4 + 0] = r_tangents[l * 4 + 0] - r_src_tangents[l].x;
+								w_tangents[l * 4 + 1] = r_tangents[l * 4 + 1] - r_src_tangents[l].y;
+								w_tangents[l * 4 + 2] = r_tangents[l * 4 + 2] - r_src_tangents[l].z;
+							}
+							array_copy[Mesh::ARRAY_TANGENT] = tangents;
+						}
+					}
 
 					// Enforce blend shape mask array format
 					for (int l = 0; l < Mesh::ARRAY_MAX; l++) {
