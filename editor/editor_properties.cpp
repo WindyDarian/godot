@@ -1304,7 +1304,7 @@ void EditorPropertyObjectID::update_property() {
 
 	ObjectID id = get_edited_object()->get(get_edited_property());
 	if (id.is_valid()) {
-		edit->set_text(type + " ID: " + itos(id));
+		edit->set_text(type + " ID: " + uitos(id));
 		edit->set_disabled(false);
 		edit->set_icon(EditorNode::get_singleton()->get_class_icon(type));
 	} else {
@@ -1326,6 +1326,54 @@ EditorPropertyObjectID::EditorPropertyObjectID() {
 	add_child(edit);
 	add_focusable(edit);
 	edit->connect("pressed", callable_mp(this, &EditorPropertyObjectID::_edit_pressed));
+}
+
+///////////////////// SIGNAL /////////////////////////
+
+void EditorPropertySignal::_edit_pressed() {
+	Signal signal = get_edited_object()->get(get_edited_property());
+	emit_signal(SNAME("object_id_selected"), get_edited_property(), signal.get_object_id());
+}
+
+void EditorPropertySignal::update_property() {
+	String type = base_type;
+
+	Signal signal = get_edited_object()->get(get_edited_property());
+
+	edit->set_text("Signal: " + signal.get_name());
+	edit->set_disabled(false);
+	edit->set_icon(get_theme_icon(SNAME("Signals"), SNAME("EditorIcons")));
+}
+
+void EditorPropertySignal::_bind_methods() {
+}
+
+EditorPropertySignal::EditorPropertySignal() {
+	edit = memnew(Button);
+	add_child(edit);
+	add_focusable(edit);
+	edit->connect("pressed", callable_mp(this, &EditorPropertySignal::_edit_pressed));
+}
+
+///////////////////// CALLABLE /////////////////////////
+
+void EditorPropertyCallable::update_property() {
+	String type = base_type;
+
+	Callable callable = get_edited_object()->get(get_edited_property());
+
+	edit->set_text("Callable");
+	edit->set_disabled(true);
+	edit->set_icon(get_theme_icon(SNAME("Callable"), SNAME("EditorIcons")));
+}
+
+void EditorPropertyCallable::_bind_methods() {
+}
+
+EditorPropertyCallable::EditorPropertyCallable() {
+	edit = memnew(Button);
+	add_child(edit);
+	add_focusable(edit);
 }
 
 ///////////////////// FLOAT /////////////////////////
@@ -3127,7 +3175,20 @@ bool EditorPropertyNodePath::is_drop_valid(const Dictionary &p_drag_data) const 
 		return false;
 	}
 	Array nodes = p_drag_data["nodes"];
-	return nodes.size() == 1;
+	if (nodes.size() != 1) {
+		return false;
+	}
+
+	Node *dropped_node = get_tree()->get_edited_scene_root()->get_node(nodes[0]);
+	ERR_FAIL_NULL_V(dropped_node, false);
+
+	for (const StringName &E : valid_types) {
+		if (dropped_node->is_class(E)) {
+			return true;
+		}
+	}
+
+	return false;
 }
 
 void EditorPropertyNodePath::update_property() {
@@ -3222,8 +3283,8 @@ EditorPropertyNodePath::EditorPropertyNodePath() {
 void EditorPropertyRID::update_property() {
 	RID rid = get_edited_object()->get(get_edited_property());
 	if (rid.is_valid()) {
-		int id = rid.get_id();
-		label->set_text("RID: " + itos(id));
+		uint64_t id = rid.get_id();
+		label->set_text("RID: " + uitos(id));
 	} else {
 		label->set_text(TTR("Invalid RID"));
 	}
@@ -4001,6 +4062,14 @@ EditorProperty *EditorInspectorDefaultPlugin::get_editor_for_property(Object *p_
 				return editor;
 			}
 
+		} break;
+		case Variant::CALLABLE: {
+			EditorPropertyCallable *editor = memnew(EditorPropertyCallable);
+			return editor;
+		} break;
+		case Variant::SIGNAL: {
+			EditorPropertySignal *editor = memnew(EditorPropertySignal);
+			return editor;
 		} break;
 		case Variant::DICTIONARY: {
 			if (p_hint == PROPERTY_HINT_LOCALIZABLE_STRING) {
