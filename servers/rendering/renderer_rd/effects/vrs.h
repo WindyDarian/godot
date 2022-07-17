@@ -1,5 +1,5 @@
 /*************************************************************************/
-/*  bone_map.h                                                           */
+/*  vrs.h                                                                */
 /*************************************************************************/
 /*                       This file is part of:                           */
 /*                           GODOT ENGINE                                */
@@ -28,43 +28,48 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
 
-#ifndef BONE_MAP_H
-#define BONE_MAP_H
+#ifndef VRS_RD_H
+#define VRS_RD_H
 
-#include "skeleton_profile.h"
+#include "servers/rendering/renderer_rd/pipeline_cache_rd.h"
+#include "servers/rendering/renderer_rd/shaders/effects/vrs.glsl.gen.h"
+#include "servers/rendering/renderer_scene_render.h"
 
-class BoneMap : public Resource {
-	GDCLASS(BoneMap, Resource);
+#include "servers/rendering_server.h"
 
-	Ref<SkeletonProfile> profile;
-	HashMap<StringName, StringName> bone_map;
+namespace RendererRD {
 
-	void _update_profile();
-	void _validate_bone_map();
+class VRS {
+private:
+	enum VRSMode {
+		VRS_DEFAULT,
+		VRS_MULTIVIEW,
+		VRS_MAX,
+	};
 
-protected:
-	bool _get(const StringName &p_path, Variant &r_ret) const;
-	bool _set(const StringName &p_path, const Variant &p_value);
-	virtual void _validate_property(PropertyInfo &property) const override;
-	void _get_property_list(List<PropertyInfo> *p_list) const;
-	static void _bind_methods();
+	/* we have no push constant here (yet)
+	struct VRSPushConstant {
+
+	};
+	*/
+
+	struct VRSShader {
+		// VRSPushConstant push_constant;
+		VrsShaderRD shader;
+		RID shader_version;
+		PipelineCacheRD pipelines[VRS_MAX];
+	} vrs_shader;
 
 public:
-	int get_profile_type() const;
-	void set_profile_type(const int p_profile_type);
+	VRS();
+	~VRS();
 
-	Ref<SkeletonProfile> get_profile() const;
-	void set_profile(const Ref<SkeletonProfile> &p_profile);
+	void copy_vrs(RID p_source_rd_texture, RID p_dest_framebuffer, bool p_multiview = false);
 
-	int get_skeleton_bone_name_count(const StringName p_skeleton_bone_name) const;
-
-	StringName get_skeleton_bone_name(StringName p_profile_bone_name) const;
-	void set_skeleton_bone_name(StringName p_profile_bone_name, const StringName p_skeleton_bone_name);
-
-	StringName find_profile_bone_name(StringName p_skeleton_bone_name) const;
-
-	BoneMap();
-	~BoneMap();
+	void create_vrs_texture(const int p_base_width, const int p_base_height, const uint32_t p_view_count, RID &p_vrs_texture, RID &p_vrs_fb);
+	void update_vrs_texture(RID p_vrs_fb, RID p_render_target);
 };
 
-#endif // BONE_MAP_H
+} // namespace RendererRD
+
+#endif // !VRS_RD_H
