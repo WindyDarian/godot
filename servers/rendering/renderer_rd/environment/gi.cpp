@@ -810,7 +810,8 @@ void GI::SDFGI::create(RendererSceneEnvironmentRD *p_env, const Vector3 &p_world
 			uniforms.push_back(u);
 		}
 
-		cascade.sdf_direct_light_uniform_set = RD::get_singleton()->uniform_set_create(uniforms, gi->sdfgi_shader.direct_light.version_get_shader(gi->sdfgi_shader.direct_light_shader, 0), 0);
+		cascade.sdf_direct_light_static_uniform_set = RD::get_singleton()->uniform_set_create(uniforms, gi->sdfgi_shader.direct_light.version_get_shader(gi->sdfgi_shader.direct_light_shader, SDFGIShader::DIRECT_LIGHT_MODE_STATIC), 0);
+		cascade.sdf_direct_light_dynamic_uniform_set = RD::get_singleton()->uniform_set_create(uniforms, gi->sdfgi_shader.direct_light.version_get_shader(gi->sdfgi_shader.direct_light_shader, SDFGIShader::DIRECT_LIGHT_MODE_DYNAMIC), 0);
 	}
 
 	//preprocess initialize uniform set
@@ -1259,7 +1260,7 @@ void GI::SDFGI::update_light() {
 		}
 		cascades[i].all_dynamic_lights_dirty = false;
 
-		RD::get_singleton()->compute_list_bind_uniform_set(compute_list, cascade.sdf_direct_light_uniform_set, 0);
+		RD::get_singleton()->compute_list_bind_uniform_set(compute_list, cascade.sdf_direct_light_dynamic_uniform_set, 0);
 		RD::get_singleton()->compute_list_set_push_constant(compute_list, &push_constant, sizeof(SDFGIShader::DirectLightPushConstant));
 		RD::get_singleton()->compute_list_dispatch_indirect(compute_list, cascade.solid_cell_dispatch_buffer, 0);
 	}
@@ -2413,7 +2414,7 @@ void GI::SDFGI::render_static_lights(RID p_render_buffers, uint32_t p_cascade_co
 		dl_push_constant.cascade = p_cascade_indices[i];
 
 		if (dl_push_constant.light_count > 0) {
-			RD::get_singleton()->compute_list_bind_uniform_set(compute_list, cc.sdf_direct_light_uniform_set, 0);
+			RD::get_singleton()->compute_list_bind_uniform_set(compute_list, cc.sdf_direct_light_static_uniform_set, 0);
 			RD::get_singleton()->compute_list_set_push_constant(compute_list, &dl_push_constant, sizeof(SDFGIShader::DirectLightPushConstant));
 			RD::get_singleton()->compute_list_dispatch_indirect(compute_list, cc.solid_cell_dispatch_buffer, 0);
 		}
@@ -3351,7 +3352,11 @@ void GI::init(RendererSceneSkyRD *p_sky) {
 				RD::Uniform u;
 				u.uniform_type = RD::UNIFORM_TYPE_TEXTURE;
 				u.binding = 0;
-				u.append_id(texture_storage->texture_rd_get_default(RendererRD::DEFAULT_RD_TEXTURE_CUBEMAP_WHITE));
+				if (p_sky->sky_use_cubemap_array) {
+					u.append_id(texture_storage->texture_rd_get_default(RendererRD::DEFAULT_RD_TEXTURE_CUBEMAP_ARRAY_WHITE));
+				} else {
+					u.append_id(texture_storage->texture_rd_get_default(RendererRD::DEFAULT_RD_TEXTURE_CUBEMAP_WHITE));
+				}
 				uniforms.push_back(u);
 			}
 			{
@@ -3705,7 +3710,7 @@ void GI::process_gi(RID p_render_buffers, const RID *p_normal_roughness_slices, 
 	// Now compute the contents of our buffers.
 	RD::ComputeListID compute_list = RD::get_singleton()->compute_list_begin(true);
 
-	// Render each eye seperately.
+	// Render each eye separately.
 	// We need to look into whether we can make our compute shader use Multiview but not sure that works or makes a difference..
 
 	// setup our push constant
