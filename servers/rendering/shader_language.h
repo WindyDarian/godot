@@ -154,6 +154,7 @@ public:
 		TK_SEMICOLON,
 		TK_PERIOD,
 		TK_UNIFORM,
+		TK_UNIFORM_GROUP,
 		TK_INSTANCE,
 		TK_GLOBAL,
 		TK_VARYING,
@@ -687,6 +688,8 @@ public:
 			TextureRepeat repeat = REPEAT_DEFAULT;
 			float hint_range[3];
 			int instance_index = 0;
+			String group;
+			String subgroup;
 
 			Uniform() {
 				hint_range[0] = 0.0f;
@@ -866,7 +869,7 @@ public:
 	};
 	static bool has_builtin(const HashMap<StringName, ShaderLanguage::FunctionInfo> &p_functions, const StringName &p_name);
 
-	typedef DataType (*GlobalVariableGetTypeFunc)(const StringName &p_name);
+	typedef DataType (*GlobalShaderUniformGetTypeFunc)(const StringName &p_name);
 
 	struct FilePosition {
 		String file;
@@ -884,7 +887,7 @@ private:
 
 	static const KeyWord keyword_list[];
 
-	GlobalVariableGetTypeFunc global_var_get_type_func = nullptr;
+	GlobalShaderUniformGetTypeFunc global_shader_uniform_get_type_func = nullptr;
 
 	bool error_set = false;
 	String error_str;
@@ -937,6 +940,9 @@ private:
 	bool last_const = false;
 	StringName last_name;
 	bool is_shader_inc = false;
+
+	String current_uniform_group_name;
+	String current_uniform_subgroup_name;
 
 	VaryingFunctionNames varying_function_names;
 
@@ -1107,7 +1113,7 @@ public:
 		Vector<ModeInfo> render_modes;
 		VaryingFunctionNames varying_function_names = VaryingFunctionNames();
 		HashSet<String> shader_types;
-		GlobalVariableGetTypeFunc global_variable_type_func = nullptr;
+		GlobalShaderUniformGetTypeFunc global_shader_uniform_type_func = nullptr;
 		bool is_include = false;
 	};
 

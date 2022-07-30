@@ -895,17 +895,17 @@ struct _VariantCall {
 
 	static void func_Callable_call(Variant *v, const Variant **p_args, int p_argcount, Variant &r_ret, Callable::CallError &r_error) {
 		Callable *callable = VariantGetInternalPtr<Callable>::get_ptr(v);
-		callable->call(p_args, p_argcount, r_ret, r_error);
+		callable->callp(p_args, p_argcount, r_ret, r_error);
 	}
 
 	static void func_Callable_call_deferred(Variant *v, const Variant **p_args, int p_argcount, Variant &r_ret, Callable::CallError &r_error) {
 		Callable *callable = VariantGetInternalPtr<Callable>::get_ptr(v);
-		callable->call_deferred(p_args, p_argcount);
+		callable->call_deferredp(p_args, p_argcount);
 	}
 
 	static void func_Callable_rpc(Variant *v, const Variant **p_args, int p_argcount, Variant &r_ret, Callable::CallError &r_error) {
 		Callable *callable = VariantGetInternalPtr<Callable>::get_ptr(v);
-		callable->rpc(0, p_args, p_argcount, r_error);
+		callable->rpcp(0, p_args, p_argcount, r_error);
 	}
 
 	static void func_Callable_rpc_id(Variant *v, const Variant **p_args, int p_argcount, Variant &r_ret, Callable::CallError &r_error) {
@@ -920,13 +920,13 @@ struct _VariantCall {
 			r_error.expected = Variant::INT;
 		} else {
 			Callable *callable = VariantGetInternalPtr<Callable>::get_ptr(v);
-			callable->rpc(*p_args[0], &p_args[1], p_argcount - 1, r_error);
+			callable->rpcp(*p_args[0], &p_args[1], p_argcount - 1, r_error);
 		}
 	}
 
 	static void func_Callable_bind(Variant *v, const Variant **p_args, int p_argcount, Variant &r_ret, Callable::CallError &r_error) {
 		Callable *callable = VariantGetInternalPtr<Callable>::get_ptr(v);
-		r_ret = callable->bind(p_args, p_argcount);
+		r_ret = callable->bindp(p_args, p_argcount);
 	}
 
 	static void func_Signal_emit(Variant *v, const Variant **p_args, int p_argcount, Variant &r_ret, Callable::CallError &r_error) {
@@ -1731,8 +1731,12 @@ static void _register_variant_builtin_methods() {
 	bind_method(Vector4, max_axis_index, sarray(), varray());
 	bind_method(Vector4, length, sarray(), varray());
 	bind_method(Vector4, length_squared, sarray(), varray());
-	bind_method(Vector4, sign, sarray(), varray());
 	bind_method(Vector4, abs, sarray(), varray());
+	bind_method(Vector4, sign, sarray(), varray());
+	bind_method(Vector4, floor, sarray(), varray());
+	bind_method(Vector4, ceil, sarray(), varray());
+	bind_method(Vector4, round, sarray(), varray());
+	bind_method(Vector4, lerp, sarray("to", "weight"), varray());
 	bind_method(Vector4, clamp, sarray("min", "max"), varray());
 	bind_method(Vector4, normalized, sarray(), varray());
 	bind_method(Vector4, is_normalized, sarray(), varray());
@@ -1777,7 +1781,7 @@ static void _register_variant_builtin_methods() {
 	bind_method(Quaternion, dot, sarray("with"), varray());
 	bind_method(Quaternion, slerp, sarray("to", "weight"), varray());
 	bind_method(Quaternion, slerpni, sarray("to", "weight"), varray());
-	bind_method(Quaternion, cubic_slerp, sarray("b", "pre_a", "post_b", "weight"), varray());
+	bind_method(Quaternion, spherical_cubic_interpolate, sarray("b", "pre_a", "post_b", "weight"), varray());
 	bind_method(Quaternion, get_euler, sarray(), varray());
 	bind_method(Quaternion, get_axis, sarray(), varray());
 	bind_method(Quaternion, get_angle, sarray(), varray());
@@ -1879,7 +1883,7 @@ static void _register_variant_builtin_methods() {
 	bind_method(Transform2D, orthonormalized, sarray(), varray());
 	bind_method(Transform2D, rotated, sarray("angle"), varray());
 	bind_method(Transform2D, scaled, sarray("scale"), varray());
-	bind_method(Transform2D, translated, sarray("offset"), varray());
+	bind_method(Transform2D, translated_local, sarray("offset"), varray());
 	bind_method(Transform2D, basis_xform, sarray("v"), varray());
 	bind_method(Transform2D, basis_xform_inv, sarray("v"), varray());
 	bind_method(Transform2D, interpolate_with, sarray("xform", "weight"), varray());
@@ -1944,9 +1948,9 @@ static void _register_variant_builtin_methods() {
 	bind_method(Transform3D, orthonormalized, sarray(), varray());
 	bind_method(Transform3D, rotated, sarray("axis", "angle"), varray());
 	bind_method(Transform3D, scaled, sarray("scale"), varray());
-	bind_method(Transform3D, translated, sarray("offset"), varray());
+	bind_method(Transform3D, translated_local, sarray("offset"), varray());
 	bind_method(Transform3D, looking_at, sarray("target", "up"), varray(Vector3(0, 1, 0)));
-	bind_method(Transform3D, sphere_interpolate_with, sarray("xform", "weight"), varray());
+	bind_method(Transform3D, spherical_interpolate_with, sarray("xform", "weight"), varray());
 	bind_method(Transform3D, interpolate_with, sarray("xform", "weight"), varray());
 	bind_method(Transform3D, is_equal_approx, sarray("xform"), varray());
 

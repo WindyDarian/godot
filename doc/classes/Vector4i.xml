@@ -92,9 +92,9 @@
 		</constant>
 		<constant name="AXIS_W" value="3">
 		</constant>
-		<constant name="ZERO" value="Vector4i(0, 0, 0)">
+		<constant name="ZERO" value="Vector4i(0, 0, 0, 0)">
 		</constant>
-		<constant name="ONE" value="Vector4i(1, 1, 1)">
+		<constant name="ONE" value="Vector4i(1, 1, 1, 1)">
 		</constant>
 	</constants>
 	<operators>
@@ -191,6 +191,12 @@
 		<operator name="operator &gt;=">
 			<return type="bool" />
 			<argument index="0" name="right" type="Vector4i" />
+			<description>
+			</description>
+		</operator>
+		<operator name="operator []">
+			<return type="int" />
+			<argument index="0" name="index" type="int" />
 			<description>
 			</description>
 		</operator>
