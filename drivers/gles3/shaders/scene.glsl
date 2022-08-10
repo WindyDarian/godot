@@ -495,7 +495,7 @@ struct LightData { //this structure needs to be as packed as possible
 	mediump float cone_attenuation;
 	mediump float cone_angle;
 	mediump float specular_amount;
-	bool shadow_enabled;
+	mediump float shadow_opacity;
 };
 #ifndef DISABLE_LIGHT_OMNI
 layout(std140) uniform OmniLightData { // ubo:5
@@ -754,7 +754,7 @@ void light_process_omni(uint idx, vec3 vertex, vec3 eye_vec, vec3 normal, vec3 f
 
 	if (omni_lights[idx].size > 0.0) {
 		float t = omni_lights[idx].size / max(0.001, light_length);
-		size_A = max(0.0, 1.0 - 1 / sqrt(1 + t * t));
+		size_A = max(0.0, 1.0 - 1.0 / sqrt(1.0 + t * t));
 	}
 
 	light_compute(normal, normalize(light_rel_vec), eye_vec, size_A, color, omni_attenuation, f0, roughness, metallic, omni_lights[idx].specular_amount, albedo, alpha,
@@ -803,7 +803,7 @@ void light_process_spot(uint idx, vec3 vertex, vec3 eye_vec, vec3 normal, vec3 f
 
 	if (spot_lights[idx].size > 0.0) {
 		float t = spot_lights[idx].size / max(0.001, light_length);
-		size_A = max(0.0, 1.0 - 1 / sqrt(1 + t * t));
+		size_A = max(0.0, 1.0 - 1.0 / sqrt(1.0 + t * t));
 	}
 
 	light_compute(normal, normalize(light_rel_vec), eye_vec, size_A, color, spot_attenuation, f0, roughness, metallic, spot_lights[idx].specular_amount, albedo, alpha,
@@ -1052,6 +1052,7 @@ void main() {
 #else
 		vec3 ref_vec = reflect(-view, normal);
 #endif
+		ref_vec = mix(ref_vec, normal, roughness * roughness);
 		float horizon = min(1.0 + dot(ref_vec, normal), 1.0);
 		ref_vec = scene_data.radiance_inverse_xform * ref_vec;
 		specular_light = textureLod(radiance_map, ref_vec, roughness * RADIANCE_MAX_LOD).rgb;

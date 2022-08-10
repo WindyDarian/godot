@@ -1140,6 +1140,7 @@ void GI::SDFGI::erase() {
 
 	RD::get_singleton()->free(lightprobe_data);
 	RD::get_singleton()->free(lightprobe_history_scroll);
+	RD::get_singleton()->free(lightprobe_average_scroll);
 	RD::get_singleton()->free(occlusion_data);
 	RD::get_singleton()->free(ambient_texture);
 
@@ -1591,34 +1592,24 @@ void GI::SDFGI::debug_draw(uint32_t p_view_count, const Projection *p_projection
 		push_constant.max_cascades = cascades.size();
 		push_constant.screen_size[0] = p_width;
 		push_constant.screen_size[1] = p_height;
-		push_constant.probe_axis_size = probe_axis_count;
-		push_constant.use_occlusion = uses_occlusion;
 		push_constant.y_mult = y_mult;
 
 		push_constant.z_near = -p_projections[v].get_z_near();
 
-		push_constant.cam_transform[0] = p_transform.basis.rows[0][0];
-		push_constant.cam_transform[1] = p_transform.basis.rows[1][0];
-		push_constant.cam_transform[2] = p_transform.basis.rows[2][0];
-		push_constant.cam_transform[3] = 0;
-		push_constant.cam_transform[4] = p_transform.basis.rows[0][1];
-		push_constant.cam_transform[5] = p_transform.basis.rows[1][1];
-		push_constant.cam_transform[6] = p_transform.basis.rows[2][1];
-		push_constant.cam_transform[7] = 0;
-		push_constant.cam_transform[8] = p_transform.basis.rows[0][2];
-		push_constant.cam_transform[9] = p_transform.basis.rows[1][2];
-		push_constant.cam_transform[10] = p_transform.basis.rows[2][2];
-		push_constant.cam_transform[11] = 0;
-		push_constant.cam_transform[12] = p_transform.origin.x;
-		push_constant.cam_transform[13] = p_transform.origin.y;
-		push_constant.cam_transform[14] = p_transform.origin.z;
-		push_constant.cam_transform[15] = 1;
+		for (int i = 0; i < 3; i++) {
+			for (int j = 0; j < 3; j++) {
+				push_constant.cam_basis[i][j] = p_transform.basis.rows[j][i];
+			}
+		}
+		push_constant.cam_origin[0] = p_transform.origin[0];
+		push_constant.cam_origin[1] = p_transform.origin[1];
+		push_constant.cam_origin[2] = p_transform.origin[2];
 
 		// need to properly unproject for asymmetric projection matrices in stereo..
 		Projection inv_projection = p_projections[v].inverse();
 		for (int i = 0; i < 4; i++) {
-			for (int j = 0; j < 4; j++) {
-				push_constant.inv_projection[i * 4 + j] = inv_projection.matrix[i][j];
+			for (int j = 0; j < 3; j++) {
+				push_constant.inv_projection[j][i] = inv_projection.matrix[i][j];
 			}
 		}
 
@@ -2437,18 +2428,7 @@ void GI::VoxelGIInstance::update(bool p_update_light_instances, const Vector<RID
 
 	if (last_probe_data_version != data_version) {
 		//need to re-create everything
-		if (texture.is_valid()) {
-			RD::get_singleton()->free(texture);
-			RD::get_singleton()->free(write_buffer);
-			mipmaps.clear();
-		}
-
-		for (int i = 0; i < dynamic_maps.size(); i++) {
-			RD::get_singleton()->free(dynamic_maps[i].texture);
-			RD::get_singleton()->free(dynamic_maps[i].depth);
-		}
-
-		dynamic_maps.clear();
+		free_resources();
 
 		Vector3i octree_size = gi->voxel_gi_get_octree_size(probe);
 
@@ -3138,6 +3118,37 @@ void GI::VoxelGIInstance::update(bool p_update_light_instances, const Vector<RID
 	}
 
 	last_probe_version = gi->voxel_gi_get_version(probe);
+}
+
+void GI::VoxelGIInstance::free_resources() {
+	if (texture.is_valid()) {
+		RD::get_singleton()->free(texture);
+		RD::get_singleton()->free(write_buffer);
+
+		texture = RID();
+		write_buffer = RID();
+		mipmaps.clear();
+	}
+
+	for (int i = 0; i < dynamic_maps.size(); i++) {
+		RD::get_singleton()->free(dynamic_maps[i].texture);
+		RD::get_singleton()->free(dynamic_maps[i].depth);
+
+		// these only exist on the first level...
+		if (dynamic_maps[i].fb_depth.is_valid()) {
+			RD::get_singleton()->free(dynamic_maps[i].fb_depth);
+		}
+		if (dynamic_maps[i].albedo.is_valid()) {
+			RD::get_singleton()->free(dynamic_maps[i].albedo);
+		}
+		if (dynamic_maps[i].normal.is_valid()) {
+			RD::get_singleton()->free(dynamic_maps[i].normal);
+		}
+		if (dynamic_maps[i].orm.is_valid()) {
+			RD::get_singleton()->free(dynamic_maps[i].orm);
+		}
+	}
+	dynamic_maps.clear();
 }
 
 void GI::VoxelGIInstance::debug(RD::DrawListID p_draw_list, RID p_framebuffer, const Projection &p_camera_with_transform, bool p_lighting, bool p_emission, float p_alpha) {
@@ -3944,6 +3955,12 @@ RID GI::voxel_gi_instance_create(RID p_base) {
 	voxel_gi.probe = p_base;
 	RID rid = voxel_gi_instance_owner.make_rid(voxel_gi);
 	return rid;
+}
+
+void GI::voxel_gi_instance_free(RID p_rid) {
+	GI::VoxelGIInstance *voxel_gi = voxel_gi_instance_owner.get_or_null(p_rid);
+	voxel_gi->free_resources();
+	voxel_gi_instance_owner.free(p_rid);
 }
 
 void GI::voxel_gi_instance_set_transform_to_data(RID p_probe, const Transform3D &p_xform) {

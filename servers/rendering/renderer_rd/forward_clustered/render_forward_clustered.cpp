@@ -1076,7 +1076,7 @@ void RenderForwardClustered::_fill_instance_data(RenderListType p_render_list, i
 		instance_data.flags = inst->flags_cache;
 		instance_data.gi_offset = inst->gi_offset_cache;
 		instance_data.layer_mask = inst->layer_mask;
-		instance_data.instance_uniforms_ofs = uint32_t(inst->shader_parameters_offset);
+		instance_data.instance_uniforms_ofs = uint32_t(inst->shader_uniforms_offset);
 		instance_data.lightmap_uv_scale[0] = inst->lightmap_uv_scale.position.x;
 		instance_data.lightmap_uv_scale[1] = inst->lightmap_uv_scale.position.y;
 		instance_data.lightmap_uv_scale[2] = inst->lightmap_uv_scale.size.x;
@@ -2265,14 +2265,17 @@ void RenderForwardClustered::_update_render_base_uniform_set() {
 				case RS::DECAL_FILTER_NEAREST: {
 					sampler = material_storage->sampler_rd_get_custom(RS::CANVAS_ITEM_TEXTURE_FILTER_NEAREST, RS::CANVAS_ITEM_TEXTURE_REPEAT_DISABLED);
 				} break;
-				case RS::DECAL_FILTER_NEAREST_MIPMAPS: {
-					sampler = material_storage->sampler_rd_get_custom(RS::CANVAS_ITEM_TEXTURE_FILTER_NEAREST_WITH_MIPMAPS, RS::CANVAS_ITEM_TEXTURE_REPEAT_DISABLED);
-				} break;
 				case RS::DECAL_FILTER_LINEAR: {
 					sampler = material_storage->sampler_rd_get_custom(RS::CANVAS_ITEM_TEXTURE_FILTER_LINEAR, RS::CANVAS_ITEM_TEXTURE_REPEAT_DISABLED);
 				} break;
+				case RS::DECAL_FILTER_NEAREST_MIPMAPS: {
+					sampler = material_storage->sampler_rd_get_custom(RS::CANVAS_ITEM_TEXTURE_FILTER_NEAREST_WITH_MIPMAPS, RS::CANVAS_ITEM_TEXTURE_REPEAT_DISABLED);
+				} break;
 				case RS::DECAL_FILTER_LINEAR_MIPMAPS: {
 					sampler = material_storage->sampler_rd_get_custom(RS::CANVAS_ITEM_TEXTURE_FILTER_LINEAR_WITH_MIPMAPS, RS::CANVAS_ITEM_TEXTURE_REPEAT_DISABLED);
+				} break;
+				case RS::DECAL_FILTER_NEAREST_MIPMAPS_ANISOTROPIC: {
+					sampler = material_storage->sampler_rd_get_custom(RS::CANVAS_ITEM_TEXTURE_FILTER_NEAREST_WITH_MIPMAPS_ANISOTROPIC, RS::CANVAS_ITEM_TEXTURE_REPEAT_DISABLED);
 				} break;
 				case RS::DECAL_FILTER_LINEAR_MIPMAPS_ANISOTROPIC: {
 					sampler = material_storage->sampler_rd_get_custom(RS::CANVAS_ITEM_TEXTURE_FILTER_LINEAR_WITH_MIPMAPS_ANISOTROPIC, RS::CANVAS_ITEM_TEXTURE_REPEAT_DISABLED);
@@ -2292,14 +2295,17 @@ void RenderForwardClustered::_update_render_base_uniform_set() {
 				case RS::LIGHT_PROJECTOR_FILTER_NEAREST: {
 					sampler = material_storage->sampler_rd_get_custom(RS::CANVAS_ITEM_TEXTURE_FILTER_NEAREST, RS::CANVAS_ITEM_TEXTURE_REPEAT_DISABLED);
 				} break;
-				case RS::LIGHT_PROJECTOR_FILTER_NEAREST_MIPMAPS: {
-					sampler = material_storage->sampler_rd_get_custom(RS::CANVAS_ITEM_TEXTURE_FILTER_NEAREST_WITH_MIPMAPS, RS::CANVAS_ITEM_TEXTURE_REPEAT_DISABLED);
-				} break;
 				case RS::LIGHT_PROJECTOR_FILTER_LINEAR: {
 					sampler = material_storage->sampler_rd_get_custom(RS::CANVAS_ITEM_TEXTURE_FILTER_LINEAR, RS::CANVAS_ITEM_TEXTURE_REPEAT_DISABLED);
 				} break;
+				case RS::LIGHT_PROJECTOR_FILTER_NEAREST_MIPMAPS: {
+					sampler = material_storage->sampler_rd_get_custom(RS::CANVAS_ITEM_TEXTURE_FILTER_NEAREST_WITH_MIPMAPS, RS::CANVAS_ITEM_TEXTURE_REPEAT_DISABLED);
+				} break;
 				case RS::LIGHT_PROJECTOR_FILTER_LINEAR_MIPMAPS: {
 					sampler = material_storage->sampler_rd_get_custom(RS::CANVAS_ITEM_TEXTURE_FILTER_LINEAR_WITH_MIPMAPS, RS::CANVAS_ITEM_TEXTURE_REPEAT_DISABLED);
+				} break;
+				case RS::LIGHT_PROJECTOR_FILTER_NEAREST_MIPMAPS_ANISOTROPIC: {
+					sampler = material_storage->sampler_rd_get_custom(RS::CANVAS_ITEM_TEXTURE_FILTER_NEAREST_WITH_MIPMAPS_ANISOTROPIC, RS::CANVAS_ITEM_TEXTURE_REPEAT_DISABLED);
 				} break;
 				case RS::LIGHT_PROJECTOR_FILTER_LINEAR_MIPMAPS_ANISOTROPIC: {
 					sampler = material_storage->sampler_rd_get_custom(RS::CANVAS_ITEM_TEXTURE_FILTER_LINEAR_WITH_MIPMAPS_ANISOTROPIC, RS::CANVAS_ITEM_TEXTURE_REPEAT_DISABLED);
@@ -2662,7 +2668,11 @@ RID RenderForwardClustered::_setup_sdfgi_render_pass_uniform_set(RID p_albedo_te
 		RD::Uniform u;
 		u.binding = 1;
 		u.uniform_type = RD::UNIFORM_TYPE_STORAGE_BUFFER;
-		u.append_id(scene_state.instance_buffer[RENDER_LIST_SECONDARY]);
+		RID instance_buffer = scene_state.instance_buffer[RENDER_LIST_SECONDARY];
+		if (instance_buffer == RID()) {
+			instance_buffer = scene_shader.default_vec4_xform_buffer; // any buffer will do since its not used
+		}
+		u.append_id(instance_buffer);
 		uniforms.push_back(u);
 	}
 	{
@@ -3271,12 +3281,18 @@ void RenderForwardClustered::_update_shader_quality_settings() {
 
 	sc.type = RD::PIPELINE_SPECIALIZATION_CONSTANT_TYPE_BOOL;
 	sc.constant_id = SPEC_CONSTANT_DECAL_FILTER;
-	sc.bool_value = decals_get_filter() == RS::DECAL_FILTER_NEAREST_MIPMAPS || decals_get_filter() == RS::DECAL_FILTER_LINEAR_MIPMAPS || decals_get_filter() == RS::DECAL_FILTER_LINEAR_MIPMAPS_ANISOTROPIC;
+	sc.bool_value = decals_get_filter() == RS::DECAL_FILTER_NEAREST_MIPMAPS ||
+			decals_get_filter() == RS::DECAL_FILTER_LINEAR_MIPMAPS ||
+			decals_get_filter() == RS::DECAL_FILTER_NEAREST_MIPMAPS_ANISOTROPIC ||
+			decals_get_filter() == RS::DECAL_FILTER_LINEAR_MIPMAPS_ANISOTROPIC;
 
 	spec_constants.push_back(sc);
 
 	sc.constant_id = SPEC_CONSTANT_PROJECTOR_FILTER;
-	sc.bool_value = light_projectors_get_filter() == RS::LIGHT_PROJECTOR_FILTER_NEAREST_MIPMAPS || light_projectors_get_filter() == RS::LIGHT_PROJECTOR_FILTER_LINEAR_MIPMAPS || light_projectors_get_filter() == RS::LIGHT_PROJECTOR_FILTER_LINEAR_MIPMAPS_ANISOTROPIC;
+	sc.bool_value = light_projectors_get_filter() == RS::LIGHT_PROJECTOR_FILTER_NEAREST_MIPMAPS ||
+			light_projectors_get_filter() == RS::LIGHT_PROJECTOR_FILTER_LINEAR_MIPMAPS ||
+			light_projectors_get_filter() == RS::LIGHT_PROJECTOR_FILTER_NEAREST_MIPMAPS_ANISOTROPIC ||
+			light_projectors_get_filter() == RS::LIGHT_PROJECTOR_FILTER_LINEAR_MIPMAPS_ANISOTROPIC;
 
 	spec_constants.push_back(sc);
 

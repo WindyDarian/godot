@@ -392,7 +392,7 @@ void SceneShaderForwardClustered::ShaderData::set_default_texture_param(const St
 	}
 }
 
-void SceneShaderForwardClustered::ShaderData::get_param_list(List<PropertyInfo> *p_param_list) const {
+void SceneShaderForwardClustered::ShaderData::get_shader_uniform_list(List<PropertyInfo> *p_param_list) const {
 	HashMap<int, StringName> order;
 
 	for (const KeyValue<StringName, ShaderLanguage::ShaderNode::Uniform> &E : uniforms) {
@@ -692,6 +692,11 @@ void SceneShaderForwardClustered::init(const String p_defines) {
 		actions.renames["CUSTOM2"] = "custom2_attrib";
 		actions.renames["CUSTOM3"] = "custom3_attrib";
 		actions.renames["OUTPUT_IS_SRGB"] = "SHADER_IS_SRGB";
+
+		actions.renames["NODE_POSITION_WORLD"] = "model_matrix[3].xyz";
+		actions.renames["CAMERA_POSITION_WORLD"] = "scene_data.inv_view_matrix[3].xyz";
+		actions.renames["CAMERA_DIRECTION_WORLD"] = "scene_data.view_matrix[3].xyz";
+		actions.renames["NODE_POSITION_VIEW"] = "(model_matrix * scene_data.view_matrix)[3].xyz";
 
 		actions.renames["VIEW_INDEX"] = "ViewIndex";
 		actions.renames["VIEW_MONO_LEFT"] = "0";

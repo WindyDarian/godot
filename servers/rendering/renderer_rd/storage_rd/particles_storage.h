@@ -159,7 +159,7 @@ private:
 		real_t randomness = 0.0;
 		bool restart_request = false;
 		AABB custom_aabb = AABB(Vector3(-4, -4, -4), Vector3(8, 8, 8));
-		bool use_local_coords = true;
+		bool use_local_coords = false;
 		bool has_collision_cache = false;
 
 		bool has_sdf_collision = false;
@@ -337,7 +337,7 @@ private:
 		virtual void set_code(const String &p_Code);
 		virtual void set_path_hint(const String &p_hint);
 		virtual void set_default_texture_param(const StringName &p_name, RID p_texture, int p_index);
-		virtual void get_param_list(List<PropertyInfo> *p_param_list) const;
+		virtual void get_shader_uniform_list(List<PropertyInfo> *p_param_list) const;
 		virtual void get_instance_param_list(List<RendererMaterialStorage::InstanceShaderParam> *p_param_list) const;
 		virtual bool is_param_texture(const StringName &p_param) const;
 		virtual bool is_animated() const;

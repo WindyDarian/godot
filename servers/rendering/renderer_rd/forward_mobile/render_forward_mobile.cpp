@@ -1214,14 +1214,17 @@ void RenderForwardMobile::_update_render_base_uniform_set() {
 				case RS::DECAL_FILTER_NEAREST: {
 					sampler = material_storage->sampler_rd_get_default(RS::CANVAS_ITEM_TEXTURE_FILTER_NEAREST, RS::CANVAS_ITEM_TEXTURE_REPEAT_DISABLED);
 				} break;
-				case RS::DECAL_FILTER_NEAREST_MIPMAPS: {
-					sampler = material_storage->sampler_rd_get_default(RS::CANVAS_ITEM_TEXTURE_FILTER_NEAREST_WITH_MIPMAPS, RS::CANVAS_ITEM_TEXTURE_REPEAT_DISABLED);
-				} break;
 				case RS::DECAL_FILTER_LINEAR: {
 					sampler = material_storage->sampler_rd_get_default(RS::CANVAS_ITEM_TEXTURE_FILTER_LINEAR, RS::CANVAS_ITEM_TEXTURE_REPEAT_DISABLED);
 				} break;
+				case RS::DECAL_FILTER_NEAREST_MIPMAPS: {
+					sampler = material_storage->sampler_rd_get_default(RS::CANVAS_ITEM_TEXTURE_FILTER_NEAREST_WITH_MIPMAPS, RS::CANVAS_ITEM_TEXTURE_REPEAT_DISABLED);
+				} break;
 				case RS::DECAL_FILTER_LINEAR_MIPMAPS: {
 					sampler = material_storage->sampler_rd_get_default(RS::CANVAS_ITEM_TEXTURE_FILTER_LINEAR_WITH_MIPMAPS, RS::CANVAS_ITEM_TEXTURE_REPEAT_DISABLED);
+				} break;
+				case RS::DECAL_FILTER_NEAREST_MIPMAPS_ANISOTROPIC: {
+					sampler = material_storage->sampler_rd_get_default(RS::CANVAS_ITEM_TEXTURE_FILTER_NEAREST_WITH_MIPMAPS_ANISOTROPIC, RS::CANVAS_ITEM_TEXTURE_REPEAT_DISABLED);
 				} break;
 				case RS::DECAL_FILTER_LINEAR_MIPMAPS_ANISOTROPIC: {
 					sampler = material_storage->sampler_rd_get_default(RS::CANVAS_ITEM_TEXTURE_FILTER_LINEAR_WITH_MIPMAPS_ANISOTROPIC, RS::CANVAS_ITEM_TEXTURE_REPEAT_DISABLED);
@@ -1241,14 +1244,17 @@ void RenderForwardMobile::_update_render_base_uniform_set() {
 				case RS::LIGHT_PROJECTOR_FILTER_NEAREST: {
 					sampler = material_storage->sampler_rd_get_default(RS::CANVAS_ITEM_TEXTURE_FILTER_NEAREST, RS::CANVAS_ITEM_TEXTURE_REPEAT_DISABLED);
 				} break;
-				case RS::LIGHT_PROJECTOR_FILTER_NEAREST_MIPMAPS: {
-					sampler = material_storage->sampler_rd_get_default(RS::CANVAS_ITEM_TEXTURE_FILTER_NEAREST_WITH_MIPMAPS, RS::CANVAS_ITEM_TEXTURE_REPEAT_DISABLED);
-				} break;
 				case RS::LIGHT_PROJECTOR_FILTER_LINEAR: {
 					sampler = material_storage->sampler_rd_get_default(RS::CANVAS_ITEM_TEXTURE_FILTER_LINEAR, RS::CANVAS_ITEM_TEXTURE_REPEAT_DISABLED);
 				} break;
+				case RS::LIGHT_PROJECTOR_FILTER_NEAREST_MIPMAPS: {
+					sampler = material_storage->sampler_rd_get_default(RS::CANVAS_ITEM_TEXTURE_FILTER_NEAREST_WITH_MIPMAPS, RS::CANVAS_ITEM_TEXTURE_REPEAT_DISABLED);
+				} break;
 				case RS::LIGHT_PROJECTOR_FILTER_LINEAR_MIPMAPS: {
 					sampler = material_storage->sampler_rd_get_default(RS::CANVAS_ITEM_TEXTURE_FILTER_LINEAR_WITH_MIPMAPS, RS::CANVAS_ITEM_TEXTURE_REPEAT_DISABLED);
+				} break;
+				case RS::LIGHT_PROJECTOR_FILTER_NEAREST_MIPMAPS_ANISOTROPIC: {
+					sampler = material_storage->sampler_rd_get_default(RS::CANVAS_ITEM_TEXTURE_FILTER_NEAREST_WITH_MIPMAPS_ANISOTROPIC, RS::CANVAS_ITEM_TEXTURE_REPEAT_DISABLED);
 				} break;
 				case RS::LIGHT_PROJECTOR_FILTER_LINEAR_MIPMAPS_ANISOTROPIC: {
 					sampler = material_storage->sampler_rd_get_default(RS::CANVAS_ITEM_TEXTURE_FILTER_LINEAR_WITH_MIPMAPS_ANISOTROPIC, RS::CANVAS_ITEM_TEXTURE_REPEAT_DISABLED);
@@ -1897,7 +1903,7 @@ void RenderForwardMobile::_render_list_template(RenderingDevice::DrawListID p_dr
 		push_constant.flags = inst->flags_cache;
 		push_constant.gi_offset = inst->gi_offset_cache;
 		push_constant.layer_mask = inst->layer_mask;
-		push_constant.instance_uniforms_ofs = uint32_t(inst->shader_parameters_offset);
+		push_constant.instance_uniforms_ofs = uint32_t(inst->shader_uniforms_offset);
 
 		if (p_params->pass_mode == PASS_MODE_DEPTH_MATERIAL) {
 			// abuse lightmap_uv_scale[0] here, should not be needed here
@@ -2558,12 +2564,18 @@ void RenderForwardMobile::_update_shader_quality_settings() {
 
 	sc.type = RD::PIPELINE_SPECIALIZATION_CONSTANT_TYPE_BOOL;
 	sc.constant_id = SPEC_CONSTANT_DECAL_USE_MIPMAPS;
-	sc.bool_value = decals_get_filter() == RS::DECAL_FILTER_NEAREST_MIPMAPS || decals_get_filter() == RS::DECAL_FILTER_LINEAR_MIPMAPS || decals_get_filter() == RS::DECAL_FILTER_LINEAR_MIPMAPS_ANISOTROPIC;
+	sc.bool_value = decals_get_filter() == RS::DECAL_FILTER_NEAREST_MIPMAPS ||
+			decals_get_filter() == RS::DECAL_FILTER_LINEAR_MIPMAPS ||
+			decals_get_filter() == RS::DECAL_FILTER_NEAREST_MIPMAPS_ANISOTROPIC ||
+			decals_get_filter() == RS::DECAL_FILTER_LINEAR_MIPMAPS_ANISOTROPIC;
 
 	spec_constants.push_back(sc);
 
 	sc.constant_id = SPEC_CONSTANT_PROJECTOR_USE_MIPMAPS;
-	sc.bool_value = light_projectors_get_filter() == RS::LIGHT_PROJECTOR_FILTER_NEAREST_MIPMAPS || light_projectors_get_filter() == RS::LIGHT_PROJECTOR_FILTER_LINEAR_MIPMAPS || light_projectors_get_filter() == RS::LIGHT_PROJECTOR_FILTER_LINEAR_MIPMAPS_ANISOTROPIC;
+	sc.bool_value = light_projectors_get_filter() == RS::LIGHT_PROJECTOR_FILTER_NEAREST_MIPMAPS ||
+			light_projectors_get_filter() == RS::LIGHT_PROJECTOR_FILTER_LINEAR_MIPMAPS ||
+			light_projectors_get_filter() == RS::LIGHT_PROJECTOR_FILTER_NEAREST_MIPMAPS_ANISOTROPIC ||
+			light_projectors_get_filter() == RS::LIGHT_PROJECTOR_FILTER_LINEAR_MIPMAPS_ANISOTROPIC;
 
 	spec_constants.push_back(sc);
 
