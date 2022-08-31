@@ -99,6 +99,10 @@ void EditorPropertyText::set_string_name(bool p_enabled) {
 	string_name = p_enabled;
 }
 
+void EditorPropertyText::set_secret(bool p_enabled) {
+	text->set_secret(p_enabled);
+}
+
 void EditorPropertyText::set_placeholder(const String &p_string) {
 	text->set_placeholder(p_string);
 }
@@ -392,7 +396,7 @@ void EditorPropertyLocale::_locale_pressed() {
 void EditorPropertyLocale::update_property() {
 	String locale_code = get_edited_object()->get(get_edited_property());
 	locale->set_text(locale_code);
-	locale->set_tooltip(locale_code);
+	locale->set_tooltip_text(locale_code);
 }
 
 void EditorPropertyLocale::setup(const String &p_hint_text) {
@@ -481,7 +485,7 @@ void EditorPropertyPath::_path_pressed() {
 void EditorPropertyPath::update_property() {
 	String full_path = get_edited_object()->get(get_edited_property());
 	path->set_text(full_path);
-	path->set_tooltip(full_path);
+	path->set_tooltip_text(full_path);
 }
 
 void EditorPropertyPath::setup(const Vector<String> &p_extensions, bool p_folder, bool p_global) {
@@ -947,7 +951,7 @@ void EditorPropertyLayersGrid::gui_input(const Ref<InputEvent> &p_ev) {
 		bool expand_was_hovered = expand_hovered;
 		expand_hovered = expand_rect.has_point(mm->get_position());
 		if (expand_hovered != expand_was_hovered) {
-			update();
+			queue_redraw();
 		}
 
 		if (!expand_hovered) {
@@ -955,7 +959,7 @@ void EditorPropertyLayersGrid::gui_input(const Ref<InputEvent> &p_ev) {
 				if (flag_rects[i].has_point(mm->get_position())) {
 					// Used to highlight the hovered flag in the layers grid.
 					hovered_index = i;
-					update();
+					queue_redraw();
 					return;
 				}
 			}
@@ -964,7 +968,7 @@ void EditorPropertyLayersGrid::gui_input(const Ref<InputEvent> &p_ev) {
 		// Remove highlight when no square is hovered.
 		if (hovered_index != -1) {
 			hovered_index = -1;
-			update();
+			queue_redraw();
 		}
 
 		return;
@@ -982,11 +986,11 @@ void EditorPropertyLayersGrid::gui_input(const Ref<InputEvent> &p_ev) {
 			}
 
 			emit_signal(SNAME("flag_changed"), value);
-			update();
+			queue_redraw();
 		} else if (expand_hovered) {
 			expanded = !expanded;
 			update_minimum_size();
-			update();
+			queue_redraw();
 		}
 	}
 	if (mb.is_valid() && mb->get_button_index() == MouseButton::RIGHT && mb->is_pressed()) {
@@ -1127,11 +1131,11 @@ void EditorPropertyLayersGrid::_notification(int p_what) {
 		case NOTIFICATION_MOUSE_EXIT: {
 			if (expand_hovered) {
 				expand_hovered = false;
-				update();
+				queue_redraw();
 			}
 			if (hovered_index != -1) {
 				hovered_index = -1;
-				update();
+				queue_redraw();
 			}
 		} break;
 	}
@@ -1139,7 +1143,7 @@ void EditorPropertyLayersGrid::_notification(int p_what) {
 
 void EditorPropertyLayersGrid::set_flag(uint32_t p_flag) {
 	value = p_flag;
-	update();
+	queue_redraw();
 }
 
 void EditorPropertyLayersGrid::_bind_methods() {
@@ -1272,7 +1276,7 @@ void EditorPropertyLayers::_menu_pressed(int p_menu) {
 	} else {
 		grid->value |= (1 << p_menu);
 	}
-	grid->update();
+	grid->queue_redraw();
 	layers->set_item_checked(layers->get_item_index(p_menu), grid->value & (1 << p_menu));
 	_grid_changed(grid->value);
 }
@@ -1458,7 +1462,7 @@ void EditorPropertyFloat::_value_changed(double val) {
 	}
 
 	if (angle_in_radians) {
-		val = Math::deg2rad(val);
+		val = Math::deg_to_rad(val);
 	}
 	emit_changed(get_edited_property(), val);
 }
@@ -1466,7 +1470,7 @@ void EditorPropertyFloat::_value_changed(double val) {
 void EditorPropertyFloat::update_property() {
 	double val = get_edited_object()->get(get_edited_property());
 	if (angle_in_radians) {
-		val = Math::rad2deg(val);
+		val = Math::rad_to_deg(val);
 	}
 	setting = true;
 	spin->set_value(val);
@@ -1519,13 +1523,13 @@ void EditorPropertyEasing::_drag_easing(const Ref<InputEvent> &p_ev) {
 
 			// Ensure the easing doesn't appear as being dragged
 			dragging = false;
-			easing_draw->update();
+			easing_draw->queue_redraw();
 		}
 
 		if (mb->get_button_index() == MouseButton::LEFT) {
 			dragging = mb->is_pressed();
 			// Update to display the correct dragging color
-			easing_draw->update();
+			easing_draw->queue_redraw();
 		}
 	}
 
@@ -1565,7 +1569,7 @@ void EditorPropertyEasing::_drag_easing(const Ref<InputEvent> &p_ev) {
 		val = CLAMP(val, -1'000'000, 1'000'000);
 
 		emit_changed(get_edited_property(), val);
-		easing_draw->update();
+		easing_draw->queue_redraw();
 	}
 }
 
@@ -1617,14 +1621,14 @@ void EditorPropertyEasing::_draw_easing() {
 }
 
 void EditorPropertyEasing::update_property() {
-	easing_draw->update();
+	easing_draw->queue_redraw();
 }
 
 void EditorPropertyEasing::_set_preset(int p_preset) {
 	static const float preset_value[EASING_MAX] = { 0.0, 1.0, 2.0, 0.5, -2.0, -0.5 };
 
 	emit_changed(get_edited_property(), preset_value[p_preset]);
-	easing_draw->update();
+	easing_draw->queue_redraw();
 }
 
 void EditorPropertyEasing::_setup_spin() {
@@ -1663,7 +1667,7 @@ void EditorPropertyEasing::_spin_focus_exited() {
 	spin->hide();
 	// Ensure the easing doesn't appear as being dragged
 	dragging = false;
-	easing_draw->update();
+	easing_draw->queue_redraw();
 }
 
 void EditorPropertyEasing::setup(bool p_positive_only, bool p_flip) {
@@ -1988,9 +1992,9 @@ void EditorPropertyVector3::_value_changed(double val, const String &p_name) {
 	v3.y = spin[1]->get_value();
 	v3.z = spin[2]->get_value();
 	if (angle_in_radians) {
-		v3.x = Math::deg2rad(v3.x);
-		v3.y = Math::deg2rad(v3.y);
-		v3.z = Math::deg2rad(v3.z);
+		v3.x = Math::deg_to_rad(v3.x);
+		v3.y = Math::deg_to_rad(v3.y);
+		v3.z = Math::deg_to_rad(v3.z);
 	}
 	emit_changed(get_edited_property(), v3, p_name);
 }
@@ -2022,9 +2026,9 @@ void EditorPropertyVector3::_update_ratio() {
 
 void EditorPropertyVector3::update_using_vector(Vector3 p_vector) {
 	if (angle_in_radians) {
-		p_vector.x = Math::rad2deg(p_vector.x);
-		p_vector.y = Math::rad2deg(p_vector.y);
-		p_vector.z = Math::rad2deg(p_vector.z);
+		p_vector.x = Math::rad_to_deg(p_vector.x);
+		p_vector.y = Math::rad_to_deg(p_vector.y);
+		p_vector.z = Math::rad_to_deg(p_vector.z);
 	}
 	setting = true;
 	spin[0]->set_value(p_vector.x);
@@ -2039,9 +2043,9 @@ Vector3 EditorPropertyVector3::get_vector() {
 	v3.y = spin[1]->get_value();
 	v3.z = spin[2]->get_value();
 	if (angle_in_radians) {
-		v3.x = Math::deg2rad(v3.x);
-		v3.y = Math::deg2rad(v3.y);
-		v3.z = Math::deg2rad(v3.z);
+		v3.x = Math::deg_to_rad(v3.x);
+		v3.y = Math::deg_to_rad(v3.y);
+		v3.z = Math::deg_to_rad(v3.z);
 	}
 
 	return v3;
@@ -2613,7 +2617,46 @@ void EditorPropertyQuaternion::_set_read_only(bool p_read_only) {
 	for (int i = 0; i < 4; i++) {
 		spin[i]->set_read_only(p_read_only);
 	}
+	for (int i = 0; i < 3; i++) {
+		euler[i]->set_read_only(p_read_only);
+	}
 };
+
+void EditorPropertyQuaternion::_edit_custom_value() {
+	if (edit_button->is_pressed()) {
+		edit_custom_bc->show();
+		for (int i = 0; i < 3; i++) {
+			euler[i]->grab_focus();
+		}
+	} else {
+		edit_custom_bc->hide();
+		for (int i = 0; i < 4; i++) {
+			spin[i]->grab_focus();
+		}
+	}
+	update_property();
+}
+
+void EditorPropertyQuaternion::_custom_value_changed(double val) {
+	if (setting) {
+		return;
+	}
+
+	edit_euler.x = euler[0]->get_value();
+	edit_euler.y = euler[1]->get_value();
+	edit_euler.z = euler[2]->get_value();
+
+	Vector3 v;
+	v.x = Math::deg_to_rad(edit_euler.x);
+	v.y = Math::deg_to_rad(edit_euler.y);
+	v.z = Math::deg_to_rad(edit_euler.z);
+
+	Quaternion temp_q = Quaternion(v);
+	spin[0]->set_value(temp_q.x);
+	spin[1]->set_value(temp_q.y);
+	spin[2]->set_value(temp_q.z);
+	spin[3]->set_value(temp_q.w);
+}
 
 void EditorPropertyQuaternion::_value_changed(double val, const String &p_name) {
 	if (setting) {
@@ -2625,7 +2668,16 @@ void EditorPropertyQuaternion::_value_changed(double val, const String &p_name) 
 	p.y = spin[1]->get_value();
 	p.z = spin[2]->get_value();
 	p.w = spin[3]->get_value();
+
 	emit_changed(get_edited_property(), p, p_name);
+}
+
+bool EditorPropertyQuaternion::is_grabbing_euler() {
+	bool is_grabbing = false;
+	for (int i = 0; i < 3; i++) {
+		is_grabbing |= euler[i]->is_grabbing();
+	}
+	return is_grabbing;
 }
 
 void EditorPropertyQuaternion::update_property() {
@@ -2635,7 +2687,20 @@ void EditorPropertyQuaternion::update_property() {
 	spin[1]->set_value(val.y);
 	spin[2]->set_value(val.z);
 	spin[3]->set_value(val.w);
+	if (!is_grabbing_euler()) {
+		Vector3 v = val.normalized().get_euler_yxz();
+		edit_euler.x = Math::rad_to_deg(v.x);
+		edit_euler.y = Math::rad_to_deg(v.y);
+		edit_euler.z = Math::rad_to_deg(v.z);
+		euler[0]->set_value(edit_euler.x);
+		euler[1]->set_value(edit_euler.y);
+		euler[2]->set_value(edit_euler.z);
+	}
 	setting = false;
+}
+
+void EditorPropertyQuaternion::_warning_pressed() {
+	warning_dialog->popup_centered();
 }
 
 void EditorPropertyQuaternion::_notification(int p_what) {
@@ -2646,6 +2711,13 @@ void EditorPropertyQuaternion::_notification(int p_what) {
 			for (int i = 0; i < 4; i++) {
 				spin[i]->add_theme_color_override("label_color", colors[i]);
 			}
+			for (int i = 0; i < 3; i++) {
+				euler[i]->add_theme_color_override("label_color", colors[i]);
+			}
+			edit_button->set_icon(get_theme_icon(SNAME("Edit"), SNAME("EditorIcons")));
+			euler_label->add_theme_color_override(SNAME("font_color"), get_theme_color(SNAME("property_color"), SNAME("Editor")));
+			warning->set_icon(get_theme_icon(SNAME("NodeWarning"), SNAME("EditorIcons")));
+			warning->add_theme_color_override(SNAME("font_color"), get_theme_color(SNAME("warning_color"), SNAME("Editor")));
 		} break;
 	}
 }
@@ -2653,7 +2725,7 @@ void EditorPropertyQuaternion::_notification(int p_what) {
 void EditorPropertyQuaternion::_bind_methods() {
 }
 
-void EditorPropertyQuaternion::setup(double p_min, double p_max, double p_step, bool p_no_slider, const String &p_suffix) {
+void EditorPropertyQuaternion::setup(double p_min, double p_max, double p_step, bool p_no_slider, const String &p_suffix, bool p_hide_editor) {
 	for (int i = 0; i < 4; i++) {
 		spin[i]->set_min(p_min);
 		spin[i]->set_max(p_max);
@@ -2665,34 +2737,91 @@ void EditorPropertyQuaternion::setup(double p_min, double p_max, double p_step, 
 		// a generic way to store 4 values, so we'll still respect the suffix.
 		spin[i]->set_suffix(p_suffix);
 	}
+
+	for (int i = 0; i < 3; i++) {
+		euler[i]->set_min(-360);
+		euler[i]->set_max(360);
+		euler[i]->set_step(0.1);
+		euler[i]->set_hide_slider(false);
+		euler[i]->set_allow_greater(true);
+		euler[i]->set_allow_lesser(true);
+		euler[i]->set_suffix(U"\u00B0");
+	}
+
+	if (p_hide_editor) {
+		edit_button->hide();
+	}
 }
 
 EditorPropertyQuaternion::EditorPropertyQuaternion() {
 	bool horizontal = EDITOR_GET("interface/inspector/horizontal_vector_types_editing");
 
-	BoxContainer *bc;
-
+	VBoxContainer *bc = memnew(VBoxContainer);
+	edit_custom_bc = memnew(VBoxContainer);
+	BoxContainer *edit_custom_layout;
 	if (horizontal) {
-		bc = memnew(HBoxContainer);
-		add_child(bc);
+		default_layout = memnew(HBoxContainer);
+		edit_custom_layout = memnew(HBoxContainer);
 		set_bottom_editor(bc);
 	} else {
-		bc = memnew(VBoxContainer);
-		add_child(bc);
+		default_layout = memnew(VBoxContainer);
+		edit_custom_layout = memnew(VBoxContainer);
 	}
+	edit_custom_bc->hide();
+	add_child(bc);
+	edit_custom_bc->set_h_size_flags(SIZE_EXPAND_FILL);
+	default_layout->set_h_size_flags(SIZE_EXPAND_FILL);
+	edit_custom_layout->set_h_size_flags(SIZE_EXPAND_FILL);
+	bc->add_child(default_layout);
+	bc->add_child(edit_custom_bc);
 
 	static const char *desc[4] = { "x", "y", "z", "w" };
 	for (int i = 0; i < 4; i++) {
 		spin[i] = memnew(EditorSpinSlider);
 		spin[i]->set_flat(true);
 		spin[i]->set_label(desc[i]);
-		bc->add_child(spin[i]);
+		default_layout->add_child(spin[i]);
 		add_focusable(spin[i]);
 		spin[i]->connect("value_changed", callable_mp(this, &EditorPropertyQuaternion::_value_changed).bind(desc[i]));
 		if (horizontal) {
 			spin[i]->set_h_size_flags(SIZE_EXPAND_FILL);
 		}
 	}
+
+	warning = memnew(Button);
+	warning->set_text(TTR("Temporary Euler may be changed implicitly!"));
+	warning->set_clip_text(true);
+	warning->connect("pressed", callable_mp(this, &EditorPropertyQuaternion::_warning_pressed));
+	warning_dialog = memnew(AcceptDialog);
+	add_child(warning_dialog);
+	warning_dialog->set_text(TTR("Temporary Euler will not be stored in the object with the original value. Instead, it will be stored as Quaternion with irreversible conversion.\nThis is due to the fact that the result of Euler->Quaternion can be determined uniquely, but the result of Quaternion->Euler can be multi-existent."));
+
+	euler_label = memnew(Label);
+	euler_label->set_text("Temporary Euler");
+
+	edit_custom_bc->add_child(warning);
+	edit_custom_bc->add_child(edit_custom_layout);
+	edit_custom_layout->add_child(euler_label);
+
+	for (int i = 0; i < 3; i++) {
+		euler[i] = memnew(EditorSpinSlider);
+		euler[i]->set_flat(true);
+		euler[i]->set_label(desc[i]);
+		edit_custom_layout->add_child(euler[i]);
+		add_focusable(euler[i]);
+		euler[i]->connect("value_changed", callable_mp(this, &EditorPropertyQuaternion::_custom_value_changed));
+		if (horizontal) {
+			euler[i]->set_h_size_flags(SIZE_EXPAND_FILL);
+		}
+	}
+
+	edit_button = memnew(Button);
+	edit_button->set_flat(true);
+	edit_button->set_toggle_mode(true);
+	default_layout->add_child(edit_button);
+	edit_button->connect("pressed", callable_mp(this, &EditorPropertyQuaternion::_edit_custom_value));
+
+	add_focusable(edit_button);
 
 	if (!horizontal) {
 		set_label_reference(spin[0]); //show text and buttons around this
@@ -3386,14 +3515,14 @@ void EditorPropertyColor::update_property() {
 
 	// Add a tooltip to display each channel's values without having to click the ColorPickerButton
 	if (picker->is_editing_alpha()) {
-		picker->set_tooltip(vformat(
+		picker->set_tooltip_text(vformat(
 				"R: %s\nG: %s\nB: %s\nA: %s",
 				rtos(color.r).pad_decimals(2),
 				rtos(color.g).pad_decimals(2),
 				rtos(color.b).pad_decimals(2),
 				rtos(color.a).pad_decimals(2)));
 	} else {
-		picker->set_tooltip(vformat(
+		picker->set_tooltip_text(vformat(
 				"R: %s\nG: %s\nB: %s",
 				rtos(color.r).pad_decimals(2),
 				rtos(color.g).pad_decimals(2),
@@ -3551,7 +3680,7 @@ void EditorPropertyNodePath::update_property() {
 		p = get_edited_object()->get(get_edited_property());
 	}
 
-	assign->set_tooltip(p);
+	assign->set_tooltip_text(p);
 	if (p == NodePath()) {
 		assign->set_icon(Ref<Texture2D>());
 		assign->set_text(TTR("Assign..."));
@@ -3653,20 +3782,24 @@ void EditorPropertyResource::_set_read_only(bool p_read_only) {
 	resource_picker->set_editable(!p_read_only);
 };
 
-void EditorPropertyResource::_resource_selected(const Ref<Resource> &p_resource, bool p_edit) {
+void EditorPropertyResource::_resource_selected(const Ref<Resource> &p_resource, bool p_inspect) {
 	if (p_resource->is_built_in() && !p_resource->get_path().is_empty()) {
 		String parent = p_resource->get_path().get_slice("::", 0);
 		List<String> extensions;
 		ResourceLoader::get_recognized_extensions_for_type("PackedScene", &extensions);
 
-		if (extensions.find(parent.get_extension()) && (!EditorNode::get_singleton()->get_edited_scene() || EditorNode::get_singleton()->get_edited_scene()->get_scene_file_path() != parent)) {
-			// If the resource belongs to another scene, edit it in that scene instead.
-			EditorNode::get_singleton()->call_deferred("edit_foreign_resource", p_resource);
-			return;
+		if (p_inspect) {
+			if (extensions.find(parent.get_extension()) && (!EditorNode::get_singleton()->get_edited_scene() || EditorNode::get_singleton()->get_edited_scene()->get_scene_file_path() != parent)) {
+				// If the resource belongs to another (non-imported) scene, edit it in that scene instead.
+				if (!FileAccess::exists(parent + ".import")) {
+					EditorNode::get_singleton()->call_deferred("edit_foreign_resource", p_resource);
+					return;
+				}
+			}
 		}
 	}
 
-	if (!p_edit && use_sub_inspector) {
+	if (!p_inspect && use_sub_inspector) {
 		bool unfold = !get_edited_object()->editor_is_section_unfolded(get_edited_property());
 		get_edited_object()->editor_set_section_unfold(get_edited_property(), unfold);
 		update_property();
@@ -3819,7 +3952,7 @@ void EditorPropertyResource::_update_property_bg() {
 	}
 
 	updating_theme = false;
-	update();
+	queue_redraw();
 }
 
 void EditorPropertyResource::_update_preferred_shader() {
@@ -4279,6 +4412,9 @@ EditorProperty *EditorInspectorDefaultPlugin::get_editor_for_property(Object *p_
 				EditorPropertyText *editor = memnew(EditorPropertyText);
 				if (p_hint == PROPERTY_HINT_PLACEHOLDER_TEXT) {
 					editor->set_placeholder(p_hint_text);
+				} else if (p_hint == PROPERTY_HINT_PASSWORD) {
+					editor->set_secret(true);
+					editor->set_placeholder(p_hint_text);
 				}
 				return editor;
 			}
@@ -4357,7 +4493,7 @@ EditorProperty *EditorInspectorDefaultPlugin::get_editor_for_property(Object *p_
 		case Variant::QUATERNION: {
 			EditorPropertyQuaternion *editor = memnew(EditorPropertyQuaternion);
 			EditorPropertyRangeHint hint = _parse_range_hint(p_hint, p_hint_text, default_float_step);
-			editor->setup(hint.min, hint.max, hint.step, hint.hide_slider, hint.suffix);
+			editor->setup(hint.min, hint.max, hint.step, hint.hide_slider, hint.suffix, p_hint == PROPERTY_HINT_HIDE_QUATERNION_EDIT);
 			return editor;
 		} break;
 		case Variant::AABB: {
@@ -4402,6 +4538,9 @@ EditorProperty *EditorInspectorDefaultPlugin::get_editor_for_property(Object *p_
 			} else {
 				EditorPropertyText *editor = memnew(EditorPropertyText);
 				if (p_hint == PROPERTY_HINT_PLACEHOLDER_TEXT) {
+					editor->set_placeholder(p_hint_text);
+				} else if (p_hint == PROPERTY_HINT_PASSWORD) {
+					editor->set_secret(true);
 					editor->set_placeholder(p_hint_text);
 				}
 				editor->set_string_name(true);

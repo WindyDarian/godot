@@ -34,6 +34,7 @@
 #include "editor/editor_node.h"
 #include "editor/editor_scale.h"
 #include "editor/editor_settings.h"
+#include "editor/editor_undo_redo_manager.h"
 #include "node_3d_editor_plugin.h"
 
 Size2 GradientEditor::get_minimum_size() const {
@@ -49,13 +50,13 @@ void GradientEditor::_gradient_changed() {
 	Vector<Gradient::Point> points = gradient->get_points();
 	set_points(points);
 	set_interpolation_mode(gradient->get_interpolation_mode());
-	update();
+	queue_redraw();
 	editing = false;
 }
 
 void GradientEditor::_ramp_changed() {
 	editing = true;
-	UndoRedo *undo_redo = EditorNode::get_singleton()->get_undo_redo();
+	Ref<EditorUndoRedoManager> undo_redo = EditorNode::get_undo_redo();
 	undo_redo->create_action(TTR("Gradient Edited"), UndoRedo::MERGE_ENDS);
 	undo_redo->add_do_method(gradient.ptr(), "set_offsets", get_offsets());
 	undo_redo->add_do_method(gradient.ptr(), "set_colors", get_colors());
@@ -82,7 +83,7 @@ void GradientEditor::reverse_gradient() {
 	gradient->reverse();
 	set_points(gradient->get_points());
 	emit_signal(SNAME("ramp_changed"));
-	update();
+	queue_redraw();
 }
 
 GradientEditor::GradientEditor() {
@@ -134,7 +135,7 @@ void EditorInspectorPluginGradient::parse_begin(Object *p_object) {
 	add_custom_control(gradient_tools_hbox);
 
 	reverse_btn->connect("pressed", callable_mp(this, &EditorInspectorPluginGradient::_reverse_button_pressed));
-	reverse_btn->set_tooltip(TTR("Reverse/mirror gradient."));
+	reverse_btn->set_tooltip_text(TTR("Reverse/mirror gradient."));
 }
 
 void EditorInspectorPluginGradient::_reverse_button_pressed() {

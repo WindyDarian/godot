@@ -2459,6 +2459,19 @@ void RendererSceneRenderRD::render_buffers_configure(RID p_render_buffers, RID p
 		p_internal_width = p_width;
 	}
 
+	if (p_use_taa) {
+		// Use negative mipmap LOD bias when TAA is enabled to compensate for loss of sharpness.
+		// This restores sharpness in still images to be roughly at the same level as without TAA,
+		// but moving scenes will still be blurrier.
+		p_texture_mipmap_bias -= 0.5;
+	}
+
+	if (p_screen_space_aa == RS::VIEWPORT_SCREEN_SPACE_AA_FXAA) {
+		// Use negative mipmap LOD bias when FXAA is enabled to compensate for loss of sharpness.
+		// If both TAA and FXAA are enabled, combine their negative LOD biases together.
+		p_texture_mipmap_bias -= 0.25;
+	}
+
 	material_storage->sampler_rd_configure_custom(p_texture_mipmap_bias);
 	update_uniform_sets();
 
@@ -2471,7 +2484,7 @@ void RendererSceneRenderRD::render_buffers_configure(RID p_render_buffers, RID p
 	rb->height = p_height;
 	rb->fsr_sharpness = p_fsr_sharpness;
 	rb->render_target = p_render_target;
-	rb->msaa = p_msaa;
+	rb->msaa_3d = p_msaa;
 	rb->screen_space_aa = p_screen_space_aa;
 	rb->use_taa = p_use_taa;
 	rb->use_debanding = p_use_debanding;
@@ -2496,7 +2509,7 @@ void RendererSceneRenderRD::render_buffers_configure(RID p_render_buffers, RID p
 		tf.height = rb->internal_height; // If set to rb->width, msaa won't crash
 		tf.array_layers = rb->view_count; // create a layer for every view
 		tf.usage_bits = RD::TEXTURE_USAGE_SAMPLING_BIT | (_render_buffers_can_be_storage() ? RD::TEXTURE_USAGE_STORAGE_BIT : 0) | RD::TEXTURE_USAGE_COLOR_ATTACHMENT_BIT;
-		if (rb->msaa != RS::VIEWPORT_MSAA_DISABLED) {
+		if (rb->msaa_3d != RS::VIEWPORT_MSAA_DISABLED) {
 			tf.usage_bits |= RD::TEXTURE_USAGE_CAN_COPY_TO_BIT;
 		}
 		tf.usage_bits |= RD::TEXTURE_USAGE_INPUT_ATTACHMENT_BIT; // only needed when using subpasses in the mobile renderer
@@ -2519,7 +2532,7 @@ void RendererSceneRenderRD::render_buffers_configure(RID p_render_buffers, RID p
 		if (rb->view_count > 1) {
 			tf.texture_type = RD::TEXTURE_TYPE_2D_ARRAY;
 		}
-		if (rb->msaa == RS::VIEWPORT_MSAA_DISABLED) {
+		if (rb->msaa_3d == RS::VIEWPORT_MSAA_DISABLED) {
 			tf.format = RD::get_singleton()->texture_is_format_supported_for_usage(RD::DATA_FORMAT_D24_UNORM_S8_UINT, (RD::TEXTURE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | RD::TEXTURE_USAGE_SAMPLING_BIT)) ? RD::DATA_FORMAT_D24_UNORM_S8_UINT : RD::DATA_FORMAT_D32_SFLOAT_S8_UINT;
 		} else {
 			tf.format = RD::DATA_FORMAT_R32_SFLOAT;
@@ -2530,7 +2543,7 @@ void RendererSceneRenderRD::render_buffers_configure(RID p_render_buffers, RID p
 		tf.usage_bits = RD::TEXTURE_USAGE_SAMPLING_BIT;
 		tf.array_layers = rb->view_count; // create a layer for every view
 
-		if (rb->msaa != RS::VIEWPORT_MSAA_DISABLED) {
+		if (rb->msaa_3d != RS::VIEWPORT_MSAA_DISABLED) {
 			tf.usage_bits |= RD::TEXTURE_USAGE_CAN_COPY_TO_BIT | RD::TEXTURE_USAGE_STORAGE_BIT;
 		} else {
 			tf.usage_bits |= RD::TEXTURE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
@@ -2862,20 +2875,22 @@ void RendererSceneRenderRD::_setup_lights(const PagedArray<RID> &p_lights, const
 
 				float size = light_storage->light_get_param(base, RS::LIGHT_PARAM_SIZE);
 
-				light_data.size = 1.0 - Math::cos(Math::deg2rad(size)); //angle to cosine offset
+				light_data.size = 1.0 - Math::cos(Math::deg_to_rad(size)); //angle to cosine offset
 
 				if (get_debug_draw_mode() == RS::VIEWPORT_DEBUG_DRAW_PSSM_SPLITS) {
 					WARN_PRINT_ONCE("The DirectionalLight3D PSSM splits debug draw mode is not reimplemented yet.");
 				}
 
-				light_data.shadow_opacity = p_using_shadows && light_storage->light_has_shadow(base) ? light_storage->light_get_param(base, RS::LIGHT_PARAM_SHADOW_OPACITY) : 0.0;
+				light_data.shadow_opacity = (p_using_shadows && light_storage->light_has_shadow(base))
+						? light_storage->light_get_param(base, RS::LIGHT_PARAM_SHADOW_OPACITY)
+						: 0.0;
 
 				float angular_diameter = light_storage->light_get_param(base, RS::LIGHT_PARAM_SIZE);
 				if (angular_diameter > 0.0) {
 					// I know tan(0) is 0, but let's not risk it with numerical precision.
 					// technically this will keep expanding until reaching the sun, but all we care
 					// is expand until we reach the radius of the near plane (there can't be more occluders than that)
-					angular_diameter = Math::tan(Math::deg2rad(angular_diameter));
+					angular_diameter = Math::tan(Math::deg_to_rad(angular_diameter));
 					if (light_storage->light_has_shadow(base) && light_storage->light_get_param(base, RS::LIGHT_PARAM_SHADOW_BLUR) > 0.0) {
 						// Only enable PCSS-like soft shadows if blurring is enabled.
 						// Otherwise, performance would decrease with no visual difference.
@@ -3090,7 +3105,7 @@ void RendererSceneRenderRD::_setup_lights(const PagedArray<RID> &p_lights, const
 
 		light_data.inv_spot_attenuation = 1.0f / light_storage->light_get_param(base, RS::LIGHT_PARAM_SPOT_ATTENUATION);
 		float spot_angle = light_storage->light_get_param(base, RS::LIGHT_PARAM_SPOT_ANGLE);
-		light_data.cos_spot_angle = Math::cos(Math::deg2rad(spot_angle));
+		light_data.cos_spot_angle = Math::cos(Math::deg_to_rad(spot_angle));
 
 		light_data.mask = light_storage->light_get_cull_mask(base);
 
@@ -3122,7 +3137,11 @@ void RendererSceneRenderRD::_setup_lights(const PagedArray<RID> &p_lights, const
 			light_data.projector_rect[3] = 0;
 		}
 
-		const bool needs_shadow = shadow_atlas && shadow_atlas->shadow_owners.has(li->self);
+		const bool needs_shadow =
+				shadow_atlas &&
+				shadow_atlas->shadow_owners.has(li->self) &&
+				p_using_shadows &&
+				light_storage->light_has_shadow(base);
 
 		bool in_shadow_range = true;
 		if (needs_shadow && light_storage->light_is_distance_fade_enabled(li->light)) {
@@ -3187,7 +3206,7 @@ void RendererSceneRenderRD::_setup_lights(const PagedArray<RID> &p_lights, const
 					// Only enable PCSS-like soft shadows if blurring is enabled.
 					// Otherwise, performance would decrease with no visual difference.
 					Projection cm = li->shadow_transform[0].camera;
-					float half_np = cm.get_z_near() * Math::tan(Math::deg2rad(spot_angle));
+					float half_np = cm.get_z_near() * Math::tan(Math::deg_to_rad(spot_angle));
 					light_data.soft_shadow_size = (size * 0.5 / radius) / (half_np / cm.get_z_near()) * rect.size.width;
 				} else {
 					light_data.soft_shadow_size = 0.0;

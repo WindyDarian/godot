@@ -798,6 +798,7 @@ void Viewport::_set_size(const Size2i &p_size, const Size2i &p_size_2d_override,
 		RS::get_singleton()->viewport_set_size(viewport, 0, 0);
 	}
 	_update_global_transform();
+	update_configuration_warnings();
 
 	update_canvas_items();
 
@@ -1022,7 +1023,7 @@ void Viewport::_update_canvas_items(Node *p_node) {
 
 		CanvasItem *ci = Object::cast_to<CanvasItem>(p_node);
 		if (ci) {
-			ci->update();
+			ci->queue_redraw();
 		}
 	}
 
@@ -1103,7 +1104,7 @@ Vector2 Viewport::get_mouse_position() const {
 
 void Viewport::warp_mouse(const Vector2 &p_position) {
 	Transform2D xform = get_screen_transform();
-	Vector2 gpos = xform.xform(p_position).round();
+	Vector2 gpos = xform.xform(p_position);
 	Input::get_singleton()->warp_mouse(gpos);
 }
 
@@ -1708,15 +1709,7 @@ void Viewport::_gui_input_event(Ref<InputEvent> p_event) {
 								is_tooltip_shown = true;
 							}
 						} else {
-							Variant t = gui.tooltip_popup->call("get_tooltip_text");
-
-							if (t.get_type() == Variant::STRING) {
-								if (tooltip == String(t)) {
-									is_tooltip_shown = true;
-								}
-							} else {
-								is_tooltip_shown = true; // Nothing to compare against, likely using custom control, so if it changes there is nothing we can do.
-							}
+							is_tooltip_shown = true; // Nothing to compare against, likely using custom control, so if it changes there is nothing we can do.
 						}
 					} else {
 						_gui_cancel_tooltip();
@@ -1875,7 +1868,9 @@ void Viewport::_gui_input_event(Ref<InputEvent> p_event) {
 			}
 		}
 
-		DisplayServer::get_singleton()->cursor_set_shape(ds_cursor_shape);
+		if (DisplayServer::get_singleton()->has_feature(DisplayServer::FEATURE_CURSOR_SHAPE)) {
+			DisplayServer::get_singleton()->cursor_set_shape(ds_cursor_shape);
+		}
 	}
 
 	Ref<InputEventScreenTouch> touch_event = p_event;
@@ -2202,7 +2197,7 @@ void Viewport::_gui_control_grab_focus(Control *p_control) {
 	gui.key_focus = p_control;
 	emit_signal(SNAME("gui_focus_changed"), p_control);
 	p_control->notification(Control::NOTIFICATION_FOCUS_ENTER);
-	p_control->update();
+	p_control->queue_redraw();
 }
 
 void Viewport::_gui_accept_event() {
@@ -2684,7 +2679,9 @@ bool Viewport::_sub_windows_forward_input(const Ref<InputEvent> &p_event) {
 					DisplayServer::CURSOR_FDIAGSIZE
 				};
 
-				DisplayServer::get_singleton()->cursor_set_shape(shapes[resize]);
+				if (DisplayServer::get_singleton()->has_feature(DisplayServer::FEATURE_CURSOR_SHAPE)) {
+					DisplayServer::get_singleton()->cursor_set_shape(shapes[resize]);
+				}
 
 				return true; // Reserved for showing the resize cursor.
 			}
@@ -2849,8 +2846,8 @@ Variant Viewport::gui_get_drag_data() const {
 TypedArray<String> Viewport::get_configuration_warnings() const {
 	TypedArray<String> warnings = Node::get_configuration_warnings();
 
-	if (size.x == 0 || size.y == 0) {
-		warnings.push_back(RTR("Viewport size must be greater than 0 to render anything."));
+	if (size.x <= 1 || size.y <= 1) {
+		warnings.push_back(RTR("The Viewport size must be greater than or equal to 2 pixels on both dimensions to render anything."));
 	}
 	return warnings;
 }
@@ -2868,7 +2865,7 @@ void Viewport::gui_release_focus() {
 		Control *f = gui.key_focus;
 		gui.key_focus = nullptr;
 		f->notification(Control::NOTIFICATION_FOCUS_EXIT, true);
-		f->update();
+		f->queue_redraw();
 	}
 }
 
@@ -2876,17 +2873,30 @@ Control *Viewport::gui_get_focus_owner() {
 	return gui.key_focus;
 }
 
-void Viewport::set_msaa(MSAA p_msaa) {
+void Viewport::set_msaa_2d(MSAA p_msaa) {
 	ERR_FAIL_INDEX(p_msaa, MSAA_MAX);
-	if (msaa == p_msaa) {
+	if (msaa_2d == p_msaa) {
 		return;
 	}
-	msaa = p_msaa;
-	RS::get_singleton()->viewport_set_msaa(viewport, RS::ViewportMSAA(p_msaa));
+	msaa_2d = p_msaa;
+	RS::get_singleton()->viewport_set_msaa_2d(viewport, RS::ViewportMSAA(p_msaa));
 }
 
-Viewport::MSAA Viewport::get_msaa() const {
-	return msaa;
+Viewport::MSAA Viewport::get_msaa_2d() const {
+	return msaa_2d;
+}
+
+void Viewport::set_msaa_3d(MSAA p_msaa) {
+	ERR_FAIL_INDEX(p_msaa, MSAA_MAX);
+	if (msaa_3d == p_msaa) {
+		return;
+	}
+	msaa_3d = p_msaa;
+	RS::get_singleton()->viewport_set_msaa_3d(viewport, RS::ViewportMSAA(p_msaa));
+}
+
+Viewport::MSAA Viewport::get_msaa_3d() const {
+	return msaa_3d;
 }
 
 void Viewport::set_screen_space_aa(ScreenSpaceAA p_screen_space_aa) {
@@ -3678,8 +3688,11 @@ void Viewport::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_transparent_background", "enable"), &Viewport::set_transparent_background);
 	ClassDB::bind_method(D_METHOD("has_transparent_background"), &Viewport::has_transparent_background);
 
-	ClassDB::bind_method(D_METHOD("set_msaa", "msaa"), &Viewport::set_msaa);
-	ClassDB::bind_method(D_METHOD("get_msaa"), &Viewport::get_msaa);
+	ClassDB::bind_method(D_METHOD("set_msaa_2d", "msaa"), &Viewport::set_msaa_2d);
+	ClassDB::bind_method(D_METHOD("get_msaa_2d"), &Viewport::get_msaa_2d);
+
+	ClassDB::bind_method(D_METHOD("set_msaa_3d", "msaa"), &Viewport::set_msaa_3d);
+	ClassDB::bind_method(D_METHOD("get_msaa_3d"), &Viewport::get_msaa_3d);
 
 	ClassDB::bind_method(D_METHOD("set_screen_space_aa", "screen_space_aa"), &Viewport::set_screen_space_aa);
 	ClassDB::bind_method(D_METHOD("get_screen_space_aa"), &Viewport::get_screen_space_aa);
@@ -3819,7 +3832,8 @@ void Viewport::_bind_methods() {
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "snap_2d_transforms_to_pixel"), "set_snap_2d_transforms_to_pixel", "is_snap_2d_transforms_to_pixel_enabled");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "snap_2d_vertices_to_pixel"), "set_snap_2d_vertices_to_pixel", "is_snap_2d_vertices_to_pixel_enabled");
 	ADD_GROUP("Rendering", "");
-	ADD_PROPERTY(PropertyInfo(Variant::INT, "msaa", PROPERTY_HINT_ENUM, String::utf8("Disabled (Fastest),2× (Average),4× (Slow),8× (Slowest)")), "set_msaa", "get_msaa");
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "msaa_2d", PROPERTY_HINT_ENUM, String::utf8("Disabled (Fastest),2× (Average),4× (Slow),8× (Slowest)")), "set_msaa_2d", "get_msaa_2d");
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "msaa_3d", PROPERTY_HINT_ENUM, String::utf8("Disabled (Fastest),2× (Average),4× (Slow),8× (Slowest)")), "set_msaa_3d", "get_msaa_3d");
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "screen_space_aa", PROPERTY_HINT_ENUM, "Disabled (Fastest),FXAA (Fast)"), "set_screen_space_aa", "get_screen_space_aa");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "use_taa"), "set_use_taa", "is_using_taa");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "use_debanding"), "set_use_debanding", "is_using_debanding");
@@ -3953,9 +3967,9 @@ void Viewport::_bind_methods() {
 	BIND_ENUM_CONSTANT(VRS_MAX);
 }
 
-void Viewport::_validate_property(PropertyInfo &property) const {
-	if (vrs_mode != VRS_TEXTURE && (property.name == "vrs_texture")) {
-		property.usage = PROPERTY_USAGE_NO_EDITOR;
+void Viewport::_validate_property(PropertyInfo &p_property) const {
+	if (vrs_mode != VRS_TEXTURE && (p_property.name == "vrs_texture")) {
+		p_property.usage = PROPERTY_USAGE_NO_EDITOR;
 	}
 }
 

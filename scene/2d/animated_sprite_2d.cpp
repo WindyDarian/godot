@@ -104,47 +104,50 @@ Rect2 AnimatedSprite2D::_get_rect() const {
 	return Rect2(ofs, s);
 }
 
-void AnimatedSprite2D::_validate_property(PropertyInfo &property) const {
+void AnimatedSprite2D::_validate_property(PropertyInfo &p_property) const {
 	if (!frames.is_valid()) {
 		return;
 	}
-	if (property.name == "animation") {
-		property.hint = PROPERTY_HINT_ENUM;
+	if (p_property.name == "animation") {
+		p_property.hint = PROPERTY_HINT_ENUM;
 		List<StringName> names;
 		frames->get_animation_list(&names);
 		names.sort_custom<StringName::AlphCompare>();
 
 		bool current_found = false;
+		bool is_first_element = true;
 
-		for (List<StringName>::Element *E = names.front(); E; E = E->next()) {
-			if (E->prev()) {
-				property.hint_string += ",";
+		for (const StringName &E : names) {
+			if (!is_first_element) {
+				p_property.hint_string += ",";
+			} else {
+				is_first_element = false;
 			}
 
-			property.hint_string += String(E->get());
-			if (animation == E->get()) {
+			p_property.hint_string += String(E);
+			if (animation == E) {
 				current_found = true;
 			}
 		}
 
 		if (!current_found) {
-			if (property.hint_string.is_empty()) {
-				property.hint_string = String(animation);
+			if (p_property.hint_string.is_empty()) {
+				p_property.hint_string = String(animation);
 			} else {
-				property.hint_string = String(animation) + "," + property.hint_string;
+				p_property.hint_string = String(animation) + "," + p_property.hint_string;
 			}
 		}
 	}
 
-	if (property.name == "frame") {
-		property.hint = PROPERTY_HINT_RANGE;
+	if (p_property.name == "frame") {
+		p_property.hint = PROPERTY_HINT_RANGE;
 		if (frames->has_animation(animation) && frames->get_frame_count(animation) > 0) {
-			property.hint_string = "0," + itos(frames->get_frame_count(animation) - 1) + ",1";
+			p_property.hint_string = "0," + itos(frames->get_frame_count(animation) - 1) + ",1";
 		} else {
 			// Avoid an error, `hint_string` is required for `PROPERTY_HINT_RANGE`.
-			property.hint_string = "0,0,1";
+			p_property.hint_string = "0,0,1";
 		}
-		property.usage |= PROPERTY_USAGE_KEYING_INCREMENTS;
+		p_property.usage |= PROPERTY_USAGE_KEYING_INCREMENTS;
 	}
 }
 
@@ -202,7 +205,7 @@ void AnimatedSprite2D::_notification(int p_what) {
 						}
 					}
 
-					update();
+					queue_redraw();
 
 					emit_signal(SceneStringNames::get_singleton()->frame_changed);
 				}
@@ -271,7 +274,7 @@ void AnimatedSprite2D::set_sprite_frames(const Ref<SpriteFrames> &p_frames) {
 
 	notify_property_list_changed();
 	_reset_timeout();
-	update();
+	queue_redraw();
 	update_configuration_warnings();
 }
 
@@ -301,7 +304,7 @@ void AnimatedSprite2D::set_frame(int p_frame) {
 
 	frame = p_frame;
 	_reset_timeout();
-	update();
+	queue_redraw();
 
 	emit_signal(SceneStringNames::get_singleton()->frame_changed);
 }
@@ -326,7 +329,7 @@ double AnimatedSprite2D::get_speed_scale() const {
 
 void AnimatedSprite2D::set_centered(bool p_center) {
 	centered = p_center;
-	update();
+	queue_redraw();
 	item_rect_changed();
 }
 
@@ -336,7 +339,7 @@ bool AnimatedSprite2D::is_centered() const {
 
 void AnimatedSprite2D::set_offset(const Point2 &p_offset) {
 	offset = p_offset;
-	update();
+	queue_redraw();
 	item_rect_changed();
 }
 
@@ -346,7 +349,7 @@ Point2 AnimatedSprite2D::get_offset() const {
 
 void AnimatedSprite2D::set_flip_h(bool p_flip) {
 	hflip = p_flip;
-	update();
+	queue_redraw();
 }
 
 bool AnimatedSprite2D::is_flipped_h() const {
@@ -355,7 +358,7 @@ bool AnimatedSprite2D::is_flipped_h() const {
 
 void AnimatedSprite2D::set_flip_v(bool p_flip) {
 	vflip = p_flip;
-	update();
+	queue_redraw();
 }
 
 bool AnimatedSprite2D::is_flipped_v() const {
@@ -365,7 +368,7 @@ bool AnimatedSprite2D::is_flipped_v() const {
 void AnimatedSprite2D::_res_changed() {
 	set_frame(frame);
 
-	update();
+	queue_redraw();
 }
 
 void AnimatedSprite2D::set_playing(bool p_playing) {
@@ -430,7 +433,7 @@ void AnimatedSprite2D::set_animation(const StringName &p_animation) {
 	_reset_timeout();
 	set_frame(0);
 	notify_property_list_changed();
-	update();
+	queue_redraw();
 }
 
 StringName AnimatedSprite2D::get_animation() const {

@@ -35,6 +35,7 @@
 #include "editor/editor_file_system.h"
 #include "editor/editor_node.h"
 #include "editor/editor_scale.h"
+#include "editor/editor_undo_redo_manager.h"
 #include "editor/node_dock.h"
 #include "editor/plugins/animation_player_editor_plugin.h"
 #include "editor/plugins/canvas_item_editor_plugin.h"
@@ -278,7 +279,19 @@ void SceneTreeEditor::_add_nodes(Node *p_node, TreeItem *p_parent) {
 				warning_icon = SNAME("NodeWarnings4Plus");
 			}
 
-			item->add_button(0, get_theme_icon(warning_icon, SNAME("EditorIcons")), BUTTON_WARNING, false, TTR("Node configuration warning:") + "\n" + warning);
+			// Improve looks on tooltip, extra spacing on non-bullet point newlines.
+			const String bullet_point = String::utf8("•  ");
+			int next_newline = 0;
+			while (next_newline != -1) {
+				next_newline = warning.find("\n", next_newline + 2);
+				if (warning.substr(next_newline + 1, bullet_point.length()) != bullet_point) {
+					warning = warning.insert(next_newline + 1, "    ");
+				}
+			}
+
+			String newline = (num_warnings == 1 ? "\n" : "\n\n");
+
+			item->add_button(0, get_theme_icon(warning_icon, SNAME("EditorIcons")), BUTTON_WARNING, false, TTR("Node configuration warning:") + newline + warning);
 		}
 
 		if (p_node->is_unique_name_in_owner()) {
@@ -341,7 +354,7 @@ void SceneTreeEditor::_add_nodes(Node *p_node, TreeItem *p_parent) {
 			tooltip += "\n\n" + p_node->get_editor_description();
 		}
 
-		item->set_tooltip(0, tooltip);
+		item->set_tooltip_text(0, tooltip);
 	} else if (p_node != get_scene_node() && !p_node->get_scene_file_path().is_empty() && can_open_instance) {
 		item->add_button(0, get_theme_icon(SNAME("InstanceOptions"), SNAME("EditorIcons")), BUTTON_SUBSCENE, false, TTR("Open in Editor"));
 
@@ -350,7 +363,7 @@ void SceneTreeEditor::_add_nodes(Node *p_node, TreeItem *p_parent) {
 			tooltip += "\n\n" + p_node->get_editor_description();
 		}
 
-		item->set_tooltip(0, tooltip);
+		item->set_tooltip_text(0, tooltip);
 	} else {
 		StringName type = EditorNode::get_singleton()->get_object_custom_type_name(p_node);
 		if (type == StringName()) {
@@ -362,10 +375,10 @@ void SceneTreeEditor::_add_nodes(Node *p_node, TreeItem *p_parent) {
 			tooltip += "\n\n" + p_node->get_editor_description();
 		}
 
-		item->set_tooltip(0, tooltip);
+		item->set_tooltip_text(0, tooltip);
 	}
 
-	if (can_open_instance && undo_redo) { //Show buttons only when necessary(SceneTreeDock) to avoid crashes
+	if (can_open_instance && undo_redo.is_valid()) { //Show buttons only when necessary(SceneTreeDock) to avoid crashes
 
 		if (!p_node->is_connected("script_changed", callable_mp(this, &SceneTreeEditor::_node_script_changed))) {
 			p_node->connect("script_changed", callable_mp(this, &SceneTreeEditor::_node_script_changed).bind(p_node));
@@ -492,7 +505,7 @@ void SceneTreeEditor::_node_visibility_changed(Node *p_node) {
 
 	if (p_node->is_class("CanvasItem") || p_node->is_class("CanvasLayer") || p_node->is_class("Window")) {
 		visible = p_node->call("is_visible");
-		CanvasItemEditor::get_singleton()->get_viewport_control()->update();
+		CanvasItemEditor::get_singleton()->get_viewport_control()->queue_redraw();
 	} else if (p_node->is_class("Node3D")) {
 		visible = p_node->call("is_visible");
 	}
@@ -602,7 +615,9 @@ bool SceneTreeEditor::_update_filter(TreeItem *p_parent, bool p_scroll_to_select
 	}
 
 	if (!keep) {
-		keep = filter.is_subsequence_ofn(p_parent->get_text(0));
+		StringName node_type = get_node(p_parent->get_metadata(0))->get_class();
+		bool is_kept_by_type = (filter.begins_with("type:") && filter.trim_prefix("type:").is_subsequence_ofn(node_type)) || (filter.begins_with("t:") && filter.trim_prefix("t:").is_subsequence_ofn(node_type));
+		keep = (filter.is_subsequence_ofn(p_parent->get_text(0)) || is_kept_by_type);
 	}
 
 	p_parent->set_visible(keep);
@@ -883,7 +898,7 @@ void SceneTreeEditor::_renamed() {
 		return;
 	}
 
-	if (!undo_redo) {
+	if (!undo_redo.is_valid()) {
 		n->set_name(new_name);
 		which->set_metadata(0, n->get_path());
 		emit_signal(SNAME("node_renamed"));
@@ -925,6 +940,10 @@ void SceneTreeEditor::set_filter(const String &p_filter) {
 
 String SceneTreeEditor::get_filter() const {
 	return filter;
+}
+
+void SceneTreeEditor::set_undo_redo(Ref<EditorUndoRedoManager> p_undo_redo) {
+	undo_redo = p_undo_redo;
 }
 
 void SceneTreeEditor::set_display_foreign_nodes(bool p_display) {
@@ -1258,7 +1277,6 @@ void SceneTreeEditor::_bind_methods() {
 }
 
 SceneTreeEditor::SceneTreeEditor(bool p_label, bool p_can_rename, bool p_can_open_instance) {
-	undo_redo = nullptr;
 	selected = nullptr;
 
 	can_rename = p_can_rename;

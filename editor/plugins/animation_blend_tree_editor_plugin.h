@@ -41,11 +41,15 @@
 
 class ProgressBar;
 class EditorFileDialog;
+class EditorUndoRedoManager;
 
 class AnimationNodeBlendTreeEditor : public AnimationTreeNodeEditorPlugin {
 	GDCLASS(AnimationNodeBlendTreeEditor, AnimationTreeNodeEditorPlugin);
 
 	Ref<AnimationNodeBlendTree> blend_tree;
+
+	bool read_only = false;
+
 	GraphEdit *graph = nullptr;
 	MenuButton *add_node = nullptr;
 	Vector2 position_from_popup_menu;
@@ -54,7 +58,7 @@ class AnimationNodeBlendTreeEditor : public AnimationTreeNodeEditorPlugin {
 	PanelContainer *error_panel = nullptr;
 	Label *error_label = nullptr;
 
-	UndoRedo *undo_redo = nullptr;
+	Ref<EditorUndoRedoManager> undo_redo;
 
 	AcceptDialog *filter_dialog = nullptr;
 	Tree *filters = nullptr;
@@ -105,7 +109,7 @@ class AnimationNodeBlendTreeEditor : public AnimationTreeNodeEditorPlugin {
 	void _delete_nodes_request(const TypedArray<StringName> &p_nodes);
 
 	bool _update_filters(const Ref<AnimationNode> &anode);
-	void _edit_filters(const String &p_which);
+	void _inspect_filters(const String &p_which);
 	void _filter_edited();
 	void _filter_toggled();
 	Ref<AnimationNode> _filter_edit;

@@ -596,7 +596,7 @@ void ScriptTextEditor::_update_bookmark_list() {
 	bookmarks_menu->add_shortcut(ED_GET_SHORTCUT("script_text_editor/goto_next_bookmark"), BOOKMARK_GOTO_NEXT);
 	bookmarks_menu->add_shortcut(ED_GET_SHORTCUT("script_text_editor/goto_previous_bookmark"), BOOKMARK_GOTO_PREV);
 
-	Array bookmark_list = code_editor->get_text_editor()->get_bookmarked_lines();
+	PackedInt32Array bookmark_list = code_editor->get_text_editor()->get_bookmarked_lines();
 	if (bookmark_list.size() == 0) {
 		return;
 	}
@@ -751,7 +751,7 @@ void ScriptTextEditor::_update_breakpoint_list() {
 	breakpoints_menu->add_shortcut(ED_GET_SHORTCUT("script_text_editor/goto_next_breakpoint"), DEBUG_GOTO_NEXT_BREAKPOINT);
 	breakpoints_menu->add_shortcut(ED_GET_SHORTCUT("script_text_editor/goto_previous_breakpoint"), DEBUG_GOTO_PREV_BREAKPOINT);
 
-	Array breakpoint_list = code_editor->get_text_editor()->get_breakpointed_lines();
+	PackedInt32Array breakpoint_list = code_editor->get_text_editor()->get_breakpointed_lines();
 	if (breakpoint_list.size() == 0) {
 		return;
 	}
@@ -942,7 +942,7 @@ void ScriptTextEditor::_validate_symbol(const String &p_symbol) {
 
 String ScriptTextEditor::_get_absolute_path(const String &rel_path) {
 	String base_path = script->get_path().get_base_dir();
-	String path = base_path.plus_file(rel_path);
+	String path = base_path.path_join(rel_path);
 	return path.replace("///", "//").simplify_path();
 }
 
@@ -1124,15 +1124,15 @@ void ScriptTextEditor::_edit_option(int p_op) {
 		} break;
 		case EDIT_TOGGLE_FOLD_LINE: {
 			tx->toggle_foldable_line(tx->get_caret_line());
-			tx->update();
+			tx->queue_redraw();
 		} break;
 		case EDIT_FOLD_ALL_LINES: {
 			tx->fold_all_lines();
-			tx->update();
+			tx->queue_redraw();
 		} break;
 		case EDIT_UNFOLD_ALL_LINES: {
 			tx->unfold_all_lines();
-			tx->update();
+			tx->queue_redraw();
 		} break;
 		case EDIT_TOGGLE_COMMENT: {
 			_edit_option_toggle_inline_comment();
@@ -1264,7 +1264,7 @@ void ScriptTextEditor::_edit_option(int p_op) {
 			EditorDebuggerNode::get_singleton()->set_breakpoint(script->get_path(), line + 1, dobreak);
 		} break;
 		case DEBUG_REMOVE_ALL_BREAKPOINTS: {
-			Array bpoints = tx->get_breakpointed_lines();
+			PackedInt32Array bpoints = tx->get_breakpointed_lines();
 
 			for (int i = 0; i < bpoints.size(); i++) {
 				int line = bpoints[i];
@@ -1274,7 +1274,7 @@ void ScriptTextEditor::_edit_option(int p_op) {
 			}
 		} break;
 		case DEBUG_GOTO_NEXT_BREAKPOINT: {
-			Array bpoints = tx->get_breakpointed_lines();
+			PackedInt32Array bpoints = tx->get_breakpointed_lines();
 			if (bpoints.size() <= 0) {
 				return;
 			}
@@ -1300,7 +1300,7 @@ void ScriptTextEditor::_edit_option(int p_op) {
 
 		} break;
 		case DEBUG_GOTO_PREV_BREAKPOINT: {
-			Array bpoints = tx->get_breakpointed_lines();
+			PackedInt32Array bpoints = tx->get_breakpointed_lines();
 			if (bpoints.size() <= 0) {
 				return;
 			}
@@ -1441,7 +1441,7 @@ void ScriptTextEditor::reload(bool p_soft) {
 	scr->get_language()->reload_tool_script(scr, soft);
 }
 
-Array ScriptTextEditor::get_breakpoints() {
+PackedInt32Array ScriptTextEditor::get_breakpoints() {
 	return code_editor->get_text_editor()->get_breakpointed_lines();
 }
 
@@ -1590,7 +1590,7 @@ void ScriptTextEditor::drop_data_fw(const Point2 &p_point, const Variant &p_data
 					}
 				}
 
-				String variable_name = String(node->get_name()).camelcase_to_underscore(true).validate_identifier();
+				String variable_name = String(node->get_name()).to_snake_case().validate_identifier();
 				if (use_type) {
 					text_to_drop += vformat("@onready var %s: %s = %s%s\n", variable_name, node->get_class_name(), is_unique ? "%" : "$", path);
 				} else {
@@ -1760,7 +1760,7 @@ void ScriptTextEditor::_color_changed(const Color &p_color) {
 	code_editor->get_text_editor()->begin_complex_operation();
 	code_editor->get_text_editor()->set_line(color_position.x, line_with_replaced_args);
 	code_editor->get_text_editor()->end_complex_operation();
-	code_editor->get_text_editor()->update();
+	code_editor->get_text_editor()->queue_redraw();
 }
 
 void ScriptTextEditor::_prepare_edit_menu() {

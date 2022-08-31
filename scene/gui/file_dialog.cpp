@@ -163,7 +163,7 @@ Vector<String> FileDialog::get_selected_files() const {
 
 	TreeItem *item = tree->get_root();
 	while ((item = tree->get_next_selected(item))) {
-		list.push_back(dir_access->get_current_dir().plus_file(item->get_text(0)));
+		list.push_back(dir_access->get_current_dir().path_join(item->get_text(0)));
 	};
 
 	return list;
@@ -192,7 +192,7 @@ void FileDialog::update_dir() {
 }
 
 void FileDialog::_dir_submitted(String p_dir) {
-	_change_dir(root_prefix.plus_file(p_dir));
+	_change_dir(root_prefix.path_join(p_dir));
 	file->set_text("");
 	_push_history();
 }
@@ -202,7 +202,7 @@ void FileDialog::_file_submitted(const String &p_file) {
 }
 
 void FileDialog::_save_confirm_pressed() {
-	String f = dir_access->get_current_dir().plus_file(file->get_text());
+	String f = dir_access->get_current_dir().path_join(file->get_text());
 	emit_signal(SNAME("file_selected"), f);
 	hide();
 }
@@ -252,7 +252,7 @@ void FileDialog::_action_pressed() {
 
 		Vector<String> files;
 		while (ti) {
-			files.push_back(fbase.plus_file(ti->get_text(0)));
+			files.push_back(fbase.path_join(ti->get_text(0)));
 			ti = tree->get_next_selected(ti);
 		}
 
@@ -265,7 +265,7 @@ void FileDialog::_action_pressed() {
 	}
 
 	String file_text = file->get_text();
-	String f = file_text.is_absolute_path() ? file_text : dir_access->get_current_dir().plus_file(file_text);
+	String f = file_text.is_absolute_path() ? file_text : dir_access->get_current_dir().path_join(file_text);
 
 	if ((mode == FILE_MODE_OPEN_ANY || mode == FILE_MODE_OPEN_FILE) && dir_access->file_exists(f)) {
 		emit_signal(SNAME("file_selected"), f);
@@ -278,7 +278,7 @@ void FileDialog::_action_pressed() {
 		if (item) {
 			Dictionary d = item->get_metadata(0);
 			if (d["dir"] && d["name"] != "..") {
-				path = path.plus_file(d["name"]);
+				path = path.path_join(d["name"]);
 			}
 		}
 
@@ -598,7 +598,7 @@ void FileDialog::update_file_list() {
 			ti->set_text(0, files.front()->get());
 
 			if (get_icon_func) {
-				Ref<Texture2D> icon = get_icon_func(base_dir.plus_file(files.front()->get()));
+				Ref<Texture2D> icon = get_icon_func(base_dir.path_join(files.front()->get()));
 				ti->set_icon(0, icon);
 			} else {
 				ti->set_icon(0, file_icon);
@@ -685,6 +685,9 @@ void FileDialog::add_filter(const String &p_filter, const String &p_description)
 }
 
 void FileDialog::set_filters(const Vector<String> &p_filters) {
+	if (filters == p_filters) {
+		return;
+	}
 	filters = p_filters;
 	update_filters();
 	invalidate();
@@ -703,15 +706,19 @@ String FileDialog::get_current_file() const {
 }
 
 String FileDialog::get_current_path() const {
-	return dir->get_text().plus_file(file->get_text());
+	return dir->get_text().path_join(file->get_text());
 }
 
 void FileDialog::set_current_dir(const String &p_dir) {
 	_change_dir(p_dir);
+
 	_push_history();
 }
 
 void FileDialog::set_current_file(const String &p_file) {
+	if (file->get_text() == p_file) {
+		return;
+	}
 	file->set_text(p_file);
 	update_dir();
 	invalidate();
@@ -764,7 +771,9 @@ bool FileDialog::is_mode_overriding_title() const {
 
 void FileDialog::set_file_mode(FileMode p_mode) {
 	ERR_FAIL_INDEX((int)p_mode, 5);
-
+	if (mode == p_mode) {
+		return;
+	}
 	mode = p_mode;
 	switch (mode) {
 		case FILE_MODE_OPEN_FILE:
@@ -977,6 +986,9 @@ void FileDialog::_bind_methods() {
 }
 
 void FileDialog::set_show_hidden_files(bool p_show) {
+	if (show_hidden_files == p_show) {
+		return;
+	}
 	show_hidden_files = p_show;
 	invalidate();
 }
@@ -1003,13 +1015,13 @@ FileDialog::FileDialog() {
 
 	dir_prev = memnew(Button);
 	dir_prev->set_flat(true);
-	dir_prev->set_tooltip(RTR("Go to previous folder."));
+	dir_prev->set_tooltip_text(RTR("Go to previous folder."));
 	dir_next = memnew(Button);
 	dir_next->set_flat(true);
-	dir_next->set_tooltip(RTR("Go to next folder."));
+	dir_next->set_tooltip_text(RTR("Go to next folder."));
 	dir_up = memnew(Button);
 	dir_up->set_flat(true);
-	dir_up->set_tooltip(RTR("Go to parent folder."));
+	dir_up->set_tooltip_text(RTR("Go to parent folder."));
 	hbc->add_child(dir_prev);
 	hbc->add_child(dir_next);
 	hbc->add_child(dir_up);
@@ -1033,7 +1045,7 @@ FileDialog::FileDialog() {
 
 	refresh = memnew(Button);
 	refresh->set_flat(true);
-	refresh->set_tooltip(RTR("Refresh files."));
+	refresh->set_tooltip_text(RTR("Refresh files."));
 	refresh->connect("pressed", callable_mp(this, &FileDialog::update_file_list));
 	hbc->add_child(refresh);
 
@@ -1041,7 +1053,7 @@ FileDialog::FileDialog() {
 	show_hidden->set_flat(true);
 	show_hidden->set_toggle_mode(true);
 	show_hidden->set_pressed(is_showing_hidden_files());
-	show_hidden->set_tooltip(RTR("Toggle the visibility of hidden files."));
+	show_hidden->set_tooltip_text(RTR("Toggle the visibility of hidden files."));
 	show_hidden->connect("toggled", callable_mp(this, &FileDialog::set_show_hidden_files));
 	hbc->add_child(show_hidden);
 

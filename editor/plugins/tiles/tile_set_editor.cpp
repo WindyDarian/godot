@@ -36,6 +36,7 @@
 #include "editor/editor_file_system.h"
 #include "editor/editor_node.h"
 #include "editor/editor_scale.h"
+#include "editor/editor_undo_redo_manager.h"
 
 #include "scene/gui/box_container.h"
 #include "scene/gui/control.h"
@@ -405,8 +406,8 @@ void TileSetEditor::_tab_changed(int p_tab_changed) {
 }
 
 void TileSetEditor::_move_tile_set_array_element(Object *p_undo_redo, Object *p_edited, String p_array_prefix, int p_from_index, int p_to_pos) {
-	UndoRedo *undo_redo = Object::cast_to<UndoRedo>(p_undo_redo);
-	ERR_FAIL_COND(!undo_redo);
+	Ref<EditorUndoRedoManager> undo_redo = Object::cast_to<EditorUndoRedoManager>(p_undo_redo);
+	ERR_FAIL_COND(undo_redo.is_null());
 
 	TileSet *tile_set = Object::cast_to<TileSet>(p_edited);
 	if (!tile_set) {
@@ -586,8 +587,8 @@ void TileSetEditor::_move_tile_set_array_element(Object *p_undo_redo, Object *p_
 }
 
 void TileSetEditor::_undo_redo_inspector_callback(Object *p_undo_redo, Object *p_edited, String p_property, Variant p_new_value) {
-	UndoRedo *undo_redo = Object::cast_to<UndoRedo>(p_undo_redo);
-	ERR_FAIL_COND(!undo_redo);
+	Ref<EditorUndoRedoManager> undo_redo = Object::cast_to<EditorUndoRedoManager>(p_undo_redo);
+	ERR_FAIL_COND(undo_redo.is_null());
 
 #define ADD_UNDO(obj, property) undo_redo->add_undo_property(obj, property, obj->get(property));
 	TileSet *tile_set = Object::cast_to<TileSet>(p_edited);
@@ -694,7 +695,7 @@ TileSetEditor::TileSetEditor() {
 
 	source_sort_button = memnew(MenuButton);
 	source_sort_button->set_flat(true);
-	source_sort_button->set_tooltip(TTR("Sort sources"));
+	source_sort_button->set_tooltip_text(TTR("Sort sources"));
 
 	PopupMenu *p = source_sort_button->get_popup();
 	p->connect("id_pressed", callable_mp(this, &TileSetEditor::_set_source_sort));

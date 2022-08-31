@@ -297,7 +297,8 @@ private:
 	bool positional_shadow_atlas_16_bits = true;
 	PositionalShadowAtlasQuadrantSubdiv positional_shadow_atlas_quadrant_subdiv[4];
 
-	MSAA msaa = MSAA_DISABLED;
+	MSAA msaa_2d = MSAA_DISABLED;
+	MSAA msaa_3d = MSAA_DISABLED;
 	ScreenSpaceAA screen_space_aa = SCREEN_SPACE_AA_DISABLED;
 	bool use_taa = false;
 
@@ -522,8 +523,11 @@ public:
 	void set_positional_shadow_atlas_quadrant_subdiv(int p_quadrant, PositionalShadowAtlasQuadrantSubdiv p_subdiv);
 	PositionalShadowAtlasQuadrantSubdiv get_positional_shadow_atlas_quadrant_subdiv(int p_quadrant) const;
 
-	void set_msaa(MSAA p_msaa);
-	MSAA get_msaa() const;
+	void set_msaa_2d(MSAA p_msaa);
+	MSAA get_msaa_2d() const;
+
+	void set_msaa_3d(MSAA p_msaa);
+	MSAA get_msaa_3d() const;
 
 	void set_screen_space_aa(ScreenSpaceAA p_screen_space_aa);
 	ScreenSpaceAA get_screen_space_aa() const;
@@ -563,7 +567,7 @@ public:
 	bool is_input_disabled() const;
 
 	Vector2 get_mouse_position() const;
-	void warp_mouse(const Vector2 &p_position);
+	virtual void warp_mouse(const Vector2 &p_position);
 
 	void set_physics_object_picking(bool p_enable);
 	bool get_physics_object_picking();
@@ -709,7 +713,7 @@ public:
 	bool is_using_xr();
 #endif // _3D_DISABLED
 
-	virtual void _validate_property(PropertyInfo &property) const override;
+	void _validate_property(PropertyInfo &p_property) const;
 	Viewport();
 	~Viewport();
 };

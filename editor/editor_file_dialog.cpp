@@ -37,6 +37,7 @@
 #include "core/string/print_string.h"
 #include "dependency_editor.h"
 #include "editor/editor_file_system.h"
+#include "editor/editor_node.h"
 #include "editor/editor_resource_preview.h"
 #include "editor/editor_scale.h"
 #include "editor/editor_settings.h"
@@ -251,7 +252,7 @@ void EditorFileDialog::_file_submitted(const String &p_file) {
 }
 
 void EditorFileDialog::_save_confirm_pressed() {
-	String f = dir_access->get_current_dir().plus_file(file->get_text());
+	String f = dir_access->get_current_dir().path_join(file->get_text());
 	_save_to_recent();
 	hide();
 	emit_signal(SNAME("file_selected"), f);
@@ -284,7 +285,7 @@ void EditorFileDialog::_post_popup() {
 	}
 
 	if (is_visible() && !get_current_file().is_empty()) {
-		_request_single_thumbnail(get_current_dir().plus_file(get_current_file()));
+		_request_single_thumbnail(get_current_dir().path_join(get_current_file()));
 	}
 
 	if (is_visible()) {
@@ -294,11 +295,22 @@ void EditorFileDialog::_post_popup() {
 
 		bool res = (access == ACCESS_RESOURCES);
 		Vector<String> recentd = EditorSettings::get_singleton()->get_recent_dirs();
+		Vector<String> recentd_paths;
+		Vector<String> recentd_names;
+
 		for (int i = 0; i < recentd.size(); i++) {
 			bool cres = recentd[i].begins_with("res://");
 			if (cres != res) {
 				continue;
 			}
+
+			if (!dir_access->dir_exists(recentd[i])) {
+				// Remove invalid directory from the list of Recent directories.
+				recentd.remove_at(i--);
+				continue;
+			}
+
+			// Compute recent directory display text.
 			String name = recentd[i];
 			if (res && name == "res://") {
 				name = "/";
@@ -306,17 +318,18 @@ void EditorFileDialog::_post_popup() {
 				if (name.ends_with("/")) {
 					name = name.substr(0, name.length() - 1);
 				}
-				name = name.get_file() + "/";
+				name = name.get_file();
 			}
-			bool exists = dir_access->dir_exists(recentd[i]);
-			if (!exists) {
-				// Remove invalid directory from the list of Recent directories.
-				recentd.remove_at(i--);
-			} else {
-				recent->add_item(name, folder);
-				recent->set_item_metadata(-1, recentd[i]);
-				recent->set_item_icon_modulate(-1, folder_color);
-			}
+			recentd_paths.append(recentd[i]);
+			recentd_names.append(name);
+		}
+
+		EditorNode::disambiguate_filenames(recentd_paths, recentd_names);
+
+		for (int i = 0; i < recentd_paths.size(); i++) {
+			recent->add_item(recentd_names[i], folder);
+			recent->set_item_metadata(-1, recentd_paths[i]);
+			recent->set_item_icon_modulate(-1, folder_color);
 		}
 		EditorSettings::get_singleton()->set_recent_dirs(recentd);
 
@@ -381,7 +394,7 @@ void EditorFileDialog::_action_pressed() {
 		Vector<String> files;
 		for (int i = 0; i < item_list->get_item_count(); i++) {
 			if (item_list->is_selected(i)) {
-				files.push_back(fbase.plus_file(item_list->get_item_text(i)));
+				files.push_back(fbase.path_join(item_list->get_item_text(i)));
 			}
 		}
 
@@ -395,7 +408,7 @@ void EditorFileDialog::_action_pressed() {
 	}
 
 	String file_text = file->get_text();
-	String f = file_text.is_absolute_path() ? file_text : dir_access->get_current_dir().plus_file(file_text);
+	String f = file_text.is_absolute_path() ? file_text : dir_access->get_current_dir().path_join(file_text);
 
 	if ((mode == FILE_MODE_OPEN_ANY || mode == FILE_MODE_OPEN_FILE) && dir_access->file_exists(f)) {
 		_save_to_recent();
@@ -410,7 +423,7 @@ void EditorFileDialog::_action_pressed() {
 			if (item_list->is_selected(i)) {
 				Dictionary d = item_list->get_item_metadata(i);
 				if (d["dir"]) {
-					path = path.plus_file(d["name"]);
+					path = path.path_join(d["name"]);
 
 					break;
 				}
@@ -461,7 +474,7 @@ void EditorFileDialog::_action_pressed() {
 				if (!valid && filterSliceCount > 0) {
 					String str = (flt.get_slice(",", 0).strip_edges());
 					f += str.substr(1, str.length() - 1);
-					_request_single_thumbnail(get_current_dir().plus_file(f.get_file()));
+					_request_single_thumbnail(get_current_dir().path_join(f.get_file()));
 					file->set_text(f.get_file());
 					valid = true;
 				}
@@ -505,7 +518,7 @@ void EditorFileDialog::_item_selected(int p_item) {
 
 	if (!d["dir"]) {
 		file->set_text(d["name"]);
-		_request_single_thumbnail(get_current_dir().plus_file(get_current_file()));
+		_request_single_thumbnail(get_current_dir().path_join(get_current_file()));
 	} else if (mode == FILE_MODE_OPEN_DIR) {
 		set_ok_button_text(TTR("Select This Folder"));
 	}
@@ -523,7 +536,7 @@ void EditorFileDialog::_multi_selected(int p_item, bool p_selected) {
 
 	if (!d["dir"] && p_selected) {
 		file->set_text(d["name"]);
-		_request_single_thumbnail(get_current_dir().plus_file(get_current_file()));
+		_request_single_thumbnail(get_current_dir().path_join(get_current_file()));
 	}
 
 	get_ok_button()->set_disabled(_is_open_should_be_disabled());
@@ -830,7 +843,7 @@ void EditorFileDialog::update_file_list() {
 
 		Dictionary d;
 		d["name"] = dir_name;
-		d["path"] = cdir.plus_file(dir_name);
+		d["path"] = cdir.path_join(dir_name);
 		d["dir"] = true;
 
 		item_list->set_item_metadata(-1, d);
@@ -879,7 +892,7 @@ void EditorFileDialog::update_file_list() {
 			item_list->add_item(files.front()->get());
 
 			if (get_icon_func) {
-				Ref<Texture2D> icon = get_icon_func(cdir.plus_file(files.front()->get()));
+				Ref<Texture2D> icon = get_icon_func(cdir.path_join(files.front()->get()));
 				if (display_mode == DISPLAY_THUMBNAILS) {
 					item_list->set_item_icon(-1, file_thumbnail);
 					item_list->set_item_tag_icon(-1, icon);
@@ -891,7 +904,7 @@ void EditorFileDialog::update_file_list() {
 			Dictionary d;
 			d["name"] = files.front()->get();
 			d["dir"] = false;
-			String fullpath = cdir.plus_file(files.front()->get());
+			String fullpath = cdir.path_join(files.front()->get());
 			d["path"] = fullpath;
 			item_list->set_item_metadata(-1, d);
 
@@ -995,7 +1008,7 @@ String EditorFileDialog::get_current_file() const {
 }
 
 String EditorFileDialog::get_current_path() const {
-	return dir_access->get_current_dir().plus_file(file->get_text());
+	return dir_access->get_current_dir().path_join(file->get_text());
 }
 
 void EditorFileDialog::set_current_dir(const String &p_dir) {
@@ -1014,7 +1027,7 @@ void EditorFileDialog::set_current_file(const String &p_file) {
 	_focus_file_text();
 
 	if (is_visible()) {
-		_request_single_thumbnail(get_current_dir().plus_file(get_current_file()));
+		_request_single_thumbnail(get_current_dir().path_join(get_current_file()));
 	}
 }
 
@@ -1329,49 +1342,58 @@ void EditorFileDialog::_update_favorites() {
 	favorite->set_pressed(false);
 
 	Vector<String> favorited = EditorSettings::get_singleton()->get_favorites();
+	Vector<String> favorited_paths;
+	Vector<String> favorited_names;
 
 	bool fav_changed = false;
-	for (int i = favorited.size() - 1; i >= 0; i--) {
-		if (!dir_access->dir_exists(favorited[i])) {
-			favorited.remove_at(i);
-			fav_changed = true;
-		}
-	}
-	if (fav_changed) {
-		EditorSettings::get_singleton()->set_favorites(favorited);
-	}
-
+	int current_favorite = -1;
 	for (int i = 0; i < favorited.size(); i++) {
 		bool cres = favorited[i].begins_with("res://");
 		if (cres != res) {
 			continue;
 		}
-		String name = favorited[i];
-		bool setthis = false;
 
+		if (!dir_access->dir_exists(favorited[i])) {
+			// Remove invalid directory from the list of Favorited directories.
+			favorited.remove_at(i--);
+			fav_changed = true;
+			continue;
+		}
+
+		// Compute favorite display text.
+		String name = favorited[i];
 		if (res && name == "res://") {
 			if (name == current) {
-				setthis = true;
+				current_favorite = favorited_paths.size();
 			}
 			name = "/";
-
-			favorites->add_item(name, folder_icon);
+			favorited_paths.append(favorited[i]);
+			favorited_names.append(name);
 		} else if (name.ends_with("/")) {
 			if (name == current || name == current + "/") {
-				setthis = true;
+				current_favorite = favorited_paths.size();
 			}
 			name = name.substr(0, name.length() - 1);
 			name = name.get_file();
-
-			favorites->add_item(name, folder_icon);
+			favorited_paths.append(favorited[i]);
+			favorited_names.append(name);
 		} else {
-			continue; // We don't handle favorite files here.
+			// Ignore favorited files.
 		}
+	}
 
-		favorites->set_item_metadata(-1, favorited[i]);
+	if (fav_changed) {
+		EditorSettings::get_singleton()->set_favorites(favorited);
+	}
+
+	EditorNode::disambiguate_filenames(favorited_paths, favorited_names);
+
+	for (int i = 0; i < favorited_paths.size(); i++) {
+		favorites->add_item(favorited_names[i], folder_icon);
+		favorites->set_item_metadata(-1, favorited_paths[i]);
 		favorites->set_item_icon_modulate(-1, folder_color);
 
-		if (setthis) {
+		if (i == current_favorite) {
 			favorite->set_pressed(true);
 			favorites->set_current(favorites->get_item_count() - 1);
 			recent->deselect_all();
@@ -1625,13 +1647,13 @@ EditorFileDialog::EditorFileDialog() {
 
 	dir_prev = memnew(Button);
 	dir_prev->set_flat(true);
-	dir_prev->set_tooltip(TTR("Go to previous folder."));
+	dir_prev->set_tooltip_text(TTR("Go to previous folder."));
 	dir_next = memnew(Button);
 	dir_next->set_flat(true);
-	dir_next->set_tooltip(TTR("Go to next folder."));
+	dir_next->set_tooltip_text(TTR("Go to next folder."));
 	dir_up = memnew(Button);
 	dir_up->set_flat(true);
-	dir_up->set_tooltip(TTR("Go to parent folder."));
+	dir_up->set_tooltip_text(TTR("Go to parent folder."));
 
 	pathhb->add_child(dir_prev);
 	pathhb->add_child(dir_next);
@@ -1655,14 +1677,14 @@ EditorFileDialog::EditorFileDialog() {
 
 	refresh = memnew(Button);
 	refresh->set_flat(true);
-	refresh->set_tooltip(TTR("Refresh files."));
+	refresh->set_tooltip_text(TTR("Refresh files."));
 	refresh->connect("pressed", callable_mp(this, &EditorFileDialog::update_file_list));
 	pathhb->add_child(refresh);
 
 	favorite = memnew(Button);
 	favorite->set_flat(true);
 	favorite->set_toggle_mode(true);
-	favorite->set_tooltip(TTR("(Un)favorite current folder."));
+	favorite->set_tooltip_text(TTR("(Un)favorite current folder."));
 	favorite->connect("pressed", callable_mp(this, &EditorFileDialog::_favorite_pressed));
 	pathhb->add_child(favorite);
 
@@ -1670,7 +1692,7 @@ EditorFileDialog::EditorFileDialog() {
 	show_hidden->set_flat(true);
 	show_hidden->set_toggle_mode(true);
 	show_hidden->set_pressed(is_showing_hidden_files());
-	show_hidden->set_tooltip(TTR("Toggle the visibility of hidden files."));
+	show_hidden->set_tooltip_text(TTR("Toggle the visibility of hidden files."));
 	show_hidden->connect("toggled", callable_mp(this, &EditorFileDialog::set_show_hidden_files));
 	pathhb->add_child(show_hidden);
 
@@ -1685,7 +1707,7 @@ EditorFileDialog::EditorFileDialog() {
 	mode_thumbnails->set_toggle_mode(true);
 	mode_thumbnails->set_pressed(display_mode == DISPLAY_THUMBNAILS);
 	mode_thumbnails->set_button_group(view_mode_group);
-	mode_thumbnails->set_tooltip(TTR("View items as a grid of thumbnails."));
+	mode_thumbnails->set_tooltip_text(TTR("View items as a grid of thumbnails."));
 	pathhb->add_child(mode_thumbnails);
 
 	mode_list = memnew(Button);
@@ -1694,7 +1716,7 @@ EditorFileDialog::EditorFileDialog() {
 	mode_list->set_toggle_mode(true);
 	mode_list->set_pressed(display_mode == DISPLAY_LIST);
 	mode_list->set_button_group(view_mode_group);
-	mode_list->set_tooltip(TTR("View items as a list."));
+	mode_list->set_tooltip_text(TTR("View items as a list."));
 	pathhb->add_child(mode_list);
 
 	shortcuts_container = memnew(HBoxContainer);

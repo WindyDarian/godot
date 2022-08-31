@@ -38,11 +38,13 @@
 #include "servers/text_server.h"
 
 void Label::set_autowrap_mode(TextServer::AutowrapMode p_mode) {
-	if (autowrap_mode != p_mode) {
-		autowrap_mode = p_mode;
-		lines_dirty = true;
+	if (autowrap_mode == p_mode) {
+		return;
 	}
-	update();
+
+	autowrap_mode = p_mode;
+	lines_dirty = true;
+	queue_redraw();
 
 	if (clip || overrun_behavior != TextServer::OVERRUN_NO_TRIMMING) {
 		update_minimum_size();
@@ -54,10 +56,14 @@ TextServer::AutowrapMode Label::get_autowrap_mode() const {
 }
 
 void Label::set_uppercase(bool p_uppercase) {
+	if (uppercase == p_uppercase) {
+		return;
+	}
+
 	uppercase = p_uppercase;
 	dirty = true;
 
-	update();
+	queue_redraw();
 }
 
 bool Label::is_uppercase() const {
@@ -273,16 +279,16 @@ void Label::_notification(int p_what) {
 				return; // Nothing new.
 			}
 			xl_text = new_text;
-			if (percent_visible < 1) {
-				visible_chars = get_total_character_count() * percent_visible;
+			if (visible_ratio < 1) {
+				visible_chars = get_total_character_count() * visible_ratio;
 			}
 			dirty = true;
 
-			update();
+			queue_redraw();
 		} break;
 
 		case NOTIFICATION_LAYOUT_DIRECTION_CHANGED: {
-			update();
+			queue_redraw();
 		} break;
 
 		case NOTIFICATION_DRAW: {
@@ -342,7 +348,7 @@ void Label::_notification(int p_what) {
 				total_h += TS->shaped_text_get_size(lines_rid[i]).y + line_spacing;
 				total_glyphs += TS->shaped_text_get_glyph_count(lines_rid[i]) + TS->shaped_text_get_ellipsis_glyph_count(lines_rid[i]);
 			}
-			int visible_glyphs = total_glyphs * percent_visible;
+			int visible_glyphs = total_glyphs * visible_ratio;
 			int processed_glyphs = 0;
 			total_h += style->get_margin(SIDE_TOP) + style->get_margin(SIDE_BOTTOM);
 
@@ -538,7 +544,7 @@ void Label::_notification(int p_what) {
 
 		case NOTIFICATION_THEME_CHANGED: {
 			font_dirty = true;
-			update();
+			queue_redraw();
 		} break;
 
 		case NOTIFICATION_RESIZED: {
@@ -608,13 +614,16 @@ int Label::get_visible_line_count() const {
 
 void Label::set_horizontal_alignment(HorizontalAlignment p_alignment) {
 	ERR_FAIL_INDEX((int)p_alignment, 4);
-	if (horizontal_alignment != p_alignment) {
-		if (horizontal_alignment == HORIZONTAL_ALIGNMENT_FILL || p_alignment == HORIZONTAL_ALIGNMENT_FILL) {
-			lines_dirty = true; // Reshape lines.
-		}
-		horizontal_alignment = p_alignment;
+	if (horizontal_alignment == p_alignment) {
+		return;
 	}
-	update();
+
+	if (horizontal_alignment == HORIZONTAL_ALIGNMENT_FILL || p_alignment == HORIZONTAL_ALIGNMENT_FILL) {
+		lines_dirty = true; // Reshape lines.
+	}
+	horizontal_alignment = p_alignment;
+
+	queue_redraw();
 }
 
 HorizontalAlignment Label::get_horizontal_alignment() const {
@@ -623,8 +632,13 @@ HorizontalAlignment Label::get_horizontal_alignment() const {
 
 void Label::set_vertical_alignment(VerticalAlignment p_alignment) {
 	ERR_FAIL_INDEX((int)p_alignment, 4);
+
+	if (vertical_alignment == p_alignment) {
+		return;
+	}
+
 	vertical_alignment = p_alignment;
-	update();
+	queue_redraw();
 }
 
 VerticalAlignment Label::get_vertical_alignment() const {
@@ -638,16 +652,16 @@ void Label::set_text(const String &p_string) {
 	text = p_string;
 	xl_text = atr(p_string);
 	dirty = true;
-	if (percent_visible < 1) {
-		visible_chars = get_total_character_count() * percent_visible;
+	if (visible_ratio < 1) {
+		visible_chars = get_total_character_count() * visible_ratio;
 	}
-	update();
+	queue_redraw();
 	update_minimum_size();
 }
 
 void Label::_invalidate() {
 	font_dirty = true;
-	update();
+	queue_redraw();
 }
 
 void Label::set_label_settings(const Ref<LabelSettings> &p_settings) {
@@ -672,7 +686,7 @@ void Label::set_text_direction(Control::TextDirection p_text_direction) {
 	if (text_direction != p_text_direction) {
 		text_direction = p_text_direction;
 		font_dirty = true;
-		update();
+		queue_redraw();
 	}
 }
 
@@ -680,7 +694,7 @@ void Label::set_structured_text_bidi_override(TextServer::StructuredTextParser p
 	if (st_parser != p_parser) {
 		st_parser = p_parser;
 		dirty = true;
-		update();
+		queue_redraw();
 	}
 }
 
@@ -689,9 +703,13 @@ TextServer::StructuredTextParser Label::get_structured_text_bidi_override() cons
 }
 
 void Label::set_structured_text_bidi_override_options(Array p_args) {
+	if (st_args == p_args) {
+		return;
+	}
+
 	st_args = p_args;
 	dirty = true;
-	update();
+	queue_redraw();
 }
 
 Array Label::get_structured_text_bidi_override_options() const {
@@ -706,7 +724,7 @@ void Label::set_language(const String &p_language) {
 	if (language != p_language) {
 		language = p_language;
 		dirty = true;
-		update();
+		queue_redraw();
 	}
 }
 
@@ -715,8 +733,12 @@ String Label::get_language() const {
 }
 
 void Label::set_clip_text(bool p_clip) {
+	if (clip == p_clip) {
+		return;
+	}
+
 	clip = p_clip;
-	update();
+	queue_redraw();
 	update_minimum_size();
 }
 
@@ -725,11 +747,13 @@ bool Label::is_clipping_text() const {
 }
 
 void Label::set_text_overrun_behavior(TextServer::OverrunBehavior p_behavior) {
-	if (overrun_behavior != p_behavior) {
-		overrun_behavior = p_behavior;
-		lines_dirty = true;
+	if (overrun_behavior == p_behavior) {
+		return;
 	}
-	update();
+
+	overrun_behavior = p_behavior;
+	lines_dirty = true;
+	queue_redraw();
 	if (clip || overrun_behavior != TextServer::OVERRUN_NO_TRIMMING) {
 		update_minimum_size();
 	}
@@ -747,14 +771,14 @@ void Label::set_visible_characters(int p_amount) {
 	if (visible_chars != p_amount) {
 		visible_chars = p_amount;
 		if (get_total_character_count() > 0) {
-			percent_visible = (float)p_amount / (float)get_total_character_count();
+			visible_ratio = (float)p_amount / (float)get_total_character_count();
 		} else {
-			percent_visible = 1.0;
+			visible_ratio = 1.0;
 		}
 		if (visible_chars_behavior == TextServer::VC_CHARS_BEFORE_SHAPING) {
 			dirty = true;
 		}
-		update();
+		queue_redraw();
 	}
 }
 
@@ -762,24 +786,28 @@ int Label::get_visible_characters() const {
 	return visible_chars;
 }
 
-void Label::set_percent_visible(float p_percent) {
-	if (percent_visible != p_percent) {
-		if (p_percent < 0 || p_percent >= 1) {
+void Label::set_visible_ratio(float p_ratio) {
+	if (visible_ratio != p_ratio) {
+		if (visible_ratio >= 1.0) {
 			visible_chars = -1;
-			percent_visible = 1;
+			visible_ratio = 1.0;
+		} else if (visible_ratio < 0.0) {
+			visible_chars = 0;
+			visible_ratio = 0.0;
 		} else {
-			visible_chars = get_total_character_count() * p_percent;
-			percent_visible = p_percent;
+			visible_chars = get_total_character_count() * p_ratio;
+			visible_ratio = p_ratio;
 		}
+
 		if (visible_chars_behavior == TextServer::VC_CHARS_BEFORE_SHAPING) {
 			dirty = true;
 		}
-		update();
+		queue_redraw();
 	}
 }
 
-float Label::get_percent_visible() const {
-	return percent_visible;
+float Label::get_visible_ratio() const {
+	return visible_ratio;
 }
 
 TextServer::VisibleCharactersBehavior Label::get_visible_characters_behavior() const {
@@ -790,15 +818,20 @@ void Label::set_visible_characters_behavior(TextServer::VisibleCharactersBehavio
 	if (visible_chars_behavior != p_behavior) {
 		visible_chars_behavior = p_behavior;
 		dirty = true;
-		update();
+		queue_redraw();
 	}
 }
 
 void Label::set_lines_skipped(int p_lines) {
 	ERR_FAIL_COND(p_lines < 0);
+
+	if (lines_skipped == p_lines) {
+		return;
+	}
+
 	lines_skipped = p_lines;
 	_update_visible();
-	update();
+	queue_redraw();
 }
 
 int Label::get_lines_skipped() const {
@@ -806,9 +839,13 @@ int Label::get_lines_skipped() const {
 }
 
 void Label::set_max_lines_visible(int p_lines) {
+	if (max_lines_visible == p_lines) {
+		return;
+	}
+
 	max_lines_visible = p_lines;
 	_update_visible();
-	update();
+	queue_redraw();
 }
 
 int Label::get_max_lines_visible() const {
@@ -852,8 +889,8 @@ void Label::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_visible_characters"), &Label::get_visible_characters);
 	ClassDB::bind_method(D_METHOD("get_visible_characters_behavior"), &Label::get_visible_characters_behavior);
 	ClassDB::bind_method(D_METHOD("set_visible_characters_behavior", "behavior"), &Label::set_visible_characters_behavior);
-	ClassDB::bind_method(D_METHOD("set_percent_visible", "percent_visible"), &Label::set_percent_visible);
-	ClassDB::bind_method(D_METHOD("get_percent_visible"), &Label::get_percent_visible);
+	ClassDB::bind_method(D_METHOD("set_visible_ratio", "ratio"), &Label::set_visible_ratio);
+	ClassDB::bind_method(D_METHOD("get_visible_ratio"), &Label::get_visible_ratio);
 	ClassDB::bind_method(D_METHOD("set_lines_skipped", "lines_skipped"), &Label::set_lines_skipped);
 	ClassDB::bind_method(D_METHOD("get_lines_skipped"), &Label::get_lines_skipped);
 	ClassDB::bind_method(D_METHOD("set_max_lines_visible", "lines_visible"), &Label::set_max_lines_visible);
@@ -871,13 +908,14 @@ void Label::_bind_methods() {
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "clip_text"), "set_clip_text", "is_clipping_text");
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "text_overrun_behavior", PROPERTY_HINT_ENUM, "Trim Nothing,Trim Characters,Trim Words,Ellipsis,Word Ellipsis"), "set_text_overrun_behavior", "get_text_overrun_behavior");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "uppercase"), "set_uppercase", "is_uppercase");
+
+	ADD_GROUP("Displayed Text", "");
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "lines_skipped", PROPERTY_HINT_RANGE, "0,999,1"), "set_lines_skipped", "get_lines_skipped");
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "max_lines_visible", PROPERTY_HINT_RANGE, "-1,999,1"), "set_max_lines_visible", "get_max_lines_visible");
-
-	// Note: "visible_characters" and "percent_visible" should be set after "text" to be correctly applied.
+	// Note: "visible_characters" and "visible_ratio" should be set after "text" to be correctly applied.
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "visible_characters", PROPERTY_HINT_RANGE, "-1,128000,1"), "set_visible_characters", "get_visible_characters");
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "visible_characters_behavior", PROPERTY_HINT_ENUM, "Characters Before Shaping,Characters After Shaping,Glyphs (Layout Direction),Glyphs (Left-to-Right),Glyphs (Right-to-Left)"), "set_visible_characters_behavior", "get_visible_characters_behavior");
-	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "percent_visible", PROPERTY_HINT_RANGE, "0,1,0.001"), "set_percent_visible", "get_percent_visible");
+	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "visible_ratio", PROPERTY_HINT_RANGE, "0,1,0.001"), "set_visible_ratio", "get_visible_ratio");
 
 	ADD_GROUP("BiDi", "");
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "text_direction", PROPERTY_HINT_ENUM, "Auto,Left-to-Right,Right-to-Left,Inherited"), "set_text_direction", "get_text_direction");

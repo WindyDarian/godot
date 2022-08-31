@@ -1000,8 +1000,8 @@ int64_t SceneTree::get_frame() const {
 	return current_frame;
 }
 
-Array SceneTree::_get_nodes_in_group(const StringName &p_group) {
-	Array ret;
+TypedArray<Node> SceneTree::_get_nodes_in_group(const StringName &p_group) {
+	TypedArray<Node> ret;
 	HashMap<StringName, Group>::Iterator E = group_map.find(p_group);
 	if (!E) {
 		return ret;
@@ -1171,8 +1171,8 @@ Ref<Tween> SceneTree::create_tween() {
 	return tween;
 }
 
-Array SceneTree::get_processed_tweens() {
-	Array ret;
+TypedArray<Tween> SceneTree::get_processed_tweens() {
+	TypedArray<Tween> ret;
 	ret.resize(tweens.size());
 
 	int i = 0;
@@ -1370,9 +1370,9 @@ void SceneTree::get_argument_options(const StringName &p_function, int p_idx, Li
 				}
 
 				if (dir_access->dir_exists(filename)) {
-					directories.push_back(dir_access->get_current_dir().plus_file(filename));
+					directories.push_back(dir_access->get_current_dir().path_join(filename));
 				} else if (filename.ends_with(".tscn") || filename.ends_with(".scn")) {
-					r_options->push_back("\"" + dir_access->get_current_dir().plus_file(filename) + "\"");
+					r_options->push_back("\"" + dir_access->get_current_dir().path_join(filename) + "\"");
 				}
 
 				filename = dir_access->get_next();
@@ -1418,9 +1418,13 @@ SceneTree::SceneTree() {
 	root->set_as_audio_listener_2d(true);
 	current_scene = nullptr;
 
-	const int msaa_mode = GLOBAL_DEF_BASIC("rendering/anti_aliasing/quality/msaa", 0);
-	ProjectSettings::get_singleton()->set_custom_property_info("rendering/anti_aliasing/quality/msaa", PropertyInfo(Variant::INT, "rendering/anti_aliasing/quality/msaa", PROPERTY_HINT_ENUM, String::utf8("Disabled (Fastest),2× (Average),4× (Slow),8× (Slowest)")));
-	root->set_msaa(Viewport::MSAA(msaa_mode));
+	const int msaa_mode_2d = GLOBAL_DEF_BASIC("rendering/anti_aliasing/quality/msaa_2d", 0);
+	ProjectSettings::get_singleton()->set_custom_property_info("rendering/anti_aliasing/quality/msaa_2d", PropertyInfo(Variant::INT, "rendering/anti_aliasing/quality/msaa_2d", PROPERTY_HINT_ENUM, String::utf8("Disabled (Fastest),2× (Average),4× (Slow),8× (Slowest)")));
+	root->set_msaa_2d(Viewport::MSAA(msaa_mode_2d));
+
+	const int msaa_mode_3d = GLOBAL_DEF_BASIC("rendering/anti_aliasing/quality/msaa_3d", 0);
+	ProjectSettings::get_singleton()->set_custom_property_info("rendering/anti_aliasing/quality/msaa_3d", PropertyInfo(Variant::INT, "rendering/anti_aliasing/quality/msaa_3d", PROPERTY_HINT_ENUM, String::utf8("Disabled (Fastest),2× (Average),4× (Slow),8× (Slowest)")));
+	root->set_msaa_3d(Viewport::MSAA(msaa_mode_3d));
 
 	const int ssaa_mode = GLOBAL_DEF_BASIC("rendering/anti_aliasing/quality/screen_space_aa", 0);
 	ProjectSettings::get_singleton()->set_custom_property_info("rendering/anti_aliasing/quality/screen_space_aa", PropertyInfo(Variant::INT, "rendering/anti_aliasing/quality/screen_space_aa", PROPERTY_HINT_ENUM, "Disabled (Fastest),FXAA (Fast)"));

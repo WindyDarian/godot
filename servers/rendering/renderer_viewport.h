@@ -66,7 +66,8 @@ public:
 		RID render_target_texture;
 		RID render_buffers;
 
-		RS::ViewportMSAA msaa = RenderingServer::VIEWPORT_MSAA_DISABLED;
+		RS::ViewportMSAA msaa_2d = RenderingServer::VIEWPORT_MSAA_DISABLED;
+		RS::ViewportMSAA msaa_3d = RenderingServer::VIEWPORT_MSAA_DISABLED;
 		RS::ViewportScreenSpaceAA screen_space_aa = RenderingServer::VIEWPORT_SCREEN_SPACE_AA_DISABLED;
 		bool use_taa = false;
 		bool use_debanding = false;
@@ -157,7 +158,6 @@ public:
 			measure_render_time = false;
 
 			debug_draw = RS::VIEWPORT_DEBUG_DRAW_DISABLED;
-			msaa = RS::VIEWPORT_MSAA_DISABLED;
 			screen_space_aa = RS::VIEWPORT_SCREEN_SPACE_AA_DISABLED;
 			use_debanding = false;
 			use_occlusion_culling = false;
@@ -185,25 +185,16 @@ public:
 
 	mutable RID_Owner<Viewport, true> viewport_owner;
 
-	struct ViewportSort {
-		_FORCE_INLINE_ bool operator()(const Viewport *p_left, const Viewport *p_right) const {
-			bool left_to_screen = p_left->viewport_to_screen_rect.size != Size2();
-			bool right_to_screen = p_right->viewport_to_screen_rect.size != Size2();
-
-			if (left_to_screen == right_to_screen) {
-				return p_right->parent == p_left->self;
-			}
-			return (right_to_screen ? 0 : 1) < (left_to_screen ? 0 : 1);
-		}
-	};
-
 	Vector<Viewport *> active_viewports;
+	Vector<Viewport *> sorted_active_viewports;
+	bool sorted_active_viewports_dirty = false;
 
 	int total_objects_drawn = 0;
 	int total_vertices_drawn = 0;
 	int total_draw_calls_used = 0;
 
 private:
+	Vector<Viewport *> _sort_active_viewports();
 	void _configure_3d_render_buffers(Viewport *p_viewport);
 	void _draw_3d(Viewport *p_viewport);
 	void _draw_viewport(Viewport *p_viewport);
@@ -259,7 +250,8 @@ public:
 	void viewport_set_positional_shadow_atlas_size(RID p_viewport, int p_size, bool p_16_bits = true);
 	void viewport_set_positional_shadow_atlas_quadrant_subdivision(RID p_viewport, int p_quadrant, int p_subdiv);
 
-	void viewport_set_msaa(RID p_viewport, RS::ViewportMSAA p_msaa);
+	void viewport_set_msaa_2d(RID p_viewport, RS::ViewportMSAA p_msaa);
+	void viewport_set_msaa_3d(RID p_viewport, RS::ViewportMSAA p_msaa);
 	void viewport_set_screen_space_aa(RID p_viewport, RS::ViewportScreenSpaceAA p_mode);
 	void viewport_set_use_taa(RID p_viewport, bool p_use_taa);
 	void viewport_set_use_debanding(RID p_viewport, bool p_use_debanding);

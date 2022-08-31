@@ -40,11 +40,14 @@
 #include "scene/gui/tree.h"
 
 class EditorFileDialog;
+class EditorUndoRedoManager;
 
 class AnimationNodeStateMachineEditor : public AnimationTreeNodeEditorPlugin {
 	GDCLASS(AnimationNodeStateMachineEditor, AnimationTreeNodeEditorPlugin);
 
 	Ref<AnimationNodeStateMachine> state_machine;
+
+	bool read_only = false;
 
 	Button *tool_select = nullptr;
 	Button *tool_create = nullptr;
@@ -76,7 +79,7 @@ class AnimationNodeStateMachineEditor : public AnimationTreeNodeEditorPlugin {
 
 	bool updating = false;
 
-	UndoRedo *undo_redo = nullptr;
+	Ref<EditorUndoRedoManager> undo_redo;
 
 	static AnimationNodeStateMachineEditor *singleton;
 

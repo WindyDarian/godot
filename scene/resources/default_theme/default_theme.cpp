@@ -35,6 +35,7 @@
 #include "default_theme_icons.gen.h"
 #include "scene/resources/font.h"
 #include "scene/resources/theme.h"
+#include "scene/theme/theme_db.h"
 #include "servers/text_server.h"
 
 #include "modules/modules_enabled.gen.h" // For svg.
@@ -84,7 +85,7 @@ static Ref<ImageTexture> generate_icon(int p_index) {
 	// with integer scales.
 	const bool upsample = !Math::is_equal_approx(Math::round(scale), scale);
 	ImageLoaderSVG img_loader;
-	img_loader.create_image_from_string(img, default_theme_icons_sources[p_index], scale, upsample, false);
+	img_loader.create_image_from_string(img, default_theme_icons_sources[p_index], scale, upsample, HashMap<Color, Color>());
 #endif
 
 	return ImageTexture::create_from_image(img);
@@ -176,6 +177,27 @@ void fill_default_theme(Ref<Theme> &theme, const Ref<Font> &default_font, const 
 	theme->set_color("icon_disabled_color", "Button", Color(1, 1, 1, 0.4));
 
 	theme->set_constant("h_separation", "Button", 2 * scale);
+
+	// MenuBar
+	theme->set_stylebox("normal", "MenuBar", button_normal);
+	theme->set_stylebox("hover", "MenuBar", button_hover);
+	theme->set_stylebox("pressed", "MenuBar", button_pressed);
+	theme->set_stylebox("disabled", "MenuBar", button_disabled);
+	theme->set_stylebox("focus", "MenuBar", focus);
+
+	theme->set_font("font", "MenuBar", Ref<Font>());
+	theme->set_font_size("font_size", "MenuBar", -1);
+	theme->set_constant("outline_size", "MenuBar", 0 * scale);
+
+	theme->set_color("font_color", "MenuBar", control_font_color);
+	theme->set_color("font_pressed_color", "MenuBar", control_font_pressed_color);
+	theme->set_color("font_hover_color", "MenuBar", control_font_hover_color);
+	theme->set_color("font_focus_color", "MenuBar", control_font_focus_color);
+	theme->set_color("font_hover_pressed_color", "MenuBar", control_font_pressed_color);
+	theme->set_color("font_disabled_color", "MenuBar", control_font_disabled_color);
+	theme->set_color("font_outline_color", "MenuBar", Color(1, 1, 1));
+
+	theme->set_constant("h_separation", "MenuBar", 4 * scale);
 
 	// LinkButton
 
@@ -669,6 +691,7 @@ void fill_default_theme(Ref<Theme> &theme, const Ref<Font> &default_font, const 
 	theme->set_color("font_outline_color", "PopupMenu", Color(1, 1, 1));
 	theme->set_color("font_separator_outline_color", "PopupMenu", Color(1, 1, 1));
 
+	theme->set_constant("indent", "PopupMenu", 10 * scale);
 	theme->set_constant("h_separation", "PopupMenu", 4 * scale);
 	theme->set_constant("v_separation", "PopupMenu", 4 * scale);
 	theme->set_constant("outline_size", "PopupMenu", 0);
@@ -808,6 +831,7 @@ void fill_default_theme(Ref<Theme> &theme, const Ref<Font> &default_font, const 
 	theme->set_stylebox("tab_unselected", "TabContainer", style_tab_unselected);
 	theme->set_stylebox("tab_disabled", "TabContainer", style_tab_disabled);
 	theme->set_stylebox("panel", "TabContainer", make_flat_stylebox(style_normal_color, 0, 0, 0, 0));
+	theme->set_stylebox("tabbar_background", "TabContainer", make_empty_stylebox(0, 0, 0, 0));
 
 	theme->set_icon("increment", "TabContainer", icons["scroll_button_right"]);
 	theme->set_icon("increment_highlight", "TabContainer", icons["scroll_button_right_hl"]);
@@ -1031,7 +1055,7 @@ void fill_default_theme(Ref<Theme> &theme, const Ref<Font> &default_font, const 
 	default_style = make_flat_stylebox(Color(1, 0.365, 0.365), 4, 4, 4, 4, 0, false, 2);
 }
 
-void make_default_theme(float p_scale, Ref<Font> p_font, TextServer::SubpixelPositioning p_font_subpixel, TextServer::Hinting p_font_hinting, bool p_font_antialiased, bool p_font_msdf, bool p_font_generate_mipmaps) {
+void make_default_theme(float p_scale, Ref<Font> p_font, TextServer::SubpixelPositioning p_font_subpixel, TextServer::Hinting p_font_hinting, TextServer::FontAntialiasing p_font_antialiasing, bool p_font_msdf, bool p_font_generate_mipmaps) {
 	Ref<Theme> t;
 	t.instantiate();
 
@@ -1055,7 +1079,7 @@ void make_default_theme(float p_scale, Ref<Font> p_font, TextServer::SubpixelPos
 		dynamic_font->set_data_ptr(_font_OpenSans_SemiBold, _font_OpenSans_SemiBold_size);
 		dynamic_font->set_subpixel_positioning(p_font_subpixel);
 		dynamic_font->set_hinting(p_font_hinting);
-		dynamic_font->set_antialiased(p_font_antialiased);
+		dynamic_font->set_antialiasing(p_font_antialiasing);
 		dynamic_font->set_multichannel_signed_distance_field(p_font_msdf);
 		dynamic_font->set_generate_mipmaps(p_font_generate_mipmaps);
 
@@ -1079,18 +1103,11 @@ void make_default_theme(float p_scale, Ref<Font> p_font, TextServer::SubpixelPos
 
 	fill_default_theme(t, default_font, bold_font, bold_italics_font, italics_font, default_icon, default_style, default_scale);
 
-	Theme::set_default(t);
-	Theme::set_fallback_base_scale(default_scale);
-	Theme::set_fallback_icon(default_icon);
-	Theme::set_fallback_style(default_style);
-	Theme::set_fallback_font(default_font);
-	Theme::set_fallback_font_size(default_font_size * default_scale);
-}
+	ThemeDB::get_singleton()->set_default_theme(t);
 
-void clear_default_theme() {
-	Theme::set_project_default(nullptr);
-	Theme::set_default(nullptr);
-	Theme::set_fallback_icon(nullptr);
-	Theme::set_fallback_style(nullptr);
-	Theme::set_fallback_font(nullptr);
+	ThemeDB::get_singleton()->set_fallback_base_scale(default_scale);
+	ThemeDB::get_singleton()->set_fallback_icon(default_icon);
+	ThemeDB::get_singleton()->set_fallback_stylebox(default_style);
+	ThemeDB::get_singleton()->set_fallback_font(default_font);
+	ThemeDB::get_singleton()->set_fallback_font_size(default_font_size * default_scale);
 }

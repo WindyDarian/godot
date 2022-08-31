@@ -77,8 +77,8 @@ void MeshEditor::edit(Ref<Mesh> p_mesh) {
 	mesh = p_mesh;
 	mesh_instance->set_mesh(mesh);
 
-	rot_x = Math::deg2rad(-15.0);
-	rot_y = Math::deg2rad(30.0);
+	rot_x = Math::deg_to_rad(-15.0);
+	rot_y = Math::deg_to_rad(30.0);
 	_update_rotation();
 
 	AABB aabb = mesh->get_aabb();
@@ -112,7 +112,7 @@ MeshEditor::MeshEditor() {
 	viewport->set_world_3d(world_3d); //use own world
 	add_child(viewport);
 	viewport->set_disable_input(true);
-	viewport->set_msaa(Viewport::MSAA_4X);
+	viewport->set_msaa_3d(Viewport::MSAA_4X);
 	set_stretch(true);
 	camera = memnew(Camera3D);
 	camera->set_transform(Transform3D(Basis(), Vector3(0, 0, 1.1)));

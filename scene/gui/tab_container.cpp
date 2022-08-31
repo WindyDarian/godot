@@ -98,7 +98,7 @@ void TabContainer::gui_input(const Ref<InputEvent> &p_event) {
 		if (pos.y > _get_top_margin()) {
 			if (menu_hovered) {
 				menu_hovered = false;
-				update();
+				queue_redraw();
 			}
 			return;
 		}
@@ -109,23 +109,23 @@ void TabContainer::gui_input(const Ref<InputEvent> &p_event) {
 				if (pos.x <= menu->get_width()) {
 					if (!menu_hovered) {
 						menu_hovered = true;
-						update();
+						queue_redraw();
 						return;
 					}
 				} else if (menu_hovered) {
 					menu_hovered = false;
-					update();
+					queue_redraw();
 				}
 			} else {
 				if (pos.x >= size.width - menu->get_width()) {
 					if (!menu_hovered) {
 						menu_hovered = true;
-						update();
+						queue_redraw();
 						return;
 					}
 				} else if (menu_hovered) {
 					menu_hovered = false;
-					update();
+					queue_redraw();
 				}
 			}
 
@@ -163,6 +163,10 @@ void TabContainer::_notification(int p_what) {
 
 			int header_height = _get_top_margin();
 
+			// Draw background for the tabbar.
+			Ref<StyleBox> tabbar_background = get_theme_stylebox(SNAME("tabbar_background"));
+			tabbar_background->draw(canvas, Rect2(0, 0, size.width, header_height));
+			// Draw the background for the tab's content.
 			panel->draw(canvas, Rect2(0, header_height, size.width, size.height - header_height));
 
 			// Draw the popup menu.
@@ -218,7 +222,7 @@ void TabContainer::_on_theme_changed() {
 	} else {
 		update_minimum_size();
 	}
-	update();
+	queue_redraw();
 
 	theme_changing = false;
 }
@@ -304,7 +308,7 @@ void TabContainer::_update_margins() {
 void TabContainer::_on_mouse_exited() {
 	if (menu_hovered) {
 		menu_hovered = false;
-		update();
+		queue_redraw();
 	}
 }
 
@@ -502,7 +506,7 @@ void TabContainer::add_child_notify(Node *p_child) {
 
 	_update_margins();
 	if (get_tab_count() == 1) {
-		update();
+		queue_redraw();
 	}
 
 	p_child->connect("renamed", callable_mp(this, &TabContainer::_refresh_tab_names));
@@ -558,7 +562,7 @@ void TabContainer::remove_child_notify(Node *p_child) {
 
 	_update_margins();
 	if (get_tab_count() == 0) {
-		update();
+		queue_redraw();
 	}
 
 	p_child->remove_meta("_tab_name");
@@ -618,6 +622,10 @@ int TabContainer::get_tab_idx_from_control(Control *p_child) const {
 }
 
 void TabContainer::set_tab_alignment(TabBar::AlignmentMode p_alignment) {
+	if (tab_bar->get_tab_alignment() == p_alignment) {
+		return;
+	}
+
 	tab_bar->set_tab_alignment(p_alignment);
 	_update_margins();
 }
@@ -652,7 +660,7 @@ void TabContainer::set_tabs_visible(bool p_visible) {
 		}
 	}
 
-	update();
+	queue_redraw();
 	update_minimum_size();
 }
 
@@ -679,6 +687,10 @@ void TabContainer::set_tab_title(int p_tab, const String &p_title) {
 	Control *child = get_tab_control(p_tab);
 	ERR_FAIL_COND(!child);
 
+	if (tab_bar->get_tab_title(p_tab) == p_title) {
+		return;
+	}
+
 	tab_bar->set_tab_title(p_tab, p_title);
 
 	if (p_title == child->get_name()) {
@@ -698,6 +710,10 @@ String TabContainer::get_tab_title(int p_tab) const {
 }
 
 void TabContainer::set_tab_icon(int p_tab, const Ref<Texture2D> &p_icon) {
+	if (tab_bar->get_tab_icon(p_tab) == p_icon) {
+		return;
+	}
+
 	tab_bar->set_tab_icon(p_tab, p_icon);
 
 	_update_margins();
@@ -709,6 +725,10 @@ Ref<Texture2D> TabContainer::get_tab_icon(int p_tab) const {
 }
 
 void TabContainer::set_tab_disabled(int p_tab, bool p_disabled) {
+	if (tab_bar->is_tab_disabled(p_tab) == p_disabled) {
+		return;
+	}
+
 	tab_bar->set_tab_disabled(p_tab, p_disabled);
 
 	_update_margins();
@@ -724,6 +744,10 @@ bool TabContainer::is_tab_disabled(int p_tab) const {
 void TabContainer::set_tab_hidden(int p_tab, bool p_hidden) {
 	Control *child = get_tab_control(p_tab);
 	ERR_FAIL_COND(!child);
+
+	if (tab_bar->is_tab_hidden(p_tab) == p_hidden) {
+		return;
+	}
 
 	tab_bar->set_tab_hidden(p_tab, p_hidden);
 	child->hide();
@@ -811,10 +835,14 @@ void TabContainer::set_popup(Node *p_popup) {
 	bool had_popup = get_popup();
 
 	Popup *popup = Object::cast_to<Popup>(p_popup);
-	popup_obj_id = popup ? popup->get_instance_id() : ObjectID();
+	ObjectID popup_id = popup ? popup->get_instance_id() : ObjectID();
+	if (popup_obj_id == popup_id) {
+		return;
+	}
+	popup_obj_id = popup_id;
 
 	if (had_popup != bool(popup)) {
-		update();
+		queue_redraw();
 		_update_margins();
 		if (!get_clip_tabs()) {
 			update_minimum_size();
@@ -855,6 +883,10 @@ int TabContainer::get_tabs_rearrange_group() const {
 }
 
 void TabContainer::set_use_hidden_tabs_for_min_size(bool p_use_hidden_tabs) {
+	if (use_hidden_tabs_for_min_size == p_use_hidden_tabs) {
+		return;
+	}
+
 	use_hidden_tabs_for_min_size = p_use_hidden_tabs;
 	update_minimum_size();
 }

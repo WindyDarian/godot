@@ -72,7 +72,7 @@ void EditorPath::_add_children_to_popup(Object *p_obj, int p_depth) {
 
 		int index = sub_objects_menu->get_item_count();
 		sub_objects_menu->add_icon_item(icon, proper_name, objects.size());
-		sub_objects_menu->set_item_horizontal_offset(index, p_depth * 10 * EDSCALE);
+		sub_objects_menu->set_item_indent(index, p_depth);
 		objects.push_back(obj->get_instance_id());
 
 		_add_children_to_popup(obj, p_depth + 1);
@@ -80,6 +80,11 @@ void EditorPath::_add_children_to_popup(Object *p_obj, int p_depth) {
 }
 
 void EditorPath::_show_popup() {
+	if (sub_objects_menu->is_visible()) {
+		sub_objects_menu->hide();
+		return;
+	}
+
 	sub_objects_menu->clear();
 
 	Size2 size = get_size();
@@ -145,14 +150,14 @@ void EditorPath::update_path() {
 			}
 
 			current_object_label->set_text(" " + name); // An extra space so the text is not too close of the icon.
-			set_tooltip(obj->get_class());
+			set_tooltip_text(obj->get_class());
 		}
 	}
 }
 
 void EditorPath::clear_path() {
 	set_disabled(true);
-	set_tooltip("");
+	set_tooltip_text("");
 
 	current_object_label->set_text("");
 	current_object_icon->set_texture(nullptr);
@@ -226,5 +231,5 @@ EditorPath::EditorPath(EditorSelectionHistory *p_history) {
 	sub_objects_menu->connect("about_to_popup", callable_mp(this, &EditorPath::_about_to_show));
 	sub_objects_menu->connect("id_pressed", callable_mp(this, &EditorPath::_id_pressed));
 
-	set_tooltip(TTR("Open a list of sub-resources."));
+	set_tooltip_text(TTR("Open a list of sub-resources."));
 }

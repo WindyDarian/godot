@@ -166,6 +166,7 @@ void ScriptCreateDialog::config(const String &p_base_name, const String &p_base_
 	class_name->deselect();
 	parent_name->set_text(p_base_name);
 	parent_name->deselect();
+	internal_name->set_text("");
 
 	if (!p_base_path.is_empty()) {
 		initial_bp = p_base_path.get_basename();
@@ -823,7 +824,7 @@ Vector<ScriptLanguage::ScriptTemplate> ScriptCreateDialog::_get_user_templates(c
 	Vector<ScriptLanguage::ScriptTemplate> user_templates;
 	String extension = language->get_extension();
 
-	String dir_path = p_dir.plus_file(p_object);
+	String dir_path = p_dir.path_join(p_object);
 
 	Ref<DirAccess> d = DirAccess::open(dir_path);
 	if (d.is_valid()) {
@@ -859,7 +860,7 @@ ScriptLanguage::ScriptTemplate ScriptCreateDialog::_parse_template(const ScriptL
 
 	// Parse file for meta-information and script content
 	Error err;
-	Ref<FileAccess> file = FileAccess::open(p_path.plus_file(p_filename), FileAccess::READ, &err);
+	Ref<FileAccess> file = FileAccess::open(p_path.path_join(p_filename), FileAccess::READ, &err);
 	if (!err) {
 		while (!file->eof_reached()) {
 			String line = file->get_line();
@@ -897,7 +898,7 @@ ScriptLanguage::ScriptTemplate ScriptCreateDialog::_parse_template(const ScriptL
 
 	// Get name from file name if no name in meta information
 	if (script_template.name == String()) {
-		script_template.name = p_filename.get_basename().replace("_", " ").capitalize();
+		script_template.name = p_filename.get_basename().capitalize();
 	}
 
 	return script_template;

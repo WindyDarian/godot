@@ -113,12 +113,12 @@ class SectionedInspectorFilter : public Object {
 		}
 	}
 
-	bool property_can_revert(const String &p_name) {
-		return edited->call("property_can_revert", section + "/" + p_name);
+	bool property_can_revert(const StringName &p_name) {
+		return edited->property_can_revert(section + "/" + p_name);
 	}
 
-	Variant property_get_revert(const String &p_name) {
-		return edited->call("property_get_revert", section + "/" + p_name);
+	Variant property_get_revert(const StringName &p_name) {
+		return edited->property_get_revert(section + "/" + p_name);
 	}
 
 protected:
@@ -283,7 +283,7 @@ void SectionedInspector::update_category_list() {
 				const String tooltip = EditorPropertyNameProcessor::get_singleton()->process_name(sectionarr[i], tooltip_style);
 
 				ms->set_text(0, text);
-				ms->set_tooltip(0, tooltip);
+				ms->set_tooltip_text(0, tooltip);
 				ms->set_metadata(0, metasection);
 				ms->set_selectable(0, false);
 			}

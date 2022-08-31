@@ -948,6 +948,18 @@ String Node::validate_child_name(Node *p_child) {
 }
 #endif
 
+String Node::adjust_name_casing(const String &p_name) {
+	switch (GLOBAL_GET("editor/node_naming/name_casing").operator int()) {
+		case NAME_CASING_PASCAL_CASE:
+			return p_name.to_pascal_case();
+		case NAME_CASING_CAMEL_CASE:
+			return p_name.to_camel_case();
+		case NAME_CASING_SNAKE_CASE:
+			return p_name.to_snake_case();
+	}
+	return p_name;
+}
+
 void Node::_validate_child_name(Node *p_child, bool p_force_human_readable) {
 	/* Make sure the name is unique */
 
@@ -1021,19 +1033,8 @@ void Node::_generate_serial_child_name(const Node *p_child, StringName &name) co
 		//no name and a new name is needed, create one.
 
 		name = p_child->get_class();
-		// Adjust casing according to project setting. The current type name is expected to be in PascalCase.
-		switch (ProjectSettings::get_singleton()->get("editor/node_naming/name_casing").operator int()) {
-			case NAME_CASING_PASCAL_CASE:
-				break;
-			case NAME_CASING_CAMEL_CASE: {
-				String n = name;
-				n[0] = n.to_lower()[0];
-				name = n;
-			} break;
-			case NAME_CASING_SNAKE_CASE:
-				name = String(name).camelcase_to_underscore(true);
-				break;
-		}
+		// Adjust casing according to project setting.
+		name = adjust_name_casing(name);
 	}
 
 	//quickly test if proposed name exists
@@ -1778,8 +1779,8 @@ void Node::remove_from_group(const StringName &p_identifier) {
 	data.grouped.remove(E);
 }
 
-Array Node::_get_groups() const {
-	Array groups;
+TypedArray<StringName> Node::_get_groups() const {
+	TypedArray<StringName> groups;
 	List<GroupInfo> gi;
 	get_groups(&gi);
 	for (const GroupInfo &E : gi) {
@@ -2922,7 +2923,7 @@ void Node::_bind_methods() {
 	BIND_CONSTANT(NOTIFICATION_PROCESS);
 	BIND_CONSTANT(NOTIFICATION_PARENTED);
 	BIND_CONSTANT(NOTIFICATION_UNPARENTED);
-	BIND_CONSTANT(NOTIFICATION_INSTANCED);
+	BIND_CONSTANT(NOTIFICATION_SCENE_INSTANTIATED);
 	BIND_CONSTANT(NOTIFICATION_DRAG_BEGIN);
 	BIND_CONSTANT(NOTIFICATION_DRAG_END);
 	BIND_CONSTANT(NOTIFICATION_PATH_RENAMED);

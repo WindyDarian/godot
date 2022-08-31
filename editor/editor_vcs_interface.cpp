@@ -82,8 +82,8 @@ void EditorVCSInterface::_unstage_file(String p_file_path) {
 void EditorVCSInterface::_commit(String p_msg) {
 }
 
-Array EditorVCSInterface::_get_file_diff(String p_file_path) {
-	return Array();
+TypedArray<Dictionary> EditorVCSInterface::_get_file_diff(String p_file_path) {
+	return TypedArray<Dictionary>();
 }
 
 bool EditorVCSInterface::_shut_down() {
@@ -133,11 +133,11 @@ void EditorVCSInterface::commit(String p_msg) {
 	}
 }
 
-Array EditorVCSInterface::get_file_diff(String p_file_path) {
+TypedArray<Dictionary> EditorVCSInterface::get_file_diff(String p_file_path) {
 	if (is_addon_ready()) {
 		return call("_get_file_diff", p_file_path);
 	}
-	return Array();
+	return TypedArray<Dictionary>();
 }
 
 bool EditorVCSInterface::shut_down() {
@@ -168,14 +168,14 @@ void EditorVCSInterface::set_singleton(EditorVCSInterface *p_singleton) {
 
 void EditorVCSInterface::create_vcs_metadata_files(VCSMetadata p_vcs_metadata_type, String &p_dir) {
 	if (p_vcs_metadata_type == VCSMetadata::GIT) {
-		Ref<FileAccess> f = FileAccess::open(p_dir.plus_file(".gitignore"), FileAccess::WRITE);
+		Ref<FileAccess> f = FileAccess::open(p_dir.path_join(".gitignore"), FileAccess::WRITE);
 		if (f.is_null()) {
 			ERR_FAIL_MSG(TTR("Couldn't create .gitignore in project path."));
 		} else {
 			f->store_line("# Godot 4+ specific ignores");
 			f->store_line(".godot/");
 		}
-		f = FileAccess::open(p_dir.plus_file(".gitattributes"), FileAccess::WRITE);
+		f = FileAccess::open(p_dir.path_join(".gitattributes"), FileAccess::WRITE);
 		if (f.is_null()) {
 			ERR_FAIL_MSG(TTR("Couldn't create .gitattributes in project path."));
 		} else {
