@@ -397,6 +397,7 @@ static const char *gdscript_function_renames[][2] = {
 	{ "http_unescape", "uri_decode" }, // String
 	{ "import_scene_from_other_importer", "_import_scene" }, //EditorSceneFormatImporter
 	{ "instance_set_surface_material", "instance_set_surface_override_material" }, // RenderingServer
+	{ "interpolate", "sample" }, // Curve, Curve2D, Curve3D, Gradient
 	{ "intersect_polygons_2d", "intersect_polygons" }, // Geometry2D
 	{ "intersect_polyline_with_polygon_2d", "intersect_polyline_with_polygon" }, // Geometry2D
 	{ "is_a_parent_of", "is_ancestor_of" }, // Node
@@ -512,7 +513,6 @@ static const char *gdscript_function_renames[][2] = {
 	{ "set_region_filter_clip", "set_region_filter_clip_enabled" }, // Sprite2D
 	{ "set_rotate", "set_rotates" }, // PathFollow2D
 	{ "set_scancode", "set_keycode" }, // InputEventKey
-	{ "set_shader_param", "set_shader_uniform" }, // ShaderMaterial
 	{ "set_shift", "set_shift_pressed" }, // InputEventWithModifiers
 	{ "set_size_override", "set_size_2d_override" }, // SubViewport broke ImageTexture
 	{ "set_size_override_stretch", "set_size_2d_override_stretch" }, // SubViewport
@@ -526,7 +526,6 @@ static const char *gdscript_function_renames[][2] = {
 	{ "set_tangent", "surface_set_tangent" }, // ImmediateGeometry broke SurfaceTool
 	{ "set_text_align", "set_text_alignment" }, // Button
 	{ "set_timer_process_mode", "set_timer_process_callback" }, // Timer
-	{ "set_tonemap_auto_exposure", "set_tonemap_auto_exposure_enabled" }, // Environment
 	{ "set_translation", "set_position" }, // Node3D - this broke GLTFNode which is used rarely
 	{ "set_unit_offset", "set_progress_ratio" }, // PathFollow2D, PathFollow3D
 	{ "set_uv2", "surface_set_uv2" }, // ImmediateMesh broke Surffacetool
@@ -548,6 +547,10 @@ static const char *gdscript_function_renames[][2] = {
 	{ "update_gizmo", "update_gizmos" }, // Node3D
 	{ "viewport_set_use_arvr", "viewport_set_use_xr" }, // RenderingServer
 	{ "warp_mouse_position", "warp_mouse" }, // Input
+	{ "set_shader_param", "set_shader_parameter" }, // ShaderMaterial
+	{ "get_shader_param", "get_shader_parameter" }, // ShaderMaterial
+	{ "set_uniform_name", "set_parameter_name" }, // ParameterRef
+	{ "get_uniform_name", "get_parameter_name" }, // ParameterRef
 
 	// Builtin types
 	// Remember to add them to builtin_types_excluded_functions variable, because for now this functions cannot be listed
@@ -955,6 +958,10 @@ static const char *csharp_function_renames[][2] = {
 	{ "UpdateGizmo", "UpdateGizmos" }, // Node3D
 	{ "ViewportSetUseArvr", "ViewportSetUseXr" }, // RenderingServer
 	{ "WarpMousePosition", "WarpMouse" }, // Input
+	{ "SetShaderParam", "SetShaderParameter" }, // ShaderMaterial
+	{ "GetShaderParam", "GetShaderParameter" }, // ShaderMaterial
+	{ "SetUniformName", "SetParameterName" }, // ParameterRef
+	{ "GetUniformName", "GetParameterName" }, // ParameterRef
 
 	// Builtin types
 	//	{ "Empty", "IsEmpty" }, // Array - Used as custom rule  // Be careful, this will be used everywhere
@@ -1246,12 +1253,12 @@ static const char *project_settings_renames[][2] = {
 	{ "rendering/quality/shading/force_lambert_over_burley.mobile", "rendering/shading/overrides/force_lambert_over_burley.mobile" },
 	{ "rendering/quality/shading/force_vertex_shading", "rendering/shading/overrides/force_vertex_shading" },
 	{ "rendering/quality/shading/force_vertex_shading.mobile", "rendering/shading/overrides/force_vertex_shading.mobile" },
-	{ "rendering/quality/shadow_atlas/quadrant_0_subdiv", "rendering/shadows/shadow_atlas/quadrant_0_subdiv" },
-	{ "rendering/quality/shadow_atlas/quadrant_1_subdiv", "rendering/shadows/shadow_atlas/quadrant_1_subdiv" },
-	{ "rendering/quality/shadow_atlas/quadrant_2_subdiv", "rendering/shadows/shadow_atlas/quadrant_2_subdiv" },
-	{ "rendering/quality/shadow_atlas/quadrant_3_subdiv", "rendering/shadows/shadow_atlas/quadrant_3_subdiv" },
-	{ "rendering/quality/shadow_atlas/size", "rendering/shadows/shadow_atlas/size" },
-	{ "rendering/quality/shadow_atlas/size.mobile", "rendering/shadows/shadow_atlas/size.mobile" },
+	{ "rendering/quality/shadow_atlas/quadrant_0_subdiv", "rendering/lights_and_shadows/shadow_atlas/quadrant_0_subdiv" },
+	{ "rendering/quality/shadow_atlas/quadrant_1_subdiv", "rendering/lights_and_shadows/shadow_atlas/quadrant_1_subdiv" },
+	{ "rendering/quality/shadow_atlas/quadrant_2_subdiv", "rendering/lights_and_shadows/shadow_atlas/quadrant_2_subdiv" },
+	{ "rendering/quality/shadow_atlas/quadrant_3_subdiv", "rendering/lights_and_shadows/shadow_atlas/quadrant_3_subdiv" },
+	{ "rendering/quality/shadow_atlas/size", "rendering/lights_and_shadows/shadow_atlas/size" },
+	{ "rendering/quality/shadow_atlas/size.mobile", "rendering/lights_and_shadows/shadow_atlas/size.mobile" },
 	{ "rendering/vram_compression/import_bptc", "rendering/textures/vram_compression/import_bptc" },
 	{ "rendering/vram_compression/import_etc", "rendering/textures/vram_compression/import_etc" },
 	{ "rendering/vram_compression/import_etc2", "rendering/textures/vram_compression/import_etc2" },
@@ -1473,7 +1480,6 @@ static const char *class_renames[][2] = {
 	{ "VisualInstance", "VisualInstance3D" },
 	{ "VisualServer", "RenderingServer" },
 	{ "VisualShaderNodeCubeMap", "VisualShaderNodeCubemap" },
-	{ "VisualShaderNodeCubeMapUniform", "VisualShaderNodeCubemapUniform" },
 	{ "VisualShaderNodeScalarClamp", "VisualShaderNodeClamp" },
 	{ "VisualShaderNodeScalarConstant", "VisualShaderNodeFloatConstant" },
 	{ "VisualShaderNodeScalarFunc", "VisualShaderNodeFloatFunc" },
@@ -1482,7 +1488,6 @@ static const char *class_renames[][2] = {
 	{ "VisualShaderNodeScalarSmoothStep", "VisualShaderNodeSmoothStep" },
 	{ "VisualShaderNodeScalarSwitch", "VisualShaderNodeSwitch" },
 	{ "VisualShaderNodeScalarTransformMult", "VisualShaderNodeTransformOp" },
-	{ "VisualShaderNodeScalarUniform", "VisualShaderNodeFloatUniform" },
 	{ "VisualShaderNodeTransformMult", "VisualShaderNode" },
 	{ "VisualShaderNodeVectorClamp", "VisualShaderNodeClamp" },
 	{ "VisualShaderNodeVectorInterp", "VisualShaderNodeMix" },
@@ -1490,6 +1495,16 @@ static const char *class_renames[][2] = {
 	{ "VisualShaderNodeVectorScalarSmoothStep", "VisualShaderNodeSmoothStep" },
 	{ "VisualShaderNodeVectorScalarStep", "VisualShaderNodeStep" },
 	{ "VisualShaderNodeVectorSmoothStep", "VisualShaderNodeSmoothStep" },
+	{ "VisualShaderNodeBooleanUniform", "VisualShaderNodeBooleanParameter" },
+	{ "VisualShaderNodeColorUniform", "VisualShaderNodeColorParameter" },
+	{ "VisualShaderNodeScalarUniform", "VisualShaderNodeFloatParameter" },
+	{ "VisualShaderNodeCubemapUniform", "VisualShaderNodeCubemapParameter" },
+	{ "VisualShaderNodeTextureUniform", "VisualShaderNodeTexture2DParameter" },
+	{ "VisualShaderNodeTextureUniformTriplanar", "VisualShaderNodeTextureParameterTriplanar" },
+	{ "VisualShaderNodeTransformUniform", "VisualShaderNodeTransformParameter" },
+	{ "VisualShaderNodeVec3Uniform", "VisualShaderNodeVec3Parameter" },
+	{ "VisualShaderNodeUniform", "VisualShaderNodeParameter" },
+	{ "VisualShaderNodeUniformRef", "VisualShaderNodeParameterRef" },
 	{ "WebRTCDataChannelGDNative", "WebRTCDataChannelExtension" },
 	{ "WebRTCMultiplayer", "WebRTCMultiplayerPeer" },
 	{ "WebRTCPeerConnectionGDNative", "WebRTCPeerConnectionExtension" },

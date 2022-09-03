@@ -548,14 +548,6 @@ void godotsharp_variant_new_transform2d(godot_variant *r_dest, const Transform2D
 	memnew_placement(r_dest, Variant(*p_t2d));
 }
 
-void godotsharp_variant_new_vector4(godot_variant *r_dest, const Vector4 *p_vec4) {
-	memnew_placement(r_dest, Variant(*p_vec4));
-}
-
-void godotsharp_variant_new_vector4i(godot_variant *r_dest, const Vector4i *p_vec4i) {
-	memnew_placement(r_dest, Variant(*p_vec4i));
-}
-
 void godotsharp_variant_new_basis(godot_variant *r_dest, const Basis *p_basis) {
 	memnew_placement(r_dest, Variant(*p_basis));
 }
@@ -1319,7 +1311,7 @@ void godotsharp_object_to_string(Object *p_ptr, godot_string *r_str) {
 #endif
 	// Can't call 'Object::to_string()' here, as that can end up calling 'ToString' again resulting in an endless circular loop.
 	memnew_placement(r_str,
-			String("[" + p_ptr->get_class() + ":" + itos(p_ptr->get_instance_id()) + "]"));
+			String("<" + p_ptr->get_class() + "#" + itos(p_ptr->get_instance_id()) + ">"));
 }
 
 #ifdef __cplusplus
@@ -1377,8 +1369,6 @@ static const void *unmanaged_callbacks[]{
 	(void *)godotsharp_variant_new_node_path,
 	(void *)godotsharp_variant_new_object,
 	(void *)godotsharp_variant_new_transform2d,
-	(void *)godotsharp_variant_new_vector4,
-	(void *)godotsharp_variant_new_vector4i,
 	(void *)godotsharp_variant_new_basis,
 	(void *)godotsharp_variant_new_transform3d,
 	(void *)godotsharp_variant_new_projection,
