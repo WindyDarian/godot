@@ -260,7 +260,7 @@ void MeshStorage::mesh_add_surface(RID p_mesh, const RS::SurfaceData &p_surface)
 		}
 		for (int i = 0; i < p_surface.bone_aabbs.size(); i++) {
 			const AABB &bone = p_surface.bone_aabbs[i];
-			if (!bone.has_no_volume()) {
+			if (bone.has_volume()) {
 				mesh->bone_aabbs.write[i].merge_with(bone);
 			}
 		}
@@ -350,6 +350,10 @@ RS::SurfaceData MeshStorage::mesh_get_surface(RID p_mesh, int p_surface) const {
 
 	if (s.attribute_buffer != 0) {
 		sd.attribute_data = Utilities::buffer_get_data(GL_ARRAY_BUFFER, s.attribute_buffer, s.attribute_buffer_size);
+	}
+
+	if (s.skin_buffer != 0) {
+		sd.skin_data = Utilities::buffer_get_data(GL_ARRAY_BUFFER, s.skin_buffer, s.skin_buffer_size);
 	}
 
 	sd.vertex_count = s.vertex_count;

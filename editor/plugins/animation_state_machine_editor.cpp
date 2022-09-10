@@ -267,6 +267,7 @@ void AnimationNodeStateMachineEditor::_state_machine_gui_input(const Ref<InputEv
 		for (int i = node_rects.size() - 1; i >= 0; i--) { //inverse to draw order
 			if (node_rects[i].node.has_point(mb->get_position())) { //select node since nothing else was selected
 				connecting = true;
+				connection_follows_cursor = true;
 				connecting_from = node_rects[i].node_name;
 				connecting_to = mb->get_position();
 				connecting_to_node = StringName();
@@ -291,6 +292,7 @@ void AnimationNodeStateMachineEditor::_state_machine_gui_input(const Ref<InputEv
 			_open_menu(mb->get_position());
 		}
 		connecting_to_node = StringName();
+		connection_follows_cursor = false;
 		state_machine_draw->queue_redraw();
 	}
 
@@ -327,7 +329,7 @@ void AnimationNodeStateMachineEditor::_state_machine_gui_input(const Ref<InputEv
 	}
 
 	// Move mouse while connecting
-	if (mm.is_valid() && connecting && !read_only) {
+	if (mm.is_valid() && connecting && connection_follows_cursor && !read_only) {
 		connecting_to = mm->get_position();
 		connecting_to_node = StringName();
 		state_machine_draw->queue_redraw();
@@ -1538,9 +1540,9 @@ void AnimationNodeStateMachineEditor::_notification(int p_what) {
 		case NOTIFICATION_THEME_CHANGED:
 		case NOTIFICATION_LAYOUT_DIRECTION_CHANGED:
 		case NOTIFICATION_TRANSLATION_CHANGED: {
-			error_panel->add_theme_style_override("panel", get_theme_stylebox(SNAME("bg"), SNAME("Tree")));
+			error_panel->add_theme_style_override("panel", get_theme_stylebox(SNAME("panel"), SNAME("Tree")));
 			error_label->add_theme_color_override("font_color", get_theme_color(SNAME("error_color"), SNAME("Editor")));
-			panel->add_theme_style_override("panel", get_theme_stylebox(SNAME("bg"), SNAME("Tree")));
+			panel->add_theme_style_override("panel", get_theme_stylebox(SNAME("panel"), SNAME("Tree")));
 
 			tool_select->set_icon(get_theme_icon(SNAME("ToolSelect"), SNAME("EditorIcons")));
 			tool_create->set_icon(get_theme_icon(SNAME("ToolAddNode"), SNAME("EditorIcons")));

@@ -785,7 +785,7 @@ void Skeleton3DEditor::create_editors() {
 	key_insert_all_button->set_focus_mode(FOCUS_NONE);
 	key_insert_all_button->connect("pressed", callable_mp(this, &Skeleton3DEditor::insert_keys).bind(true));
 	key_insert_all_button->set_tooltip_text(TTR("Insert key of all bone poses."));
-	key_insert_all_button->set_shortcut(ED_SHORTCUT("skeleton_3d_editor/insert_key_of_all_bones", TTR("Insert Key (All Bones)"), KeyModifierMask::CMD + Key::INSERT));
+	key_insert_all_button->set_shortcut(ED_SHORTCUT("skeleton_3d_editor/insert_key_of_all_bones", TTR("Insert Key (All Bones)"), KeyModifierMask::CMD_OR_CTRL + Key::INSERT));
 	animation_hb->add_child(key_insert_all_button);
 
 	// Bone tree.
@@ -835,7 +835,7 @@ void Skeleton3DEditor::_notification(int p_what) {
 			skeleton->connect("show_rest_only_changed", callable_mp(this, &Skeleton3DEditor::_update_gizmo_visible));
 #endif
 
-			get_tree()->connect("node_removed", callable_mp(this, &Skeleton3DEditor::_node_removed), Object::CONNECT_ONESHOT);
+			get_tree()->connect("node_removed", callable_mp(this, &Skeleton3DEditor::_node_removed), Object::CONNECT_ONE_SHOT);
 		} break;
 		case NOTIFICATION_READY: {
 			// Will trigger NOTIFICATION_THEME_CHANGED, but won't cause any loops if called here.

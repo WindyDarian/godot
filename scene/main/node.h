@@ -303,8 +303,8 @@ public:
 	StringName get_name() const;
 	void set_name(const String &p_name);
 
-	void add_child(Node *p_child, bool p_legible_unique_name = false, InternalMode p_internal = INTERNAL_MODE_DISABLED);
-	void add_sibling(Node *p_sibling, bool p_legible_unique_name = false);
+	void add_child(Node *p_child, bool p_force_readable_name = false, InternalMode p_internal = INTERNAL_MODE_DISABLED);
+	void add_sibling(Node *p_sibling, bool p_force_readable_name = false);
 	void remove_child(Node *p_child);
 
 	int get_child_count(bool p_include_internal = true) const;
@@ -348,7 +348,6 @@ public:
 
 	void move_child(Node *p_child, int p_pos);
 	void _move_child(Node *p_child, int p_pos, bool p_ignore_end = false);
-	void raise();
 
 	void set_owner(Node *p_owner);
 	Node *get_owner() const;
@@ -357,7 +356,6 @@ public:
 	void set_unique_name_in_owner(bool p_enabled);
 	bool is_unique_name_in_owner() const;
 
-	void remove_and_skip();
 	int get_index(bool p_include_internal = true) const;
 
 	Ref<Tween> create_tween();
