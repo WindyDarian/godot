@@ -311,8 +311,6 @@ class DisplayServerWindows : public DisplayServer {
 	String tablet_driver;
 	Vector<String> tablet_drivers;
 
-	void GetMaskBitmaps(HBITMAP hSourceBitmap, COLORREF clrTransparent, OUT HBITMAP &hAndMaskBitmap, OUT HBITMAP &hXorMaskBitmap);
-
 	enum {
 		KEY_EVENT_BUFFER_SIZE = 512
 	};
@@ -468,6 +466,8 @@ class DisplayServerWindows : public DisplayServer {
 	void _update_real_mouse_position(WindowID p_window);
 
 	void _set_mouse_mode_impl(MouseMode p_mode);
+	WindowID _get_focused_window_or_popup() const;
+	void _register_raw_input_devices(WindowID p_target_window);
 
 	void _process_activate_event(WindowID p_window_id, WPARAM wParam, LPARAM lParam);
 	void _process_key_events();
