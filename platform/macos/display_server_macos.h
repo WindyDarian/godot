@@ -76,6 +76,7 @@ public:
 		id window_delegate;
 		id window_object;
 		id window_view;
+		id window_button_view;
 
 		Vector<Vector2> mpath;
 
@@ -84,6 +85,7 @@ public:
 		Size2i min_size;
 		Size2i max_size;
 		Size2i size;
+		Vector2i wb_offset = Vector2i(14, 14);
 
 		NSRect last_frame_rect;
 
@@ -177,6 +179,12 @@ private:
 
 	IOPMAssertionID screen_keep_on_assertion = kIOPMNullAssertionID;
 
+	struct MenuCall {
+		Variant tag;
+		Callable callback;
+	};
+	Vector<MenuCall> deferred_menu_calls;
+
 	const NSMenu *_get_menu_root(const String &p_menu_root) const;
 	NSMenu *_get_menu_root(const String &p_menu_root);
 
@@ -228,6 +236,7 @@ public:
 	void window_update(WindowID p_window);
 	void window_destroy(WindowID p_window);
 	void window_resize(WindowID p_window, int p_width, int p_height);
+	void window_set_custom_window_buttons(WindowData &p_wd, bool p_enabled);
 
 	virtual bool has_feature(Feature p_feature) const override;
 	virtual String get_name() const override;
@@ -391,6 +400,7 @@ public:
 	virtual bool window_maximize_on_title_dbl_click() const override;
 	virtual bool window_minimize_on_title_dbl_click() const override;
 
+	virtual void window_set_window_buttons_offset(const Vector2i &p_offset, WindowID p_window = MAIN_WINDOW_ID) override;
 	virtual Vector2i window_get_safe_title_margins(WindowID p_window = MAIN_WINDOW_ID) const override;
 
 	virtual Point2i ime_get_selection() const override;
