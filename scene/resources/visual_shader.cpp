@@ -955,7 +955,7 @@ bool VisualShader::can_connect_nodes(Type p_type, int p_from_node, int p_from_po
 }
 
 bool VisualShader::is_port_types_compatible(int p_a, int p_b) const {
-	return MAX(0, p_a - 4) == (MAX(0, p_b - 4));
+	return MAX(0, p_a - 5) == (MAX(0, p_b - 5));
 }
 
 void VisualShader::connect_nodes_forced(Type p_type, int p_from_node, int p_from_port, int p_to_node, int p_to_port) {
@@ -2763,6 +2763,9 @@ const VisualShaderNodeInput::Port VisualShaderNodeInput::ports[] = {
 	{ Shader::MODE_CANVAS_ITEM, VisualShader::TYPE_LIGHT, VisualShaderNode::PORT_TYPE_VECTOR_4D, "light", "LIGHT" },
 	{ Shader::MODE_CANVAS_ITEM, VisualShader::TYPE_LIGHT, VisualShaderNode::PORT_TYPE_VECTOR_4D, "light_color", "LIGHT_COLOR" },
 	{ Shader::MODE_CANVAS_ITEM, VisualShader::TYPE_LIGHT, VisualShaderNode::PORT_TYPE_VECTOR_3D, "light_position", "LIGHT_POSITION" },
+	{ Shader::MODE_CANVAS_ITEM, VisualShader::TYPE_LIGHT, VisualShaderNode::PORT_TYPE_VECTOR_3D, "light_direction", "LIGHT_DIRECTION" },
+	{ Shader::MODE_CANVAS_ITEM, VisualShader::TYPE_LIGHT, VisualShaderNode::PORT_TYPE_BOOLEAN, "light_is_directional", "LIGHT_IS_DIRECTIONAL" },
+	{ Shader::MODE_CANVAS_ITEM, VisualShader::TYPE_LIGHT, VisualShaderNode::PORT_TYPE_SCALAR, "light_energy", "LIGHT_ENERGY" },
 	{ Shader::MODE_CANVAS_ITEM, VisualShader::TYPE_LIGHT, VisualShaderNode::PORT_TYPE_VECTOR_3D, "light_vertex", "LIGHT_VERTEX" },
 	{ Shader::MODE_CANVAS_ITEM, VisualShader::TYPE_LIGHT, VisualShaderNode::PORT_TYPE_VECTOR_4D, "shadow", "SHADOW_MODULATE" },
 	{ Shader::MODE_CANVAS_ITEM, VisualShader::TYPE_LIGHT, VisualShaderNode::PORT_TYPE_VECTOR_2D, "screen_uv", "SCREEN_UV" },

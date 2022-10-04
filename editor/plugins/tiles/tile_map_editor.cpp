@@ -1735,7 +1735,6 @@ void TileMapEditorTilesPlugin::_tile_atlas_control_mouse_exited() {
 	hovered_tile.source_id = TileSet::INVALID_SOURCE;
 	hovered_tile.set_atlas_coords(TileSetSource::INVALID_ATLAS_COORDS);
 	hovered_tile.alternative_tile = TileSetSource::INVALID_TILE_ALTERNATIVE;
-	tile_set_dragging_selection = false;
 	tile_atlas_control->queue_redraw();
 }
 
@@ -1894,7 +1893,6 @@ void TileMapEditorTilesPlugin::_tile_alternatives_control_mouse_exited() {
 	hovered_tile.source_id = TileSet::INVALID_SOURCE;
 	hovered_tile.set_atlas_coords(TileSetSource::INVALID_ATLAS_COORDS);
 	hovered_tile.alternative_tile = TileSetSource::INVALID_TILE_ALTERNATIVE;
-	tile_set_dragging_selection = false;
 	alternative_tiles_control->queue_redraw();
 }
 
@@ -2430,20 +2428,16 @@ HashMap<Vector2i, TileMapCell> TileMapEditorTerrainsPlugin::_draw_line(Vector2i 
 		return HashMap<Vector2i, TileMapCell>();
 	}
 
-	if (selected_type == SELECTED_TYPE_CONNECT) {
-		return _draw_terrain_path_or_connect(TileMapEditor::get_line(tile_map, p_start_cell, p_end_cell), selected_terrain_set, selected_terrain, true);
-	} else if (selected_type == SELECTED_TYPE_PATH) {
-		return _draw_terrain_path_or_connect(TileMapEditor::get_line(tile_map, p_start_cell, p_end_cell), selected_terrain_set, selected_terrain, false);
-	} else { // SELECTED_TYPE_PATTERN
-		TileSet::TerrainsPattern terrains_pattern;
-		if (p_erase) {
-			terrains_pattern = TileSet::TerrainsPattern(*tile_set, selected_terrain_set);
-		} else {
-			terrains_pattern = selected_terrains_pattern;
+	if (p_erase) {
+		return _draw_terrain_pattern(TileMapEditor::get_line(tile_map, p_start_cell, p_end_cell), selected_terrain_set, TileSet::TerrainsPattern(*tile_set, selected_terrain_set));
+	} else {
+		if (selected_type == SELECTED_TYPE_CONNECT) {
+			return _draw_terrain_path_or_connect(TileMapEditor::get_line(tile_map, p_start_cell, p_end_cell), selected_terrain_set, selected_terrain, true);
+		} else if (selected_type == SELECTED_TYPE_PATH) {
+			return _draw_terrain_path_or_connect(TileMapEditor::get_line(tile_map, p_start_cell, p_end_cell), selected_terrain_set, selected_terrain, false);
+		} else { // SELECTED_TYPE_PATTERN
+			return _draw_terrain_pattern(TileMapEditor::get_line(tile_map, p_start_cell, p_end_cell), selected_terrain_set, selected_terrains_pattern);
 		}
-
-		Vector<Vector2i> line = TileMapEditor::get_line(tile_map, p_start_cell, p_end_cell);
-		return _draw_terrain_pattern(line, selected_terrain_set, terrains_pattern);
 	}
 }
 
@@ -2470,16 +2464,14 @@ HashMap<Vector2i, TileMapCell> TileMapEditorTerrainsPlugin::_draw_rect(Vector2i 
 		}
 	}
 
-	if (selected_type == SELECTED_TYPE_CONNECT || selected_type == SELECTED_TYPE_PATH) {
-		return _draw_terrain_path_or_connect(to_draw, selected_terrain_set, selected_terrain, true);
-	} else { // SELECTED_TYPE_PATTERN
-		TileSet::TerrainsPattern terrains_pattern;
-		if (p_erase) {
-			terrains_pattern = TileSet::TerrainsPattern(*tile_set, selected_terrain_set);
-		} else {
-			terrains_pattern = selected_terrains_pattern;
+	if (p_erase) {
+		return _draw_terrain_pattern(to_draw, selected_terrain_set, TileSet::TerrainsPattern(*tile_set, selected_terrain_set));
+	} else {
+		if (selected_type == SELECTED_TYPE_CONNECT || selected_type == SELECTED_TYPE_PATH) {
+			return _draw_terrain_path_or_connect(to_draw, selected_terrain_set, selected_terrain, true);
+		} else { // SELECTED_TYPE_PATTERN
+			return _draw_terrain_pattern(to_draw, selected_terrain_set, selected_terrains_pattern);
 		}
-		return _draw_terrain_pattern(to_draw, selected_terrain_set, terrains_pattern);
 	}
 }
 
@@ -2611,16 +2603,14 @@ HashMap<Vector2i, TileMapCell> TileMapEditorTerrainsPlugin::_draw_bucket_fill(Ve
 		cells_to_draw_as_vector.append(cell);
 	}
 
-	if (selected_type == SELECTED_TYPE_CONNECT || selected_type == SELECTED_TYPE_PATH) {
-		return _draw_terrain_path_or_connect(cells_to_draw_as_vector, selected_terrain_set, selected_terrain, true);
-	} else { // SELECTED_TYPE_PATTERN
-		TileSet::TerrainsPattern terrains_pattern;
-		if (p_erase) {
-			terrains_pattern = TileSet::TerrainsPattern(*tile_set, selected_terrain_set);
-		} else {
-			terrains_pattern = selected_terrains_pattern;
+	if (p_erase) {
+		return _draw_terrain_pattern(cells_to_draw_as_vector, selected_terrain_set, TileSet::TerrainsPattern(*tile_set, selected_terrain_set));
+	} else {
+		if (selected_type == SELECTED_TYPE_CONNECT || selected_type == SELECTED_TYPE_PATH) {
+			return _draw_terrain_path_or_connect(cells_to_draw_as_vector, selected_terrain_set, selected_terrain, true);
+		} else { // SELECTED_TYPE_PATTERN
+			return _draw_terrain_pattern(cells_to_draw_as_vector, selected_terrain_set, selected_terrains_pattern);
 		}
-		return _draw_terrain_pattern(cells_to_draw_as_vector, selected_terrain_set, terrains_pattern);
 	}
 }
 

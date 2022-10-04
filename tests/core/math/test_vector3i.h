@@ -36,6 +36,14 @@
 
 namespace TestVector3i {
 
+TEST_CASE("[Vector3i] Constructor methods") {
+	const Vector3i vector_empty = Vector3i();
+	const Vector3i vector_zero = Vector3i(0, 0, 0);
+	CHECK_MESSAGE(
+			vector_empty == vector_zero,
+			"Vector3i Constructor with no inputs should return a zero Vector3i.");
+}
+
 TEST_CASE("[Vector3i] Axis methods") {
 	Vector3i vector = Vector3i(1, 2, 3);
 	CHECK_MESSAGE(
@@ -45,16 +53,12 @@ TEST_CASE("[Vector3i] Axis methods") {
 			vector.min_axis_index() == Vector3i::Axis::AXIS_X,
 			"Vector3i min_axis_index should work as expected.");
 	CHECK_MESSAGE(
-			vector.get_axis(vector.max_axis_index()) == 3,
-			"Vector3i get_axis should work as expected.");
+			vector[vector.max_axis_index()] == 3,
+			"Vector3i array operator should work as expected.");
 	CHECK_MESSAGE(
 			vector[vector.min_axis_index()] == 1,
 			"Vector3i array operator should work as expected.");
 
-	vector.set_axis(Vector3i::Axis::AXIS_Y, 4);
-	CHECK_MESSAGE(
-			vector.get_axis(Vector3i::Axis::AXIS_Y) == 4,
-			"Vector3i set_axis should work as expected.");
 	vector[Vector3i::Axis::AXIS_Y] = 5;
 	CHECK_MESSAGE(
 			vector[Vector3i::Axis::AXIS_Y] == 5,

@@ -2932,11 +2932,16 @@ GDScriptParser::ExpressionNode *GDScriptParser::parse_call(ExpressionNode *p_pre
 			// Allow for trailing comma.
 			break;
 		}
+		bool use_identifier_completion = current.cursor_place == GDScriptTokenizer::CURSOR_END || current.cursor_place == GDScriptTokenizer::CURSOR_MIDDLE;
 		ExpressionNode *argument = parse_expression(false);
 		if (argument == nullptr) {
 			push_error(R"(Expected expression as the function argument.)");
 		} else {
 			call->arguments.push_back(argument);
+
+			if (argument->type == Node::IDENTIFIER && use_identifier_completion) {
+				completion_context.type = COMPLETION_IDENTIFIER;
+			}
 		}
 		ct = COMPLETION_CALL_ARGUMENTS;
 	} while (match(GDScriptTokenizer::Token::COMMA));

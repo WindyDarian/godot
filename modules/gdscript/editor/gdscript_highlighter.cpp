@@ -39,30 +39,32 @@ Dictionary GDScriptSyntaxHighlighter::_get_line_syntax_highlighting_impl(int p_l
 
 	Type next_type = NONE;
 	Type current_type = NONE;
-	Type previous_type = NONE;
+	Type prev_type = NONE;
 
-	String previous_text = "";
-	int previous_column = 0;
-
+	String prev_text = "";
+	int prev_column = 0;
 	bool prev_is_char = false;
 	bool prev_is_digit = false;
 	bool prev_is_binary_op = false;
+
 	bool in_keyword = false;
 	bool in_word = false;
 	bool in_number = false;
-	bool in_function_name = false;
-	bool in_lambda = false;
-	bool in_variable_declaration = false;
-	bool in_signal_declaration = false;
-	bool in_function_args = false;
-	bool in_member_variable = false;
 	bool in_node_path = false;
 	bool in_node_ref = false;
 	bool in_annotation = false;
 	bool in_string_name = false;
 	bool is_hex_notation = false;
 	bool is_bin_notation = false;
+	bool in_member_variable = false;
+	bool in_lambda = false;
+
+	bool in_function_name = false;
+	bool in_function_args = false;
+	bool in_variable_declaration = false;
+	bool in_signal_declaration = false;
 	bool expect_type = false;
+
 	Color keyword_color;
 	Color color;
 
@@ -224,9 +226,9 @@ Dictionary GDScriptSyntaxHighlighter::_get_line_syntax_highlighting_impl(int p_l
 						}
 					}
 
-					previous_type = REGION;
-					previous_text = "";
-					previous_column = j;
+					prev_type = REGION;
+					prev_text = "";
+					prev_column = j;
 					j = from + (end_key_length - 1);
 					if (region_end_index == -1) {
 						color_region_cache[p_line] = in_region;
@@ -241,19 +243,22 @@ Dictionary GDScriptSyntaxHighlighter::_get_line_syntax_highlighting_impl(int p_l
 			}
 		}
 
-		// A bit of a hack, but couldn't come up with anything better.
+		// VERY hacky... but couldn't come up with anything better.
 		if (j > 0 && (str[j] == '&' || str[j] == '^' || str[j] == '%' || str[j] == '+' || str[j] == '-' || str[j] == '~' || str[j] == '.')) {
-			if (!keywords.has(previous_text)) {
-				if (previous_text == "PI" || previous_text == "TAU" || previous_text == "INF" || previous_text == "NAN") {
+			int to = j - 1;
+			// Find what the last text was (prev_text won't work if there's no whitespace, so we need to do it manually).
+			while (to > 0 && is_whitespace(str[to])) {
+				to--;
+			}
+			int from = to;
+			while (from > 0 && !is_symbol(str[from])) {
+				from--;
+			}
+			String word = str.substr(from + 1, to - from);
+			// Keywords need to be exceptions, except for keywords that represent a value.
+			if (word == "true" || word == "false" || word == "null" || word == "PI" || word == "TAU" || word == "INF" || word == "NAN" || word == "self" || word == "super" || !keywords.has(word)) {
+				if (!is_symbol(str[to]) || str[to] == '"' || str[to] == '\'' || str[to] == ')' || str[to] == ']' || str[to] == '}') {
 					is_binary_op = true;
-				} else {
-					int k = j - 1;
-					while (k > 0 && is_whitespace(str[k])) {
-						k--;
-					}
-					if (!is_symbol(str[k]) || str[k] == '"' || str[k] == '\'' || str[k] == ')' || str[k] == ']' || str[k] == '}') {
-						is_binary_op = true;
-					}
 				}
 			}
 		}
@@ -287,16 +292,18 @@ Dictionary GDScriptSyntaxHighlighter::_get_line_syntax_highlighting_impl(int p_l
 				is_hex_notation = true;
 			} else if (!((str[j] == '-' || str[j] == '+') && str[j - 1] == 'e' && !prev_is_digit) &&
 					!(str[j] == '_' && (prev_is_digit || str[j - 1] == 'b' || str[j - 1] == 'x' || str[j - 1] == '.')) &&
-					!((str[j] == 'e' || str[j] == '.') && (prev_is_digit || str[j - 1] == '_')) &&
+					!(str[j] == 'e' && (prev_is_digit || str[j - 1] == '_')) &&
+					!(str[j] == '.' && (prev_is_digit || (!prev_is_binary_op && (j > 0 && (str[j - 1] == '-' || str[j - 1] == '+' || str[j - 1] == '~'))))) &&
 					!((str[j] == '-' || str[j] == '+' || str[j] == '~') && !prev_is_binary_op && str[j - 1] != 'e')) {
-				/* 1st row of condition: '+' or '-' after scientific notation;
-				2nd row of condition: '_' as a numeric separator;
-				3rd row of condition: Scientific notation 'e' and floating points;
-				4th row of condition: Multiple unary operators. */
+				/* This condition continues Number highlighting in special cases.
+				1st row: '+' or '-' after scientific notation;
+				2nd row: '_' as a numeric separator;
+				3rd row: Scientific notation 'e' and floating points;
+				4th row: Floating points inside the number, or leading if after a unary mathematical operator;
+				5th row: Multiple unary mathematical operators */
 				in_number = false;
 			}
-		} else if ((str[j] == '-' || str[j] == '+' || str[j] == '~' || (str[j] == '.' && str[j + 1] != '.' && (j == 0 || (j > 0 && str[j - 1] != '.')))) && !is_binary_op) {
-			// Start a number from unary mathematical operators and floating points, except for '..'
+		} else if (!is_binary_op && (str[j] == '-' || str[j] == '+' || str[j] == '~' || (str[j] == '.' && str[j + 1] != '.' && (j == 0 || (j > 0 && str[j - 1] != '.'))))) {
 			in_number = true;
 		}
 
@@ -318,7 +325,7 @@ Dictionary GDScriptSyntaxHighlighter::_get_line_syntax_highlighting_impl(int p_l
 			Color col = Color();
 			if (global_functions.has(word)) {
 				// "assert" and "preload" are reserved, so highlight even if not followed by a bracket.
-				if (word == "assert" || word == "preload") {
+				if (word == GDScriptTokenizer::get_token_name(GDScriptTokenizer::Token::ASSERT) || word == GDScriptTokenizer::get_token_name(GDScriptTokenizer::Token::PRELOAD)) {
 					col = global_function_color;
 				} else {
 					// For other global functions, check if followed by bracket.
@@ -355,7 +362,7 @@ Dictionary GDScriptSyntaxHighlighter::_get_line_syntax_highlighting_impl(int p_l
 		}
 
 		if (!in_function_name && in_word && !in_keyword) {
-			if (previous_text == GDScriptTokenizer::get_token_name(GDScriptTokenizer::Token::SIGNAL)) {
+			if (prev_text == GDScriptTokenizer::get_token_name(GDScriptTokenizer::Token::SIGNAL)) {
 				in_signal_declaration = true;
 			} else {
 				int k = j;
@@ -370,12 +377,12 @@ Dictionary GDScriptSyntaxHighlighter::_get_line_syntax_highlighting_impl(int p_l
 
 				if (str[k] == '(') {
 					in_function_name = true;
-				} else if (previous_text == GDScriptTokenizer::get_token_name(GDScriptTokenizer::Token::VAR)) {
+				} else if (prev_text == GDScriptTokenizer::get_token_name(GDScriptTokenizer::Token::VAR)) {
 					in_variable_declaration = true;
 				}
 
 				// Check for lambda.
-				if (in_function_name && previous_text == GDScriptTokenizer::get_token_name(GDScriptTokenizer::Token::FUNC)) {
+				if (in_function_name && prev_text == GDScriptTokenizer::get_token_name(GDScriptTokenizer::Token::FUNC)) {
 					k = j - 1;
 					while (k > 0 && is_whitespace(str[k])) {
 						k--;
@@ -408,11 +415,11 @@ Dictionary GDScriptSyntaxHighlighter::_get_line_syntax_highlighting_impl(int p_l
 				in_function_args = false;
 			}
 
-			if (expect_type && (prev_is_char || str[j] == '=')) {
+			if (expect_type && (prev_is_char || str[j] == '=') && str[j] != '[') {
 				expect_type = false;
 			}
 
-			if (j > 0 && str[j] == '>' && str[j - 1] == '-') {
+			if (j > 0 && str[j - 1] == '-' && str[j] == '>') {
 				expect_type = true;
 			}
 
@@ -491,7 +498,7 @@ Dictionary GDScriptSyntaxHighlighter::_get_line_syntax_highlighting_impl(int p_l
 		} else if (in_function_name) {
 			next_type = FUNCTION;
 
-			if (!in_lambda && previous_text == GDScriptTokenizer::get_token_name(GDScriptTokenizer::Token::FUNC)) {
+			if (!in_lambda && prev_text == GDScriptTokenizer::get_token_name(GDScriptTokenizer::Token::FUNC)) {
 				color = function_definition_color;
 			} else {
 				color = function_color;
@@ -513,20 +520,20 @@ Dictionary GDScriptSyntaxHighlighter::_get_line_syntax_highlighting_impl(int p_l
 			if (current_type == NONE) {
 				current_type = next_type;
 			} else {
-				previous_type = current_type;
+				prev_type = current_type;
 				current_type = next_type;
 
 				// no need to store regions...
-				if (previous_type == REGION) {
-					previous_text = "";
-					previous_column = j;
+				if (prev_type == REGION) {
+					prev_text = "";
+					prev_column = j;
 				} else {
-					String text = str.substr(previous_column, j - previous_column).strip_edges();
-					previous_column = j;
+					String text = str.substr(prev_column, j - prev_column).strip_edges();
+					prev_column = j;
 
 					// ignore if just whitespace
 					if (!text.is_empty()) {
-						previous_text = text;
+						prev_text = text;
 					}
 				}
 			}

@@ -1576,7 +1576,7 @@ void Viewport::_gui_input_event(Ref<InputEvent> p_event) {
 					gui.drag_preview_id = ObjectID();
 				}
 				_propagate_viewport_notification(this, NOTIFICATION_DRAG_END);
-				// Change mouse accordingly.
+				get_base_window()->update_mouse_cursor_shape();
 			}
 
 			_gui_cancel_tooltip();
@@ -1597,7 +1597,7 @@ void Viewport::_gui_input_event(Ref<InputEvent> p_event) {
 				gui.dragging = false;
 				gui.drag_mouse_over = nullptr;
 				_propagate_viewport_notification(this, NOTIFICATION_DRAG_END);
-				// Change mouse accordingly.
+				get_base_window()->update_mouse_cursor_shape();
 			}
 
 			gui.mouse_focus_mask &= ~mouse_button_to_mask(mb->get_button_index()); // Remove from mask.
@@ -2799,7 +2799,7 @@ void Viewport::push_unhandled_input(const Ref<InputEvent> &p_event, bool p_local
 	}
 
 	// Shortcut Input.
-	if (Object::cast_to<InputEventKey>(*ev) != nullptr || Object::cast_to<InputEventShortcut>(*ev) != nullptr) {
+	if (Object::cast_to<InputEventKey>(*ev) != nullptr || Object::cast_to<InputEventShortcut>(*ev) != nullptr || Object::cast_to<InputEventJoypadButton>(*ev) != nullptr) {
 		get_tree()->_call_input_pause(shortcut_input_group, SceneTree::CALL_INPUT_TYPE_SHORTCUT_INPUT, ev, this);
 	}
 
