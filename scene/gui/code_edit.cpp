@@ -201,7 +201,7 @@ void CodeEdit::_notification(int p_what) {
 			if (caret_visible && !code_hint.is_empty() && (!code_completion_active || (code_completion_below != code_hint_draw_below))) {
 				const int font_height = font->get_height(font_size);
 				Ref<StyleBox> sb = get_theme_stylebox(SNAME("panel"), SNAME("TooltipPanel"));
-				Color font_color = get_theme_color(SNAME("font_color"), SNAME("TooltipLabel"));
+				Color color = get_theme_color(SNAME("font_color"), SNAME("TooltipLabel"));
 
 				Vector<String> code_hint_lines = code_hint.split("\n");
 				int line_count = code_hint_lines.size();
@@ -238,17 +238,17 @@ void CodeEdit::_notification(int p_what) {
 
 					Point2 round_ofs = hint_ofs + sb->get_offset() + Vector2(0, font->get_ascent(font_size) + font_height * i + yofs);
 					round_ofs = round_ofs.round();
-					draw_string(font, round_ofs, line.replace(String::chr(0xFFFF), ""), HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, font_color);
+					draw_string(font, round_ofs, line.replace(String::chr(0xFFFF), ""), HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, color);
 					if (end > 0) {
 						// Draw an underline for the currently edited function parameter.
 						const Vector2 b = hint_ofs + sb->get_offset() + Vector2(begin, font_height + font_height * i + yofs);
-						draw_line(b, b + Vector2(end - begin, 0), font_color, 2);
+						draw_line(b, b + Vector2(end - begin, 0), color, 2);
 
 						// Draw a translucent text highlight as well.
 						const Rect2 highlight_rect = Rect2(
 								b - Vector2(0, font_height),
 								Vector2(end - begin, font_height));
-						draw_rect(highlight_rect, font_color * Color(1, 1, 1, 0.2));
+						draw_rect(highlight_rect, color * Color(1, 1, 1, 0.2));
 					}
 					yofs += line_spacing;
 				}
@@ -1248,37 +1248,41 @@ bool CodeEdit::is_drawing_executing_lines_gutter() const {
 }
 
 void CodeEdit::_main_gutter_draw_callback(int p_line, int p_gutter, const Rect2 &p_region) {
-	bool shift_pressed = Input::get_singleton()->is_key_pressed(Key::SHIFT);
-
 	if (draw_breakpoints && breakpoint_icon.is_valid()) {
-		bool hovering = p_region.has_point(get_local_mouse_pos());
 		bool breakpointed = is_line_breakpointed(p_line);
+		bool hovering = p_region.has_point(get_local_mouse_pos());
+		bool shift_pressed = Input::get_singleton()->is_key_pressed(Key::SHIFT);
 
 		if (breakpointed || (hovering && !is_dragging_cursor() && !shift_pressed)) {
 			int padding = p_region.size.x / 6;
+
+			Color use_color = breakpoint_color;
+			if (hovering && !shift_pressed) {
+				use_color = breakpointed ? use_color.lightened(0.3) : use_color.darkened(0.5);
+			}
 			Rect2 icon_region = p_region;
 			icon_region.position += Point2(padding, padding);
 			icon_region.size -= Point2(padding, padding) * 2;
-
-			// Darken icon when hovering, shift not pressed & not yet breakpointed.
-			Color use_color = hovering && !breakpointed && !shift_pressed ? breakpoint_color.darkened(0.4) : breakpoint_color;
 			breakpoint_icon->draw_rect(get_canvas_item(), icon_region, false, use_color);
 		}
 	}
 
 	if (draw_bookmarks && bookmark_icon.is_valid()) {
-		bool hovering = p_region.has_point(get_local_mouse_pos());
 		bool bookmarked = is_line_bookmarked(p_line);
+		bool hovering = p_region.has_point(get_local_mouse_pos());
+		bool shift_pressed = Input::get_singleton()->is_key_pressed(Key::SHIFT);
 
 		if (bookmarked || (hovering && !is_dragging_cursor() && shift_pressed)) {
 			int horizontal_padding = p_region.size.x / 2;
 			int vertical_padding = p_region.size.y / 4;
+
+			Color use_color = bookmark_color;
+			if (hovering && shift_pressed) {
+				use_color = bookmarked ? use_color.lightened(0.3) : use_color.darkened(0.5);
+			}
 			Rect2 icon_region = p_region;
 			icon_region.position += Point2(horizontal_padding, 0);
 			icon_region.size -= Point2(horizontal_padding * 1.1, vertical_padding);
-
-			// Darken icon when hovering, shift pressed & not yet bookmarked.
-			Color use_color = hovering && !bookmarked && shift_pressed ? bookmark_color.darkened(0.4) : bookmark_color;
 			bookmark_icon->draw_rect(get_canvas_item(), icon_region, false, use_color);
 		}
 	}
@@ -1287,10 +1291,10 @@ void CodeEdit::_main_gutter_draw_callback(int p_line, int p_gutter, const Rect2 
 		int horizontal_padding = p_region.size.x / 10;
 		int vertical_padding = p_region.size.y / 4;
 
-		Rect2 executing_line_region = p_region;
-		executing_line_region.position += Point2(horizontal_padding, vertical_padding);
-		executing_line_region.size -= Point2(horizontal_padding, vertical_padding) * 2;
-		executing_line_icon->draw_rect(get_canvas_item(), executing_line_region, false, executing_line_color);
+		Rect2 icon_region = p_region;
+		icon_region.position += Point2(horizontal_padding, vertical_padding);
+		icon_region.size -= Point2(horizontal_padding, vertical_padding) * 2;
+		executing_line_icon->draw_rect(get_canvas_item(), icon_region, false, executing_line_color);
 	}
 }
 
@@ -2135,15 +2139,15 @@ String CodeEdit::get_text_for_symbol_lookup() {
 	StringBuilder lookup_text;
 	const int text_size = get_line_count();
 	for (int i = 0; i < text_size; i++) {
-		String text = get_line(i);
+		String line_text = get_line(i);
 
 		if (i == line) {
-			lookup_text += text.substr(0, col);
+			lookup_text += line_text.substr(0, col);
 			/* Not unicode, represents the cursor. */
 			lookup_text += String::chr(0xFFFF);
-			lookup_text += text.substr(col, text.size());
+			lookup_text += line_text.substr(col, line_text.size());
 		} else {
-			lookup_text += text;
+			lookup_text += line_text;
 		}
 
 		if (i != text_size - 1) {
