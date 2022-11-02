@@ -1863,7 +1863,7 @@ void TileMap::_scenes_update_dirty_quadrants(SelfList<TileMapQuadrant>::List &r_
 		for (const KeyValue<Vector2i, String> &E : q.scenes) {
 			Node *node = get_node_or_null(E.value);
 			if (node) {
-				node->queue_delete();
+				node->queue_free();
 			}
 		}
 
@@ -1911,7 +1911,7 @@ void TileMap::_scenes_cleanup_quadrant(TileMapQuadrant *p_quadrant) {
 	for (const KeyValue<Vector2i, String> &E : p_quadrant->scenes) {
 		Node *node = get_node_or_null(E.value);
 		if (node) {
-			node->queue_delete();
+			node->queue_free();
 		}
 	}
 
@@ -4056,9 +4056,5 @@ TileMap::TileMap() {
 }
 
 TileMap::~TileMap() {
-	if (tile_set.is_valid()) {
-		tile_set->disconnect("changed", callable_mp(this, &TileMap::_tile_set_changed));
-	}
-
 	_clear_internals();
 }

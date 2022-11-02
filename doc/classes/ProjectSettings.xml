@@ -565,6 +565,9 @@
 			The default screen orientation to use on mobile devices. See [enum DisplayServer.ScreenOrientation] for possible values.
 			[b]Note:[/b] When set to a portrait orientation, this project setting does not flip the project resolution's width and height automatically. Instead, you have to set [member display/window/size/viewport_width] and [member display/window/size/viewport_height] accordingly.
 		</member>
+		<member name="display/window/ios/allow_high_refresh_rate" type="bool" setter="" getter="" default="true">
+			If [code]true[/code], iOS devices that support high refresh rate/"ProMotion" will be allowed to render at up to 120 frames per second.
+		</member>
 		<member name="display/window/ios/hide_home_indicator" type="bool" setter="" getter="" default="true">
 			If [code]true[/code], the home indicator is hidden automatically. This only affects iOS devices without a physical home button.
 		</member>
@@ -856,6 +859,18 @@
 		<member name="input/ui_text_backspace_word.macos" type="Dictionary" setter="" getter="">
 			macOS specific override for the shortcut to delete a word.
 		</member>
+		<member name="input/ui_text_caret_add_above" type="Dictionary" setter="" getter="">
+			Default [InputEventAction] to add an additional caret above every caret of a text
+		</member>
+		<member name="input/ui_text_caret_add_above.macos" type="Dictionary" setter="" getter="">
+			macOS specific override for the shortcut to add a caret above every caret
+		</member>
+		<member name="input/ui_text_caret_add_below" type="Dictionary" setter="" getter="">
+			Default [InputEventAction] to add an additional caret below every caret of a text
+		</member>
+		<member name="input/ui_text_caret_add_below.macos" type="Dictionary" setter="" getter="">
+			macOS specific override for the shortcut to add a caret below every caret
+		</member>
 		<member name="input/ui_text_caret_document_end" type="Dictionary" setter="" getter="">
 			Default [InputEventAction] to move the text cursor the the end of the text.
 			[b]Note:[/b] Default [code]ui_*[/code] actions cannot be removed as they are necessary for the internal logic of several [Control]s. The events assigned to the action can however be modified.
@@ -970,6 +985,10 @@
 		</member>
 		<member name="input/ui_text_newline_blank" type="Dictionary" setter="" getter="">
 			Default [InputEventAction] to insert a new line after the current one.
+			[b]Note:[/b] Default [code]ui_*[/code] actions cannot be removed as they are necessary for the internal logic of several [Control]s. The events assigned to the action can however be modified.
+		</member>
+		<member name="input/ui_text_remove_secondary_carets" type="Dictionary" setter="" getter="">
+			If multiple carets are currently active, clear additional carets and keep just one caret.
 			[b]Note:[/b] Default [code]ui_*[/code] actions cannot be removed as they are necessary for the internal logic of several [Control]s. The events assigned to the action can however be modified.
 		</member>
 		<member name="input/ui_text_scroll_down" type="Dictionary" setter="" getter="">
