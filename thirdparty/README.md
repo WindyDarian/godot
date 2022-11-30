@@ -44,7 +44,7 @@ Files extracted from upstream source:
 ## certs
 
 - Upstream: Mozilla, via https://github.com/bagder/ca-bundle
-- Version: git (7f33e7eb8472dbcf31fdcf50cd216c89a282825d, 2022)
+- Version: git (b2f7415648411b6fd7c298c6c92d6552f0165f60, 2022)
 - License: MPL 2.0
 
 
@@ -591,7 +591,7 @@ in 10.40, it can be found in the `patches` folder.
 ## recastnavigation
 
 - Upstream: https://github.com/recastnavigation/recastnavigation
-- Version: git (5a870d427e47abd4a8e4ce58a95582ec049434d5, 2022)
+- Version: git (4fef0446609b23d6ac180ed822817571525528a1, 2022)
 - License: zlib
 
 Files extracted from upstream source:
