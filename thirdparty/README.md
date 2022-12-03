@@ -398,7 +398,7 @@ to solve some MSVC warnings. See the patches in the `patches` directory.
 ## miniupnpc
 
 - Upstream: https://github.com/miniupnp/miniupnp
-- Version: 2.2.3 (2df8120326ed4246e049a7a6de707539604cd514, 2021)
+- Version: 2.2.4 (7d1d8bc3868b08ad003bad235eee57562b95b76d, 2022)
 - License: BSD-3-Clause
 
 Files extracted from upstream source:
@@ -668,7 +668,7 @@ instead of `miniz.h` as an external dependency.
 ## thorvg
 
 - Upstream: https://github.com/Samsung/thorvg
-- Version: 0.8.2 (496796f1e5e85bd5fbba36dae987edb1b3945592, 2022)
+- Version: 0.8.3 (a0fcf51f80a75f63a066df085f60cdaf715188b6, 2022)
 - License: MIT
 
 Files extracted from upstream source:

@@ -1835,9 +1835,9 @@ GDScriptParser::ForNode *GDScriptParser::parse_for() {
 		}
 		suite->add_local(SuiteNode::Local(n_for->variable, current_function));
 	}
-	suite->parent_for = n_for;
 
 	n_for->loop = parse_suite(R"("for" block)", suite);
+	n_for->loop->is_loop = true;
 	complete_extents(n_for);
 
 	// Reset break/continue state.
@@ -2169,6 +2169,7 @@ GDScriptParser::WhileNode *GDScriptParser::parse_while() {
 	is_continue_match = false;
 
 	n_while->loop = parse_suite(R"("while" block)");
+	n_while->loop->is_loop = true;
 	complete_extents(n_while);
 
 	// Reset break/continue state.
@@ -3785,15 +3786,14 @@ bool GDScriptParser::export_annotations(const AnnotationNode *p_annotation, Node
 				}
 				break;
 			case GDScriptParser::DataType::CLASS:
-				// Can assume type is a global GDScript class.
 				if (ClassDB::is_parent_class(export_type.native_type, SNAME("Resource"))) {
 					variable->export_info.type = Variant::OBJECT;
 					variable->export_info.hint = PROPERTY_HINT_RESOURCE_TYPE;
-					variable->export_info.hint_string = export_type.class_type->identifier->name;
+					variable->export_info.hint_string = export_type.to_string();
 				} else if (ClassDB::is_parent_class(export_type.native_type, SNAME("Node"))) {
 					variable->export_info.type = Variant::OBJECT;
 					variable->export_info.hint = PROPERTY_HINT_NODE_TYPE;
-					variable->export_info.hint_string = export_type.class_type->identifier->name;
+					variable->export_info.hint_string = export_type.to_string();
 				} else {
 					push_error(R"(Export type can only be built-in, a resource, a node or an enum.)", variable);
 					return false;

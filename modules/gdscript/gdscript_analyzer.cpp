@@ -196,8 +196,11 @@ Error GDScriptAnalyzer::check_class_member_name_conflict(const GDScriptParser::C
 	while (current_data_type && current_data_type->kind == GDScriptParser::DataType::Kind::CLASS) {
 		GDScriptParser::ClassNode *current_class_node = current_data_type->class_type;
 		if (has_member_name_conflict_in_script_class(p_member_name, current_class_node, p_member_node)) {
-			push_error(vformat(R"(The member "%s" already exists in parent class %s.)", p_member_name, current_class_node->identifier->name),
-					p_member_node);
+			String parent_class_name = current_class_node->fqcn;
+			if (current_class_node->identifier != nullptr) {
+				parent_class_name = current_class_node->identifier->name;
+			}
+			push_error(vformat(R"(The member "%s" already exists in parent class %s.)", p_member_name, parent_class_name), p_member_node);
 			return ERR_PARSE_ERROR;
 		}
 		current_data_type = &current_class_node->base_type;
@@ -1162,6 +1165,8 @@ void GDScriptAnalyzer::resolve_function_signature(GDScriptParser::FunctionNode *
 
 			if (p_function->parameters[i]->default_value->is_constant) {
 				p_function->default_arg_values.push_back(p_function->parameters[i]->default_value->reduced_value);
+			} else {
+				p_function->default_arg_values.push_back(Variant()); // Prevent shift.
 			}
 		}
 #endif // TOOLS_ENABLED
@@ -1214,11 +1219,7 @@ void GDScriptAnalyzer::resolve_function_signature(GDScriptParser::FunctionNode *
 
 			if (!valid) {
 				// Compute parent signature as a string to show in the error message.
-				String parent_signature = parent_return_type.is_hard_type() ? parent_return_type.to_string() : "Variant";
-				if (parent_signature == "null") {
-					parent_signature = "void";
-				}
-				parent_signature += " " + p_function->identifier->name.operator String() + "(";
+				String parent_signature = p_function->identifier->name.operator String() + "(";
 				int j = 0;
 				for (const GDScriptParser::DataType &par_type : parameters_types) {
 					if (j > 0) {
@@ -1235,7 +1236,15 @@ void GDScriptAnalyzer::resolve_function_signature(GDScriptParser::FunctionNode *
 
 					j++;
 				}
-				parent_signature += ")";
+				parent_signature += ") -> ";
+
+				const String return_type = parent_return_type.is_hard_type() ? parent_return_type.to_string() : "Variant";
+				if (return_type == "null") {
+					parent_signature += "void";
+				} else {
+					parent_signature += return_type;
+				}
+
 				push_error(vformat(R"(The function signature doesn't match the parent. Parent signature is "%s".)", parent_signature), p_function);
 			}
 		}
