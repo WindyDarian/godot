@@ -545,9 +545,9 @@ GDScriptParser::DataType GDScriptAnalyzer::resolve_datatype(GDScriptParser::Type
 						} else if (Ref<Script>(member.constant->initializer->reduced_value).is_valid()) {
 							Ref<GDScript> gdscript = member.constant->initializer->reduced_value;
 							if (gdscript.is_valid()) {
-								Ref<GDScriptParserRef> ref = get_parser_for(gdscript->get_path());
+								Ref<GDScriptParserRef> ref = get_parser_for(gdscript->get_script_path());
 								if (ref->raise_status(GDScriptParserRef::INTERFACE_SOLVED) != OK) {
-									push_error(vformat(R"(Could not parse script from "%s".)", gdscript->get_path()), p_type);
+									push_error(vformat(R"(Could not parse script from "%s".)", gdscript->get_script_path()), p_type);
 									return GDScriptParser::DataType();
 								}
 								result = ref->get_parser()->head->get_datatype();
@@ -2676,7 +2676,7 @@ void GDScriptAnalyzer::reduce_cast(GDScriptParser::CastNode *p_cast) {
 }
 
 void GDScriptAnalyzer::reduce_dictionary(GDScriptParser::DictionaryNode *p_dictionary) {
-	HashMap<Variant, GDScriptParser::ExpressionNode *, VariantHasher, VariantComparator> elements;
+	HashMap<Variant, GDScriptParser::ExpressionNode *, VariantHasher, StringLikeVariantComparator> elements;
 
 	for (int i = 0; i < p_dictionary->elements.size(); i++) {
 		const GDScriptParser::DictionaryNode::Pair &element = p_dictionary->elements[i];
@@ -3136,9 +3136,9 @@ void GDScriptAnalyzer::reduce_identifier(GDScriptParser::IdentifierNode *p_ident
 					Variant constant = GDScriptLanguage::get_singleton()->get_named_globals_map()[name];
 					Node *node = Object::cast_to<Node>(constant);
 					if (node != nullptr) {
-						Ref<Script> scr = node->get_script();
+						Ref<GDScript> scr = node->get_script();
 						if (scr.is_valid()) {
-							Ref<GDScriptParserRef> singl_parser = get_parser_for(scr->get_path());
+							Ref<GDScriptParserRef> singl_parser = get_parser_for(scr->get_script_path());
 							if (singl_parser.is_valid()) {
 								Error err = singl_parser->raise_status(GDScriptParserRef::INTERFACE_SOLVED);
 								if (err == OK) {
@@ -3341,7 +3341,7 @@ void GDScriptAnalyzer::reduce_subscript(GDScriptParser::SubscriptNode *p_subscri
 			Ref<GDScript> gdscr = Ref<GDScript>(p_subscript->base->reduced_value);
 			if (!valid && gdscr.is_valid()) {
 				Error err = OK;
-				GDScriptCache::get_full_script(gdscr->get_path(), err);
+				GDScriptCache::get_full_script(gdscr->get_script_path(), err);
 				if (err == OK) {
 					value = p_subscript->base->reduced_value.get_named(p_subscript->attribute->name, valid);
 				}
@@ -3432,7 +3432,7 @@ void GDScriptAnalyzer::reduce_subscript(GDScriptParser::SubscriptNode *p_subscri
 							case Variant::QUATERNION:
 							case Variant::AABB:
 							case Variant::OBJECT:
-								error = index_type.builtin_type != Variant::STRING;
+								error = index_type.builtin_type != Variant::STRING && index_type.builtin_type != Variant::STRING_NAME;
 								break;
 							// Expect String or number.
 							case Variant::BASIS:
@@ -3446,11 +3446,11 @@ void GDScriptAnalyzer::reduce_subscript(GDScriptParser::SubscriptNode *p_subscri
 							case Variant::TRANSFORM3D:
 							case Variant::PROJECTION:
 								error = index_type.builtin_type != Variant::INT && index_type.builtin_type != Variant::FLOAT &&
-										index_type.builtin_type != Variant::STRING;
+										index_type.builtin_type != Variant::STRING && index_type.builtin_type != Variant::STRING_NAME;
 								break;
 							// Expect String or int.
 							case Variant::COLOR:
-								error = index_type.builtin_type != Variant::INT && index_type.builtin_type != Variant::STRING;
+								error = index_type.builtin_type != Variant::INT && index_type.builtin_type != Variant::STRING && index_type.builtin_type != Variant::STRING_NAME;
 								break;
 							// Don't support indexing, but we will check it later.
 							case Variant::RID:
@@ -3714,7 +3714,13 @@ GDScriptParser::DataType GDScriptAnalyzer::type_from_variant(const Variant &p_va
 	result.builtin_type = p_value.get_type();
 	result.type_source = GDScriptParser::DataType::ANNOTATED_EXPLICIT; // Constant has explicit type.
 
-	if (p_value.get_type() == Variant::OBJECT) {
+	if (p_value.get_type() == Variant::NIL) {
+		// A null value is a variant, not void.
+		result.kind = GDScriptParser::DataType::VARIANT;
+	} else if (p_value.get_type() == Variant::OBJECT) {
+		// Object is treated as a native type, not a builtin type.
+		result.kind = GDScriptParser::DataType::NATIVE;
+
 		Object *obj = p_value;
 		if (!obj) {
 			return GDScriptParser::DataType();
@@ -4164,6 +4170,8 @@ bool GDScriptAnalyzer::is_type_compatible(const GDScriptParser::DataType &p_targ
 
 	if (p_target.kind == GDScriptParser::DataType::BUILTIN) {
 		bool valid = p_source.kind == GDScriptParser::DataType::BUILTIN && p_target.builtin_type == p_source.builtin_type;
+		valid |= p_source.builtin_type == Variant::STRING && p_target.builtin_type == Variant::STRING_NAME;
+		valid |= p_source.builtin_type == Variant::STRING_NAME && p_target.builtin_type == Variant::STRING;
 		if (!valid && p_allow_implicit_conversion) {
 			valid = Variant::can_convert_strict(p_source.builtin_type, p_target.builtin_type);
 		}
