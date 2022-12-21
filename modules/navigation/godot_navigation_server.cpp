@@ -421,20 +421,20 @@ uint32_t GodotNavigationServer::region_get_navigation_layers(RID p_region) const
 	return region->get_navigation_layers();
 }
 
-COMMAND_2(region_set_navmesh, RID, p_region, Ref<NavigationMesh>, p_nav_mesh) {
+COMMAND_2(region_set_navigation_mesh, RID, p_region, Ref<NavigationMesh>, p_navigation_mesh) {
 	NavRegion *region = region_owner.get_or_null(p_region);
 	ERR_FAIL_COND(region == nullptr);
 
-	region->set_mesh(p_nav_mesh);
+	region->set_mesh(p_navigation_mesh);
 }
 
-void GodotNavigationServer::region_bake_navmesh(Ref<NavigationMesh> r_mesh, Node *p_node) const {
-	ERR_FAIL_COND(r_mesh.is_null());
-	ERR_FAIL_COND(p_node == nullptr);
+void GodotNavigationServer::region_bake_navigation_mesh(Ref<NavigationMesh> p_navigation_mesh, Node *p_root_node) const {
+	ERR_FAIL_COND(p_navigation_mesh.is_null());
+	ERR_FAIL_COND(p_root_node == nullptr);
 
 #ifndef _3D_DISABLED
-	NavigationMeshGenerator::get_singleton()->clear(r_mesh);
-	NavigationMeshGenerator::get_singleton()->bake(r_mesh, p_node);
+	NavigationMeshGenerator::get_singleton()->clear(p_navigation_mesh);
+	NavigationMeshGenerator::get_singleton()->bake(p_navigation_mesh, p_root_node);
 #endif
 }
 
@@ -704,14 +704,14 @@ bool GodotNavigationServer::agent_is_map_changed(RID p_agent) const {
 	return agent->is_map_changed();
 }
 
-COMMAND_4(agent_set_callback, RID, p_agent, Object *, p_receiver, StringName, p_method, Variant, p_udata) {
+COMMAND_4(agent_set_callback, RID, p_agent, ObjectID, p_object_id, StringName, p_method, Variant, p_udata) {
 	RvoAgent *agent = agent_owner.get_or_null(p_agent);
 	ERR_FAIL_COND(agent == nullptr);
 
-	agent->set_callback(p_receiver == nullptr ? ObjectID() : p_receiver->get_instance_id(), p_method, p_udata);
+	agent->set_callback(p_object_id, p_method, p_udata);
 
 	if (agent->get_map()) {
-		if (p_receiver == nullptr) {
+		if (p_object_id == ObjectID()) {
 			agent->get_map()->remove_agent_as_controlled(agent);
 		} else {
 			agent->get_map()->set_agent_as_controlled(agent);

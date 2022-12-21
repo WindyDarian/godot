@@ -92,6 +92,9 @@ public partial class VariantUtils
         if (typeof(T) == typeof(Transform2D))
             return CreateFromTransform2D(UnsafeAs<Transform2D>(from));
 
+        if (typeof(T) == typeof(Projection))
+            return CreateFromProjection(UnsafeAs<Projection>(from));
+
         if (typeof(T) == typeof(Vector3))
             return CreateFromVector3(UnsafeAs<Vector3>(from));
 
@@ -125,8 +128,8 @@ public partial class VariantUtils
         if (typeof(T) == typeof(Callable))
             return CreateFromCallable(UnsafeAs<Callable>(from));
 
-        if (typeof(T) == typeof(SignalInfo))
-            return CreateFromSignalInfo(UnsafeAs<SignalInfo>(from));
+        if (typeof(T) == typeof(Signal))
+            return CreateFromSignal(UnsafeAs<Signal>(from));
 
         if (typeof(T) == typeof(string))
             return CreateFromString(UnsafeAs<string>(from));
@@ -293,6 +296,9 @@ public partial class VariantUtils
         if (typeof(T) == typeof(Transform3D))
             return UnsafeAsT(ConvertToTransform3D(variant));
 
+        if (typeof(T) == typeof(Projection))
+            return UnsafeAsT(ConvertToProjection(variant));
+
         if (typeof(T) == typeof(Vector4))
             return UnsafeAsT(ConvertToVector4(variant));
 
@@ -311,8 +317,8 @@ public partial class VariantUtils
         if (typeof(T) == typeof(Callable))
             return UnsafeAsT(ConvertToCallableManaged(variant));
 
-        if (typeof(T) == typeof(SignalInfo))
-            return UnsafeAsT(ConvertToSignalInfo(variant));
+        if (typeof(T) == typeof(Signal))
+            return UnsafeAsT(ConvertToSignalManaged(variant));
 
         if (typeof(T) == typeof(string))
             return UnsafeAsT(ConvertToStringObject(variant));

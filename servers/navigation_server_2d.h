@@ -34,7 +34,7 @@
 #include "core/object/class_db.h"
 #include "core/templates/rid.h"
 
-#include "scene/2d/navigation_region_2d.h"
+#include "scene/resources/navigation_polygon.h"
 #include "servers/navigation/navigation_path_query_parameters_2d.h"
 #include "servers/navigation/navigation_path_query_result_2d.h"
 
@@ -126,7 +126,7 @@ public:
 	virtual void region_set_transform(RID p_region, Transform2D p_transform) const;
 
 	/// Set the navigation poly of this region.
-	virtual void region_set_navpoly(RID p_region, Ref<NavigationPolygon> p_nav_mesh) const;
+	virtual void region_set_navigation_polygon(RID p_region, Ref<NavigationPolygon> p_navigation_polygon) const;
 
 	/// Get a list of a region's connection to other regions.
 	virtual int region_get_connections_count(RID p_region) const;
@@ -226,7 +226,7 @@ public:
 	virtual bool agent_is_map_changed(RID p_agent) const;
 
 	/// Callback called at the end of the RVO process
-	virtual void agent_set_callback(RID p_agent, Object *p_receiver, StringName p_method, Variant p_udata = Variant()) const;
+	virtual void agent_set_callback(RID p_agent, ObjectID p_object_id, StringName p_method, Variant p_udata = Variant()) const;
 
 	virtual void query_path(const Ref<NavigationPathQueryParameters2D> &p_query_parameters, Ref<NavigationPathQueryResult2D> p_query_result) const;
 

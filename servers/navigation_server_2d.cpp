@@ -140,10 +140,6 @@ static Transform3D trf2_to_trf3(const Transform2D &d) {
 	return Transform3D(b, o);
 }
 
-static Object *obj_to_obj(Object *d) {
-	return d;
-}
-
 static StringName sn_to_sn(const StringName &d) {
 	return d;
 }
@@ -158,7 +154,7 @@ static ObjectID id_to_id(const ObjectID &id) {
 
 static Ref<NavigationMesh> poly_to_mesh(Ref<NavigationPolygon> d) {
 	if (d.is_valid()) {
-		return d->get_mesh();
+		return d->get_navigation_mesh();
 	} else {
 		return Ref<NavigationMesh>();
 	}
@@ -262,7 +258,7 @@ void NavigationServer2D::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("region_set_navigation_layers", "region", "navigation_layers"), &NavigationServer2D::region_set_navigation_layers);
 	ClassDB::bind_method(D_METHOD("region_get_navigation_layers", "region"), &NavigationServer2D::region_get_navigation_layers);
 	ClassDB::bind_method(D_METHOD("region_set_transform", "region", "transform"), &NavigationServer2D::region_set_transform);
-	ClassDB::bind_method(D_METHOD("region_set_navpoly", "region", "nav_poly"), &NavigationServer2D::region_set_navpoly);
+	ClassDB::bind_method(D_METHOD("region_set_navigation_polygon", "region", "navigation_polygon"), &NavigationServer2D::region_set_navigation_polygon);
 	ClassDB::bind_method(D_METHOD("region_get_connections_count", "region"), &NavigationServer2D::region_get_connections_count);
 	ClassDB::bind_method(D_METHOD("region_get_connection_pathway_start", "region", "connection"), &NavigationServer2D::region_get_connection_pathway_start);
 	ClassDB::bind_method(D_METHOD("region_get_connection_pathway_end", "region", "connection"), &NavigationServer2D::region_get_connection_pathway_end);
@@ -297,7 +293,7 @@ void NavigationServer2D::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("agent_set_target_velocity", "agent", "target_velocity"), &NavigationServer2D::agent_set_target_velocity);
 	ClassDB::bind_method(D_METHOD("agent_set_position", "agent", "position"), &NavigationServer2D::agent_set_position);
 	ClassDB::bind_method(D_METHOD("agent_is_map_changed", "agent"), &NavigationServer2D::agent_is_map_changed);
-	ClassDB::bind_method(D_METHOD("agent_set_callback", "agent", "receiver", "method", "userdata"), &NavigationServer2D::agent_set_callback, DEFVAL(Variant()));
+	ClassDB::bind_method(D_METHOD("agent_set_callback", "agent", "object_id", "method", "userdata"), &NavigationServer2D::agent_set_callback, DEFVAL(Variant()));
 
 	ClassDB::bind_method(D_METHOD("free_rid", "rid"), &NavigationServer2D::free);
 
@@ -365,8 +361,8 @@ void FORWARD_2_C(region_set_navigation_layers, RID, p_region, uint32_t, p_naviga
 uint32_t FORWARD_1_C(region_get_navigation_layers, RID, p_region, rid_to_rid);
 void FORWARD_2_C(region_set_transform, RID, p_region, Transform2D, p_transform, rid_to_rid, trf2_to_trf3);
 
-void NavigationServer2D::region_set_navpoly(RID p_region, Ref<NavigationPolygon> p_nav_mesh) const {
-	NavigationServer3D::get_singleton()->region_set_navmesh(p_region, poly_to_mesh(p_nav_mesh));
+void NavigationServer2D::region_set_navigation_polygon(RID p_region, Ref<NavigationPolygon> p_navigation_polygon) const {
+	NavigationServer3D::get_singleton()->region_set_navigation_mesh(p_region, poly_to_mesh(p_navigation_polygon));
 }
 
 int FORWARD_1_C(region_get_connections_count, RID, p_region, rid_to_rid);
@@ -420,7 +416,7 @@ void FORWARD_2_C(agent_set_ignore_y, RID, p_agent, bool, p_ignore, rid_to_rid, b
 
 bool FORWARD_1_C(agent_is_map_changed, RID, p_agent, rid_to_rid);
 
-void FORWARD_4_C(agent_set_callback, RID, p_agent, Object *, p_receiver, StringName, p_method, Variant, p_udata, rid_to_rid, obj_to_obj, sn_to_sn, var_to_var);
+void FORWARD_4_C(agent_set_callback, RID, p_agent, ObjectID, p_object_id, StringName, p_method, Variant, p_udata, rid_to_rid, id_to_id, sn_to_sn, var_to_var);
 
 void FORWARD_1_C(free, RID, p_object, rid_to_rid);
 

@@ -1068,10 +1068,6 @@ void RasterizerSceneGLES3::environment_glow_set_use_bicubic_upscale(bool p_enabl
 	glow_bicubic_upscale = p_enable;
 }
 
-void RasterizerSceneGLES3::environment_glow_set_use_high_quality(bool p_enable) {
-	glow_high_quality = p_enable;
-}
-
 void RasterizerSceneGLES3::environment_set_ssr_roughness_quality(RS::EnvironmentSSRRoughnessQuality p_quality) {
 }
 
@@ -1743,7 +1739,7 @@ void RasterizerSceneGLES3::render_scene(const Ref<RenderSceneBuffers> &p_render_
 		render_data.reflection_probes = &empty;
 	}
 
-	bool reverse_cull = false;
+	bool reverse_cull = render_data.cam_transform.basis.determinant() < 0;
 
 	///////////
 	// Fill Light lists here

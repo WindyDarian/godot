@@ -476,6 +476,7 @@ public:
 			Instance *instance = (Instance *)tracker->userdata;
 			switch (p_notification) {
 				case Dependency::DEPENDENCY_CHANGED_SKELETON_DATA:
+				case Dependency::DEPENDENCY_CHANGED_SKELETON_BONES:
 				case Dependency::DEPENDENCY_CHANGED_AABB: {
 					singleton->_instance_queue_update(instance, true, false);
 
@@ -491,8 +492,7 @@ public:
 				case Dependency::DEPENDENCY_CHANGED_REFLECTION_PROBE: {
 					singleton->_instance_queue_update(instance, true, true);
 				} break;
-				case Dependency::DEPENDENCY_CHANGED_MULTIMESH_VISIBLE_INSTANCES:
-				case Dependency::DEPENDENCY_CHANGED_SKELETON_BONES: {
+				case Dependency::DEPENDENCY_CHANGED_MULTIMESH_VISIBLE_INSTANCES: {
 					//ignored
 				} break;
 				case Dependency::DEPENDENCY_CHANGED_LIGHT_SOFT_SHADOW_AND_PROJECTOR: {
@@ -1173,7 +1173,6 @@ public:
 	PASS1RC(RID, environment_get_glow_map, RID)
 
 	PASS1(environment_glow_set_use_bicubic_upscale, bool)
-	PASS1(environment_glow_set_use_high_quality, bool)
 
 	// SSR
 	PASS6(environment_set_ssr, RID, bool, int, float, float, float)

@@ -96,6 +96,7 @@
 #include "editor/export/editor_export.h"
 #include "editor/export/export_template_manager.h"
 #include "editor/export/project_export.h"
+#include "editor/fbx_importer_manager.h"
 #include "editor/filesystem_dock.h"
 #include "editor/history_dock.h"
 #include "editor/import/audio_stream_import_settings.h"
@@ -437,8 +438,6 @@ void EditorNode::_update_from_settings() {
 	bool glow_bicubic = int(GLOBAL_GET("rendering/environment/glow/upscale_mode")) > 0;
 	RS::get_singleton()->environment_set_ssil_quality(RS::EnvironmentSSILQuality(int(GLOBAL_GET("rendering/environment/ssil/quality"))), GLOBAL_GET("rendering/environment/ssil/half_size"), GLOBAL_GET("rendering/environment/ssil/adaptive_target"), GLOBAL_GET("rendering/environment/ssil/blur_passes"), GLOBAL_GET("rendering/environment/ssil/fadeout_from"), GLOBAL_GET("rendering/environment/ssil/fadeout_to"));
 	RS::get_singleton()->environment_glow_set_use_bicubic_upscale(glow_bicubic);
-	bool glow_high_quality = GLOBAL_GET("rendering/environment/glow/use_high_quality");
-	RS::get_singleton()->environment_glow_set_use_high_quality(glow_high_quality);
 	RS::EnvironmentSSRRoughnessQuality ssr_roughness_quality = RS::EnvironmentSSRRoughnessQuality(int(GLOBAL_GET("rendering/environment/screen_space_reflection/roughness_quality")));
 	RS::get_singleton()->environment_set_ssr_roughness_quality(ssr_roughness_quality);
 	RS::SubSurfaceScatteringQuality sss_quality = RS::SubSurfaceScatteringQuality(int(GLOBAL_GET("rendering/environment/subsurface_scattering/subsurface_scattering_quality")));
@@ -2756,11 +2755,20 @@ void EditorNode::_menu_option_confirm(int p_option, bool p_confirmed) {
 				log->add_message(TTR("Can't undo while mouse buttons are pressed."), EditorLog::MSG_TYPE_EDITOR);
 			} else {
 				String action = editor_data.get_undo_redo()->get_current_action_name();
-
+				int id = editor_data.get_undo_redo()->get_current_action_history_id();
 				if (!editor_data.get_undo_redo()->undo()) {
 					log->add_message(TTR("Nothing to undo."), EditorLog::MSG_TYPE_EDITOR);
 				} else if (!action.is_empty()) {
-					log->add_message(vformat(TTR("Undo: %s"), action), EditorLog::MSG_TYPE_EDITOR);
+					switch (id) {
+						case EditorUndoRedoManager::GLOBAL_HISTORY:
+							log->add_message(vformat(TTR("Global Undo: %s"), action), EditorLog::MSG_TYPE_EDITOR);
+							break;
+						case EditorUndoRedoManager::REMOTE_HISTORY:
+							log->add_message(vformat(TTR("Remote Undo: %s"), action), EditorLog::MSG_TYPE_EDITOR);
+							break;
+						default:
+							log->add_message(vformat(TTR("Scene Undo: %s"), action), EditorLog::MSG_TYPE_EDITOR);
+					}
 				}
 			}
 		} break;
@@ -2772,7 +2780,20 @@ void EditorNode::_menu_option_confirm(int p_option, bool p_confirmed) {
 					log->add_message(TTR("Nothing to redo."), EditorLog::MSG_TYPE_EDITOR);
 				} else {
 					String action = editor_data.get_undo_redo()->get_current_action_name();
-					log->add_message(vformat(TTR("Redo: %s"), action), EditorLog::MSG_TYPE_EDITOR);
+					if (action.is_empty()) {
+						break;
+					}
+
+					switch (editor_data.get_undo_redo()->get_current_action_history_id()) {
+						case EditorUndoRedoManager::GLOBAL_HISTORY:
+							log->add_message(vformat(TTR("Global Redo: %s"), action), EditorLog::MSG_TYPE_EDITOR);
+							break;
+						case EditorUndoRedoManager::REMOTE_HISTORY:
+							log->add_message(vformat(TTR("Remote Redo: %s"), action), EditorLog::MSG_TYPE_EDITOR);
+							break;
+						default:
+							log->add_message(vformat(TTR("Scene Redo: %s"), action), EditorLog::MSG_TYPE_EDITOR);
+					}
 				}
 			}
 		} break;
@@ -2961,7 +2982,11 @@ void EditorNode::_menu_option_confirm(int p_option, bool p_confirmed) {
 		} break;
 		case SETTINGS_MANAGE_EXPORT_TEMPLATES: {
 			export_template_manager->popup_manager();
-
+		} break;
+		case SETTINGS_MANAGE_FBX_IMPORTER: {
+#if !defined(ANDROID_ENABLED) && !defined(WEB_ENABLED)
+			fbx_importer_manager->show_dialog();
+#endif
 		} break;
 		case SETTINGS_INSTALL_ANDROID_BUILD_TEMPLATE: {
 			custom_build_manage_templates->hide();
@@ -6604,6 +6629,11 @@ EditorNode::EditorNode() {
 	gui_base->add_child(about);
 	feature_profile_manager->connect("current_feature_profile_changed", callable_mp(this, &EditorNode::_feature_profile_changed));
 
+#if !defined(ANDROID_ENABLED) && !defined(WEB_ENABLED)
+	fbx_importer_manager = memnew(FBXImporterManager);
+	gui_base->add_child(fbx_importer_manager);
+#endif
+
 	warning = memnew(AcceptDialog);
 	warning->add_button(TTR("Copy Text"), true, "copy");
 	gui_base->add_child(warning);
@@ -6775,6 +6805,9 @@ EditorNode::EditorNode() {
 	settings_menu->add_item(TTR("Manage Editor Features..."), SETTINGS_MANAGE_FEATURE_PROFILES);
 #ifndef ANDROID_ENABLED
 	settings_menu->add_item(TTR("Manage Export Templates..."), SETTINGS_MANAGE_EXPORT_TEMPLATES);
+#endif
+#if !defined(ANDROID_ENABLED) && !defined(WEB_ENABLED)
+	settings_menu->add_item(TTR("Configure FBX Importer..."), SETTINGS_MANAGE_FBX_IMPORTER);
 #endif
 
 	help_menu = memnew(PopupMenu);
