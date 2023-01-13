@@ -1,32 +1,32 @@
-/*************************************************************************/
-/*  canvas_item.cpp                                                      */
-/*************************************************************************/
-/*                       This file is part of:                           */
-/*                           GODOT ENGINE                                */
-/*                      https://godotengine.org                          */
-/*************************************************************************/
-/* Copyright (c) 2007-2022 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2022 Godot Engine contributors (cf. AUTHORS.md).   */
-/*                                                                       */
-/* Permission is hereby granted, free of charge, to any person obtaining */
-/* a copy of this software and associated documentation files (the       */
-/* "Software"), to deal in the Software without restriction, including   */
-/* without limitation the rights to use, copy, modify, merge, publish,   */
-/* distribute, sublicense, and/or sell copies of the Software, and to    */
-/* permit persons to whom the Software is furnished to do so, subject to */
-/* the following conditions:                                             */
-/*                                                                       */
-/* The above copyright notice and this permission notice shall be        */
-/* included in all copies or substantial portions of the Software.       */
-/*                                                                       */
-/* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,       */
-/* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF    */
-/* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.*/
-/* IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY  */
-/* CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,  */
-/* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE     */
-/* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
-/*************************************************************************/
+/**************************************************************************/
+/*  canvas_item.cpp                                                       */
+/**************************************************************************/
+/*                         This file is part of:                          */
+/*                             GODOT ENGINE                               */
+/*                        https://godotengine.org                         */
+/**************************************************************************/
+/* Copyright (c) 2014-present Godot Engine contributors (see AUTHORS.md). */
+/* Copyright (c) 2007-2014 Juan Linietsky, Ariel Manzur.                  */
+/*                                                                        */
+/* Permission is hereby granted, free of charge, to any person obtaining  */
+/* a copy of this software and associated documentation files (the        */
+/* "Software"), to deal in the Software without restriction, including    */
+/* without limitation the rights to use, copy, modify, merge, publish,    */
+/* distribute, sublicense, and/or sell copies of the Software, and to     */
+/* permit persons to whom the Software is furnished to do so, subject to  */
+/* the following conditions:                                              */
+/*                                                                        */
+/* The above copyright notice and this permission notice shall be         */
+/* included in all copies or substantial portions of the Software.        */
+/*                                                                        */
+/* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,        */
+/* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF     */
+/* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. */
+/* IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY   */
+/* CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,   */
+/* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE      */
+/* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
+/**************************************************************************/
 
 #include "canvas_item.h"
 
@@ -195,7 +195,15 @@ void CanvasItem::_top_level_raise_self() {
 }
 
 void CanvasItem::_enter_canvas() {
-	if ((!Object::cast_to<CanvasItem>(get_parent())) || top_level) {
+	// Resolves to nullptr if the node is toplevel.
+	CanvasItem *parent_item = get_parent_item();
+
+	if (parent_item) {
+		canvas_layer = parent_item->canvas_layer;
+		RenderingServer::get_singleton()->canvas_item_set_parent(canvas_item, parent_item->get_canvas_item());
+		RenderingServer::get_singleton()->canvas_item_set_draw_index(canvas_item, get_index());
+		RenderingServer::get_singleton()->canvas_item_set_visibility_layer(canvas_item, visibility_layer);
+	} else {
 		Node *n = this;
 
 		canvas_layer = nullptr;
@@ -231,13 +239,6 @@ void CanvasItem::_enter_canvas() {
 		}
 
 		get_tree()->call_group_flags(SceneTree::GROUP_CALL_UNIQUE | SceneTree::GROUP_CALL_DEFERRED, canvas_group, SNAME("_top_level_raise_self"));
-
-	} else {
-		CanvasItem *parent = get_parent_item();
-		canvas_layer = parent->canvas_layer;
-		RenderingServer::get_singleton()->canvas_item_set_parent(canvas_item, parent->get_canvas_item());
-		RenderingServer::get_singleton()->canvas_item_set_draw_index(canvas_item, get_index());
-		RenderingServer::get_singleton()->canvas_item_set_visibility_layer(canvas_item, visibility_layer);
 	}
 
 	pending_update = false;
@@ -320,8 +321,7 @@ void CanvasItem::_notification(int p_what) {
 			if (canvas_group != StringName()) {
 				get_tree()->call_group_flags(SceneTree::GROUP_CALL_UNIQUE | SceneTree::GROUP_CALL_DEFERRED, canvas_group, "_top_level_raise_self");
 			} else {
-				CanvasItem *p = get_parent_item();
-				ERR_FAIL_COND(!p);
+				ERR_FAIL_COND_MSG(!get_parent_item(), "Moved child is in incorrect state (no canvas group, no canvas item parent).");
 				RenderingServer::get_singleton()->canvas_item_set_draw_index(canvas_item, get_index());
 			}
 		} break;
@@ -483,7 +483,7 @@ bool CanvasItem::is_y_sort_enabled() const {
 	return y_sort_enabled;
 }
 
-void CanvasItem::draw_dashed_line(const Point2 &p_from, const Point2 &p_to, const Color &p_color, real_t p_width, real_t p_dash) {
+void CanvasItem::draw_dashed_line(const Point2 &p_from, const Point2 &p_to, const Color &p_color, real_t p_width, real_t p_dash, bool p_aligned) {
 	ERR_FAIL_COND_MSG(!drawing, "Drawing is only allowed inside NOTIFICATION_DRAW, _draw() function or 'draw' signal.");
 
 	float length = (p_to - p_from).length();
@@ -492,14 +492,20 @@ void CanvasItem::draw_dashed_line(const Point2 &p_from, const Point2 &p_to, cons
 		return;
 	}
 
-	Point2 off = p_from;
 	Vector2 step = p_dash * (p_to - p_from).normalized();
-	int steps = length / p_dash / 2;
-	for (int i = 0; i < steps; i++) {
-		RenderingServer::get_singleton()->canvas_item_add_line(canvas_item, off, (off + step), p_color, p_width);
-		off += 2 * step;
+	int steps = (p_aligned) ? Math::ceil(length / p_dash) : Math::floor(length / p_dash);
+	if (steps % 2 == 0) {
+		steps--;
 	}
-	RenderingServer::get_singleton()->canvas_item_add_line(canvas_item, off, p_to, p_color, p_width);
+
+	Point2 off = p_from;
+	if (p_aligned) {
+		off += (p_to - p_from).normalized() * (length - steps * p_dash) / 2.0;
+	}
+	for (int i = 0; i < steps; i += 2) {
+		RenderingServer::get_singleton()->canvas_item_add_line(canvas_item, (i == 0) ? p_from : off, (p_aligned && i == steps - 1) ? p_to : (off + step), p_color, p_width);
+		off += step * 2;
+	}
 }
 
 void CanvasItem::draw_line(const Point2 &p_from, const Point2 &p_to, const Color &p_color, real_t p_width, bool p_antialiased) {
@@ -963,7 +969,7 @@ void CanvasItem::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("is_draw_behind_parent_enabled"), &CanvasItem::is_draw_behind_parent_enabled);
 
 	ClassDB::bind_method(D_METHOD("draw_line", "from", "to", "color", "width", "antialiased"), &CanvasItem::draw_line, DEFVAL(1.0), DEFVAL(false));
-	ClassDB::bind_method(D_METHOD("draw_dashed_line", "from", "to", "color", "width", "dash"), &CanvasItem::draw_dashed_line, DEFVAL(1.0), DEFVAL(2.0));
+	ClassDB::bind_method(D_METHOD("draw_dashed_line", "from", "to", "color", "width", "dash", "aligned"), &CanvasItem::draw_dashed_line, DEFVAL(1.0), DEFVAL(2.0), DEFVAL(true));
 	ClassDB::bind_method(D_METHOD("draw_polyline", "points", "color", "width", "antialiased"), &CanvasItem::draw_polyline, DEFVAL(1.0), DEFVAL(false));
 	ClassDB::bind_method(D_METHOD("draw_polyline_colors", "points", "colors", "width", "antialiased"), &CanvasItem::draw_polyline_colors, DEFVAL(1.0), DEFVAL(false));
 	ClassDB::bind_method(D_METHOD("draw_arc", "center", "radius", "start_angle", "end_angle", "point_count", "color", "width", "antialiased"), &CanvasItem::draw_arc, DEFVAL(1.0), DEFVAL(false));
