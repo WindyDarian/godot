@@ -3805,6 +3805,8 @@ static bool _find_recursive_resources(const Variant &v, HashSet<Resource *> &res
 					return true;
 				}
 			}
+
+			resources_found.erase(r.ptr());
 		} break;
 		default: {
 		}
@@ -4584,6 +4586,7 @@ EditorProperty *EditorInspectorDefaultPlugin::get_editor_for_property(Object *p_
 				return editor;
 			} else {
 				EditorPropertyDictionary *editor = memnew(EditorPropertyDictionary);
+				editor->setup(p_hint);
 				return editor;
 			}
 		} break;

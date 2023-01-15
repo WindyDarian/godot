@@ -493,12 +493,6 @@ namespace Godot
             }
         }
 
-        /// <summary>
-        /// Returns the basis's rotation in the form of a quaternion.
-        /// See <see cref="GetEuler"/> if you need Euler angles, but keep in
-        /// mind that quaternions should generally be preferred to Euler angles.
-        /// </summary>
-        /// <returns>A <see cref="Quaternion"/> representing the basis's rotation.</returns>
         internal readonly Quaternion GetQuaternion()
         {
             real_t trace = Row0[0] + Row1[1] + Row2[2];
@@ -573,109 +567,6 @@ namespace Godot
         }
 
         /// <summary>
-        /// Get rows by index. Rows are not very useful for user code,
-        /// but are more efficient for some internal calculations.
-        /// </summary>
-        /// <param name="index">Which row.</param>
-        /// <exception cref="ArgumentOutOfRangeException">
-        /// <paramref name="index"/> is not 0, 1 or 2.
-        /// </exception>
-        /// <returns>One of <c>Row0</c>, <c>Row1</c>, or <c>Row2</c>.</returns>
-        public readonly Vector3 GetRow(int index)
-        {
-            switch (index)
-            {
-                case 0:
-                    return Row0;
-                case 1:
-                    return Row1;
-                case 2:
-                    return Row2;
-                default:
-                    throw new ArgumentOutOfRangeException(nameof(index));
-            }
-        }
-
-        /// <summary>
-        /// Sets rows by index. Rows are not very useful for user code,
-        /// but are more efficient for some internal calculations.
-        /// </summary>
-        /// <param name="index">Which row.</param>
-        /// <param name="value">The vector to set the row to.</param>
-        /// <exception cref="ArgumentOutOfRangeException">
-        /// <paramref name="index"/> is not 0, 1 or 2.
-        /// </exception>
-        public void SetRow(int index, Vector3 value)
-        {
-            switch (index)
-            {
-                case 0:
-                    Row0 = value;
-                    return;
-                case 1:
-                    Row1 = value;
-                    return;
-                case 2:
-                    Row2 = value;
-                    return;
-                default:
-                    throw new ArgumentOutOfRangeException(nameof(index));
-            }
-        }
-
-        /// <summary>
-        /// This function considers a discretization of rotations into
-        /// 24 points on unit sphere, lying along the vectors (x, y, z) with
-        /// each component being either -1, 0, or 1, and returns the index
-        /// of the point best representing the orientation of the object.
-        /// It is mainly used by the <see cref="GridMap"/> editor.
-        ///
-        /// For further details, refer to the Godot source code.
-        /// </summary>
-        /// <returns>The orthogonal index.</returns>
-        public readonly int GetOrthogonalIndex()
-        {
-            var orth = this;
-
-            for (int i = 0; i < 3; i++)
-            {
-                for (int j = 0; j < 3; j++)
-                {
-                    var row = orth.GetRow(i);
-
-                    real_t v = row[j];
-
-                    if (v > 0.5f)
-                    {
-                        v = 1.0f;
-                    }
-                    else if (v < -0.5f)
-                    {
-                        v = -1.0f;
-                    }
-                    else
-                    {
-                        v = 0f;
-                    }
-
-                    row[j] = v;
-
-                    orth.SetRow(i, row);
-                }
-            }
-
-            for (int i = 0; i < 24; i++)
-            {
-                if (orth == _orthoBases[i])
-                {
-                    return i;
-                }
-            }
-
-            return 0;
-        }
-
-        /// <summary>
         /// Returns the inverse of the matrix.
         /// </summary>
         /// <returns>The inverse matrix.</returns>
@@ -707,6 +598,16 @@ namespace Godot
                 cofac10 * detInv, cofac11 * detInv, cofac12 * detInv,
                 cofac20 * detInv, cofac21 * detInv, cofac22 * detInv
             );
+        }
+
+        /// <summary>
+        /// Returns <see langword="true"/> if this basis is finite, by calling
+        /// <see cref="Mathf.IsFinite"/> on each component.
+        /// </summary>
+        /// <returns>Whether this vector is finite or not.</returns>
+        public readonly bool IsFinite()
+        {
+            return Row0.IsFinite() && Row1.IsFinite() && Row2.IsFinite();
         }
 
         internal readonly Basis Lerp(Basis to, real_t weight)
