@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  array_property_edit.h                                                 */
+/*  dedicated_server_export_plugin.h                                      */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,42 +28,31 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef ARRAY_PROPERTY_EDIT_H
-#define ARRAY_PROPERTY_EDIT_H
+#ifndef DEDICATED_SERVER_EXPORT_PLUGIN_H
+#define DEDICATED_SERVER_EXPORT_PLUGIN_H
 
-#include "scene/main/node.h"
+#include "editor/export/editor_export.h"
 
-class ArrayPropertyEdit : public RefCounted {
-	GDCLASS(ArrayPropertyEdit, RefCounted);
+class DedicatedServerExportPlugin : public EditorExportPlugin {
+private:
+	EditorExportPreset::FileExportMode current_export_mode;
 
-	int page;
-	ObjectID obj;
-	StringName property;
-	String vtypes;
-	String subtype_hint_string;
-	PropertyHint subtype_hint;
-	Variant::Type subtype;
-	Variant get_array() const;
-	Variant::Type default_type;
-
-	void _notif_change();
-	void _set_size(int p_size);
-	void _set_value(int p_idx, const Variant &p_value);
-
-	bool _dont_undo_redo();
+	EditorExportPreset::FileExportMode _get_export_mode_for_path(const String &p_path);
 
 protected:
-	static void _bind_methods();
-	bool _set(const StringName &p_name, const Variant &p_value);
-	bool _get(const StringName &p_name, Variant &r_ret) const;
-	void _get_property_list(List<PropertyInfo> *p_list) const;
+	String _get_name() const override { return "DedicatedServer"; }
 
-public:
-	void edit(Object *p_obj, const StringName &p_prop, const String &p_hint_string, Variant::Type p_deftype);
+	PackedStringArray _get_export_features(const Ref<EditorExportPlatform> &p_platform, bool p_debug) const override;
+	uint64_t _get_customization_configuration_hash() const override;
 
-	Node *get_node();
+	bool _begin_customize_scenes(const Ref<EditorExportPlatform> &p_platform, const Vector<String> &p_features) override;
+	bool _begin_customize_resources(const Ref<EditorExportPlatform> &p_platform, const Vector<String> &p_features) override;
 
-	ArrayPropertyEdit();
+	Node *_customize_scene(Node *p_root, const String &p_path) override;
+	Ref<Resource> _customize_resource(const Ref<Resource> &p_resource, const String &p_path) override;
+
+	void _end_customize_scenes() override;
+	void _end_customize_resources() override;
 };
 
-#endif // ARRAY_PROPERTY_EDIT_H
+#endif // DEDICATED_SERVER_EXPORT_PLUGIN_H
