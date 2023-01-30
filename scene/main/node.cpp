@@ -1987,7 +1987,16 @@ String Node::get_scene_file_path() const {
 }
 
 void Node::set_editor_description(const String &p_editor_description) {
+	if (data.editor_description == p_editor_description) {
+		return;
+	}
+
 	data.editor_description = p_editor_description;
+
+	if (Engine::get_singleton()->is_editor_hint() && is_inside_tree()) {
+		// Update tree so the tooltip in the Scene tree dock is also updated in the editor.
+		get_tree()->tree_changed();
+	}
 }
 
 String Node::get_editor_description() const {
@@ -2213,7 +2222,7 @@ Node *Node::_duplicate(int p_flags, HashMap<const Node *, Node *> *r_duplimap) c
 
 			Variant value = N->get()->get(name).duplicate(true);
 
-			if (E.usage & PROPERTY_USAGE_DO_NOT_SHARE_ON_DUPLICATE) {
+			if (E.usage & PROPERTY_USAGE_ALWAYS_DUPLICATE) {
 				Resource *res = Object::cast_to<Resource>(value);
 				if (res) { // Duplicate only if it's a resource
 					current_node->set(name, res->duplicate());

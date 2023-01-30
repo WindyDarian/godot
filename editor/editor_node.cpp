@@ -2096,14 +2096,25 @@ void EditorNode::edit_item(Object *p_object, Object *p_editing_owner) {
 	if (!item_plugins.is_empty()) {
 		ObjectID owner_id = p_editing_owner->get_instance_id();
 
+		List<EditorPlugin *> to_remove;
 		for (EditorPlugin *plugin : active_plugins[owner_id]) {
 			if (!item_plugins.has(plugin)) {
+				// Remove plugins no longer used by this editing owner.
+				to_remove.push_back(plugin);
 				plugin->make_visible(false);
 				plugin->edit(nullptr);
 			}
 		}
 
+		for (EditorPlugin *plugin : to_remove) {
+			active_plugins[owner_id].erase(plugin);
+		}
+
 		for (EditorPlugin *plugin : item_plugins) {
+			if (active_plugins[owner_id].has(plugin)) {
+				continue;
+			}
+
 			for (KeyValue<ObjectID, HashSet<EditorPlugin *>> &kv : active_plugins) {
 				if (kv.key != owner_id) {
 					EditorPropertyResource *epres = Object::cast_to<EditorPropertyResource>(ObjectDB::get_instance(kv.key));
@@ -3902,7 +3913,7 @@ Error EditorNode::load_scene(const String &p_scene, bool p_ignore_broken_deps, b
 		Ref<SceneState> state = sdata->get_state();
 		state->set_path(lpath);
 		new_scene->set_scene_inherited_state(state);
-		new_scene->set_scene_file_path(lpath);
+		new_scene->set_scene_file_path(String());
 	}
 
 	new_scene->set_scene_instance_state(Ref<SceneState>());
@@ -6113,6 +6124,7 @@ void EditorNode::reload_instances_with_path_in_edited_scenes(const String &p_ins
 						Ref<SceneState> state = current_packed_scene->get_state();
 						state->set_path(current_packed_scene->get_path());
 						instantiated_node->set_scene_inherited_state(state);
+						instantiated_node->set_scene_file_path(String());
 					}
 					editor_data.set_edited_scene_root(instantiated_node);
 					current_edited_scene = instantiated_node;
@@ -7261,6 +7273,7 @@ EditorNode::EditorNode() {
 		project_title->set_text_overrun_behavior(TextServer::OVERRUN_TRIM_ELLIPSIS);
 		project_title->set_vertical_alignment(VERTICAL_ALIGNMENT_CENTER);
 		project_title->set_h_size_flags(Control::SIZE_EXPAND_FILL);
+		project_title->set_mouse_filter(Control::MOUSE_FILTER_PASS);
 		left_spacer->add_child(project_title);
 	}
 

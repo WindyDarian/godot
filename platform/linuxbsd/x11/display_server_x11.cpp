@@ -1610,7 +1610,7 @@ void DisplayServerX11::window_set_transient(WindowID p_window, WindowID p_parent
 		// a subwindow and its parent are both destroyed.
 		if (!wd_window.no_focus && !wd_window.is_popup && wd_window.focused) {
 			if ((xwa.map_state == IsViewable) && !wd_parent.no_focus && !wd_window.is_popup) {
-				XSetInputFocus(x11_display, wd_parent.x11_window, RevertToPointerRoot, CurrentTime);
+				XSetInputFocus(x11_display, wd_parent.x11_window, RevertToParent, CurrentTime);
 			}
 		}
 	} else {
@@ -2496,6 +2496,9 @@ void DisplayServerX11::window_set_ime_active(const bool p_active, WindowID p_win
 		return;
 	}
 	if (!wd.focused) {
+		wd.ime_active = false;
+		im_text = String();
+		im_selection = Vector2i();
 		return;
 	}
 
@@ -2524,7 +2527,6 @@ void DisplayServerX11::window_set_ime_active(const bool p_active, WindowID p_win
 		im_text = String();
 		im_selection = Vector2i();
 	}
-	OS_Unix::get_singleton()->get_main_loop()->notification(MainLoop::NOTIFICATION_OS_IME_UPDATE);
 }
 
 void DisplayServerX11::window_set_ime_position(const Point2i &p_pos, WindowID p_window) {
@@ -2931,6 +2933,7 @@ void DisplayServerX11::_handle_key_event(WindowID p_window, XKeyEvent *p_event, 
 	xkeyevent_no_mod.state &= ~ShiftMask;
 	xkeyevent_no_mod.state &= ~ControlMask;
 	XLookupString(xkeyevent, str, 255, &keysym_unicode, nullptr);
+	XLookupString(&xkeyevent_no_mod, nullptr, 0, &keysym_keycode, nullptr);
 
 	String keysym;
 	if (xkb_keysym_to_utf32 && xkb_keysym_to_upper) {
@@ -3316,42 +3319,43 @@ void DisplayServerX11::_xim_preedit_draw_callback(::XIM xim, ::XPointer client_d
 	WindowData &wd = ds->windows[window_id];
 
 	XIMText *xim_text = call_data->text;
-	if (xim_text != nullptr) {
-		String changed_text;
-		if (xim_text->encoding_is_wchar) {
-			changed_text = String(xim_text->string.wide_char);
-		} else {
-			changed_text.parse_utf8(xim_text->string.multi_byte);
-		}
+	if (wd.ime_active) {
+		if (xim_text != nullptr) {
+			String changed_text;
+			if (xim_text->encoding_is_wchar) {
+				changed_text = String(xim_text->string.wide_char);
+			} else {
+				changed_text.parse_utf8(xim_text->string.multi_byte);
+			}
 
-		if (call_data->chg_length < 0) {
-			ds->im_text = ds->im_text.substr(0, call_data->chg_first) + changed_text;
-		} else {
-			ds->im_text = ds->im_text.substr(0, call_data->chg_first) + changed_text + ds->im_text.substr(call_data->chg_length);
-		}
+			if (call_data->chg_length < 0) {
+				ds->im_text = ds->im_text.substr(0, call_data->chg_first) + changed_text;
+			} else {
+				ds->im_text = ds->im_text.substr(0, call_data->chg_first) + changed_text + ds->im_text.substr(call_data->chg_length);
+			}
 
-		// Find the start and end of the selection.
-		int start = 0, count = 0;
-		for (int i = 0; i < xim_text->length; i++) {
-			if (xim_text->feedback[i] & XIMReverse) {
-				if (count == 0) {
-					start = i;
-					count = 1;
-				} else {
-					count++;
+			// Find the start and end of the selection.
+			int start = 0, count = 0;
+			for (int i = 0; i < xim_text->length; i++) {
+				if (xim_text->feedback[i] & XIMReverse) {
+					if (count == 0) {
+						start = i;
+						count = 1;
+					} else {
+						count++;
+					}
 				}
 			}
-		}
-		if (count > 0) {
-			ds->im_selection = Point2i(start + call_data->chg_first, count);
+			if (count > 0) {
+				ds->im_selection = Point2i(start + call_data->chg_first, count);
+			} else {
+				ds->im_selection = Point2i(call_data->caret, 0);
+			}
 		} else {
-			ds->im_selection = Point2i(call_data->caret, 0);
+			ds->im_text = String();
+			ds->im_selection = Point2i();
 		}
-	} else {
-		ds->im_text = String();
-		ds->im_selection = Point2i();
-	}
-	if (wd.ime_active) {
+
 		OS_Unix::get_singleton()->get_main_loop()->notification(MainLoop::NOTIFICATION_OS_IME_UPDATE);
 	}
 }
@@ -4856,7 +4860,11 @@ DisplayServerX11::WindowID DisplayServerX11::_create_window(WindowMode p_mode, V
 
 	{
 		wd.x11_window = XCreateWindow(x11_display, RootWindow(x11_display, visualInfo.screen), win_rect.position.x, win_rect.position.y, win_rect.size.width > 0 ? win_rect.size.width : 1, win_rect.size.height > 0 ? win_rect.size.height : 1, 0, visualInfo.depth, InputOutput, visualInfo.visual, valuemask, &windowAttributes);
-		wd.x11_xim_window = XCreateWindow(x11_display, wd.x11_window, 0, 0, 1, 1, 0, visualInfo.depth, InputOutput, visualInfo.visual, valuemask, &windowAttributes);
+
+		XSetWindowAttributes window_attributes_ime = {};
+		window_attributes_ime.event_mask = KeyPressMask | KeyReleaseMask | StructureNotifyMask | ExposureMask;
+
+		wd.x11_xim_window = XCreateWindow(x11_display, wd.x11_window, 0, 0, 1, 1, 0, CopyFromParent, InputOnly, CopyFromParent, CWEventMask, &window_attributes_ime);
 
 		// Enable receiving notification when the window is initialized (MapNotify)
 		// so the focus can be set at the right time.
