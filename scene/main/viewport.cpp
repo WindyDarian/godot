@@ -524,7 +524,12 @@ void Viewport::_process_picking() {
 	if (!physics_object_picking) {
 		return;
 	}
-	if (to_screen_rect != Rect2i() && Input::get_singleton()->get_mouse_mode() == Input::MOUSE_MODE_CAPTURED) {
+	if (Object::cast_to<Window>(this) && Input::get_singleton()->get_mouse_mode() == Input::MOUSE_MODE_CAPTURED) {
+		return;
+	}
+	if (!gui.mouse_in_viewport) {
+		// Clear picking events if mouse has left viewport.
+		physics_picking_events.clear();
 		return;
 	}
 
@@ -791,16 +796,21 @@ void Viewport::update_canvas_items() {
 	_update_canvas_items(this);
 }
 
-void Viewport::_set_size(const Size2i &p_size, const Size2i &p_size_2d_override, const Rect2i &p_to_screen_rect, const Transform2D &p_stretch_transform, bool p_allocated) {
-	if (size == p_size && size_allocated == p_allocated && stretch_transform == p_stretch_transform && p_size_2d_override == size_2d_override && to_screen_rect == p_to_screen_rect) {
+void Viewport::_set_size(const Size2i &p_size, const Size2i &p_size_2d_override, bool p_allocated) {
+	Transform2D stretch_transform_new = Transform2D();
+	if (is_size_2d_override_stretch_enabled() && p_size_2d_override.width > 0 && p_size_2d_override.height > 0) {
+		Size2 scale = Size2(p_size) / Size2(p_size_2d_override);
+		stretch_transform_new.scale(scale);
+	}
+
+	if (size == p_size && size_allocated == p_allocated && stretch_transform == stretch_transform_new && p_size_2d_override == size_2d_override) {
 		return;
 	}
 
 	size = p_size;
 	size_allocated = p_allocated;
 	size_2d_override = p_size_2d_override;
-	stretch_transform = p_stretch_transform;
-	to_screen_rect = p_to_screen_rect;
+	stretch_transform = stretch_transform_new;
 
 #ifndef _3D_DISABLED
 	if (!use_xr) {
@@ -1042,7 +1052,30 @@ Camera2D *Viewport::get_camera_2d() const {
 }
 
 Transform2D Viewport::get_final_transform() const {
-	return _get_input_pre_xform().affine_inverse() * stretch_transform * global_canvas_transform;
+	return stretch_transform * global_canvas_transform;
+}
+
+void Viewport::assign_next_enabled_camera_2d(const StringName &p_camera_group) {
+	List<Node *> camera_list;
+	get_tree()->get_nodes_in_group(p_camera_group, &camera_list);
+
+	Camera2D *new_camera = nullptr;
+	for (Node *E : camera_list) {
+		Camera2D *cam = Object::cast_to<Camera2D>(E);
+		if (!cam) {
+			continue; // Non-camera node (e.g. ParallaxBackground).
+		}
+
+		if (cam->is_enabled()) {
+			new_camera = cam;
+			break;
+		}
+	}
+
+	_camera_2d_set(new_camera);
+	if (!camera_2d) {
+		set_canvas_transform(Transform2D());
+	}
 }
 
 void Viewport::_update_canvas_items(Node *p_node) {
@@ -1107,17 +1140,6 @@ void Viewport::set_positional_shadow_atlas_quadrant_subdiv(int p_quadrant, Posit
 Viewport::PositionalShadowAtlasQuadrantSubdiv Viewport::get_positional_shadow_atlas_quadrant_subdiv(int p_quadrant) const {
 	ERR_FAIL_INDEX_V(p_quadrant, 4, SHADOW_ATLAS_QUADRANT_SUBDIV_DISABLED);
 	return positional_shadow_atlas_quadrant_subdiv[p_quadrant];
-}
-
-Transform2D Viewport::_get_input_pre_xform() const {
-	Transform2D pre_xf;
-
-	if (to_screen_rect.size.x != 0 && to_screen_rect.size.y != 0) {
-		pre_xf.columns[2] = -to_screen_rect.position;
-		pre_xf.scale(Vector2(size) / to_screen_rect.size);
-	}
-
-	return pre_xf;
 }
 
 Ref<InputEvent> Viewport::_make_input_local(const Ref<InputEvent> &ev) {
@@ -4098,9 +4120,26 @@ Viewport::~Viewport() {
 /////////////////////////////////
 
 void SubViewport::set_size(const Size2i &p_size) {
-	_set_size(p_size, _get_size_2d_override(), Rect2i(), _stretch_transform(), true);
+	_internal_set_size(p_size);
+}
 
+void SubViewport::set_size_force(const Size2i &p_size) {
+	// Use only for setting the size from the parent SubViewportContainer with enabled stretch mode.
+	// Don't expose function to scripting.
+	_internal_set_size(p_size, true);
+}
+
+void SubViewport::_internal_set_size(const Size2i &p_size, bool p_force) {
 	SubViewportContainer *c = Object::cast_to<SubViewportContainer>(get_parent());
+	if (!p_force && c && c->is_stretch_enabled()) {
+#ifdef DEBUG_ENABLED
+		WARN_PRINT("Can't change the size of a `SubViewport` with a `SubViewportContainer` parent that has `stretch` enabled. Set `SubViewportContainer.stretch` to `false` to allow changing the size manually.");
+#endif // DEBUG_ENABLED
+		return;
+	}
+
+	_set_size(p_size, _get_size_2d_override(), true);
+
 	if (c) {
 		c->update_minimum_size();
 	}
@@ -4111,7 +4150,7 @@ Size2i SubViewport::get_size() const {
 }
 
 void SubViewport::set_size_2d_override(const Size2i &p_size) {
-	_set_size(_get_size(), p_size, Rect2i(), _stretch_transform(), true);
+	_set_size(_get_size(), p_size, true);
 }
 
 Size2i SubViewport::get_size_2d_override() const {
@@ -4124,7 +4163,7 @@ void SubViewport::set_size_2d_override_stretch(bool p_enable) {
 	}
 
 	size_2d_override_stretch = p_enable;
-	_set_size(_get_size(), _get_size_2d_override(), Rect2i(), _stretch_transform(), true);
+	_set_size(_get_size(), _get_size_2d_override(), true);
 }
 
 bool SubViewport::is_size_2d_override_stretch_enabled() const {
@@ -4153,17 +4192,6 @@ DisplayServer::WindowID SubViewport::get_window_id() const {
 	return DisplayServer::INVALID_WINDOW_ID;
 }
 
-Transform2D SubViewport::_stretch_transform() {
-	Transform2D transform;
-	Size2i view_size_2d_override = _get_size_2d_override();
-	if (size_2d_override_stretch && view_size_2d_override.width > 0 && view_size_2d_override.height > 0) {
-		Size2 scale = Size2(_get_size()) / Size2(view_size_2d_override);
-		transform.scale(scale);
-	}
-
-	return transform;
-}
-
 Transform2D SubViewport::get_screen_transform() const {
 	Transform2D container_transform;
 	SubViewportContainer *c = Object::cast_to<SubViewportContainer>(get_parent());
@@ -4175,7 +4203,7 @@ Transform2D SubViewport::get_screen_transform() const {
 	} else {
 		WARN_PRINT_ONCE("SubViewport is not a child of a SubViewportContainer. get_screen_transform doesn't return the actual screen position.");
 	}
-	return container_transform * Viewport::get_screen_transform();
+	return container_transform * get_final_transform();
 }
 
 Transform2D SubViewport::get_popup_base_transform() const {
@@ -4184,13 +4212,13 @@ Transform2D SubViewport::get_popup_base_transform() const {
 	}
 	SubViewportContainer *c = Object::cast_to<SubViewportContainer>(get_parent());
 	if (!c) {
-		return Viewport::get_screen_transform();
+		return get_final_transform();
 	}
 	Transform2D container_transform;
 	if (c->is_stretch_enabled()) {
 		container_transform.scale(Vector2(c->get_stretch_shrink(), c->get_stretch_shrink()));
 	}
-	return c->get_screen_transform() * container_transform * Viewport::get_screen_transform();
+	return c->get_screen_transform() * container_transform * get_final_transform();
 }
 
 void SubViewport::_notification(int p_what) {

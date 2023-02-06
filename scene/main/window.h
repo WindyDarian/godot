@@ -173,6 +173,8 @@ private:
 
 	Viewport *embedder = nullptr;
 
+	Transform2D window_transform;
+
 	friend class Viewport; //friend back, can call the methods below
 
 	void _window_input(const Ref<InputEvent> &p_ev);
@@ -374,6 +376,7 @@ public:
 
 	//
 
+	virtual Transform2D get_final_transform() const override;
 	virtual Transform2D get_screen_transform() const override;
 	virtual Transform2D get_popup_base_transform() const override;
 

@@ -586,6 +586,8 @@ void MeshStorage::mesh_set_custom_aabb(RID p_mesh, const AABB &p_aabb) {
 	Mesh *mesh = mesh_owner.get_or_null(p_mesh);
 	ERR_FAIL_COND(!mesh);
 	mesh->custom_aabb = p_aabb;
+
+	mesh->dependency.changed_notify(Dependency::DEPENDENCY_CHANGED_AABB);
 }
 
 AABB MeshStorage::mesh_get_custom_aabb(RID p_mesh) const {
@@ -986,7 +988,10 @@ void MeshStorage::update_mesh_instances() {
 			push_constant.skin_stride = (mi->mesh->surfaces[i]->skin_buffer_size / mi->mesh->surfaces[i]->vertex_count) / 4;
 			push_constant.skin_weight_offset = (mi->mesh->surfaces[i]->format & RS::ARRAY_FLAG_USE_8_BONE_WEIGHTS) ? 4 : 2;
 
-			Transform2D transform = mi->canvas_item_transform_2d.affine_inverse() * sk->base_transform_2d;
+			Transform2D transform = Transform2D();
+			if (sk && sk->use_2d) {
+				transform = mi->canvas_item_transform_2d.affine_inverse() * sk->base_transform_2d;
+			}
 			push_constant.skeleton_transform_x[0] = transform.columns[0][0];
 			push_constant.skeleton_transform_x[1] = transform.columns[0][1];
 			push_constant.skeleton_transform_y[0] = transform.columns[1][0];
@@ -1800,8 +1805,12 @@ void MeshStorage::multimesh_set_visible_instances(RID p_multimesh, int p_visible
 	}
 
 	if (multimesh->data_cache.size()) {
-		//there is a data cache..
+		// There is a data cache, but we may need to update some sections.
 		_multimesh_mark_all_dirty(multimesh, false, true);
+		int start = multimesh->visible_instances >= 0 ? multimesh->visible_instances : multimesh->instances;
+		for (int i = start; i < p_visible; i++) {
+			_multimesh_mark_dirty(multimesh, i, true);
+		}
 	}
 
 	multimesh->visible_instances = p_visible;

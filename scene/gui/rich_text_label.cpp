@@ -1797,7 +1797,9 @@ void RichTextLabel::_notification(int p_what) {
 		} break;
 
 		case NOTIFICATION_INTERNAL_PHYSICS_PROCESS: {
-			queue_redraw();
+			if (is_visible_in_tree()) {
+				queue_redraw();
+			}
 		} break;
 
 		case NOTIFICATION_DRAW: {
@@ -2029,7 +2031,7 @@ void RichTextLabel::gui_input(const Ref<InputEvent> &p_event) {
 			}
 		}
 		if (b->get_button_index() == MouseButton::RIGHT && context_menu_enabled) {
-			_generate_context_menu();
+			_update_context_menu();
 			menu->set_position(get_screen_position() + b->get_position());
 			menu->reset_size();
 			menu->popup();
@@ -2088,7 +2090,7 @@ void RichTextLabel::gui_input(const Ref<InputEvent> &p_event) {
 			}
 			if (k->is_action("ui_menu", true)) {
 				if (context_menu_enabled) {
-					_generate_context_menu();
+					_update_context_menu();
 					menu->set_position(get_screen_position());
 					menu->reset_size();
 					menu->popup();
@@ -2665,19 +2667,26 @@ bool RichTextLabel::_find_layout_subitem(Item *from, Item *to) {
 	return false;
 }
 
-void RichTextLabel::_thread_function(void *self) {
-	RichTextLabel *rtl = reinterpret_cast<RichTextLabel *>(self);
-	rtl->set_physics_process_internal(true);
-	rtl->_process_line_caches();
-	rtl->set_physics_process_internal(false);
-	rtl->updating.store(false);
-	rtl->call_deferred(SNAME("queue_redraw"));
+void RichTextLabel::_thread_function(void *p_userdata) {
+	_process_line_caches();
+	updating.store(false);
+	call_deferred(SNAME("thread_end"));
+}
+
+void RichTextLabel::_thread_end() {
+	set_physics_process_internal(false);
+	if (is_visible_in_tree()) {
+		queue_redraw();
+	}
 }
 
 void RichTextLabel::_stop_thread() {
 	if (threaded) {
 		stop_thread.store(true);
-		thread.wait_to_finish();
+		if (task != WorkerThreadPool::INVALID_TASK_ID) {
+			WorkerThreadPool::get_singleton()->wait_for_task_completion(task);
+			task = WorkerThreadPool::INVALID_TASK_ID;
+		}
 	}
 }
 
@@ -2787,7 +2796,8 @@ bool RichTextLabel::_validate_line_caches() {
 	if (threaded) {
 		updating.store(true);
 		loaded.store(true);
-		thread.start(RichTextLabel::_thread_function, reinterpret_cast<void *>(this));
+		task = WorkerThreadPool::get_singleton()->add_template_task(this, &RichTextLabel::_thread_function, nullptr, true, vformat("RichTextLabelShape:%x", (int64_t)get_instance_id()));
+		set_physics_process_internal(true);
 		loading_started = OS::get_singleton()->get_ticks_msec();
 		return false;
 	} else {
@@ -4982,7 +4992,9 @@ bool RichTextLabel::is_shortcut_keys_enabled() const {
 
 // Context menu.
 PopupMenu *RichTextLabel::get_menu() const {
-	const_cast<RichTextLabel *>(this)->_generate_context_menu();
+	if (!menu) {
+		const_cast<RichTextLabel *>(this)->_generate_context_menu();
+	}
 	return menu;
 }
 
@@ -5456,6 +5468,9 @@ void RichTextLabel::_bind_methods() {
 
 	ClassDB::bind_method(D_METHOD("get_menu"), &RichTextLabel::get_menu);
 	ClassDB::bind_method(D_METHOD("is_menu_visible"), &RichTextLabel::is_menu_visible);
+	ClassDB::bind_method(D_METHOD("menu_option", "option"), &RichTextLabel::menu_option);
+
+	ClassDB::bind_method(D_METHOD("_thread_end"), &RichTextLabel::_thread_end);
 
 	// Note: set "bbcode_enabled" first, to avoid unnecessary "text" resets.
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "bbcode_enabled"), "set_use_bbcode", "is_using_bbcode");
@@ -5532,6 +5547,10 @@ void RichTextLabel::_bind_methods() {
 	BIND_ENUM_CONSTANT(ITEM_HINT);
 	BIND_ENUM_CONSTANT(ITEM_DROPCAP);
 	BIND_ENUM_CONSTANT(ITEM_CUSTOMFX);
+
+	BIND_ENUM_CONSTANT(MENU_COPY);
+	BIND_ENUM_CONSTANT(MENU_SELECT_ALL);
+	BIND_ENUM_CONSTANT(MENU_MAX);
 }
 
 TextServer::VisibleCharactersBehavior RichTextLabel::get_visible_characters_behavior() const {
@@ -5663,19 +5682,32 @@ Size2 RichTextLabel::get_minimum_size() const {
 
 // Context menu.
 void RichTextLabel::_generate_context_menu() {
+	menu = memnew(PopupMenu);
+	add_child(menu, false, INTERNAL_MODE_FRONT);
+	menu->connect("id_pressed", callable_mp(this, &RichTextLabel::menu_option));
+
+	menu->add_item(RTR("Copy"), MENU_COPY);
+	menu->add_item(RTR("Select All"), MENU_SELECT_ALL);
+}
+
+void RichTextLabel::_update_context_menu() {
 	if (!menu) {
-		menu = memnew(PopupMenu);
-		add_child(menu, false, INTERNAL_MODE_FRONT);
-
-		menu->connect("id_pressed", callable_mp(this, &RichTextLabel::_menu_option));
+		_generate_context_menu();
 	}
 
-	// Reorganize context menu.
-	menu->clear();
-	if (selection.enabled) {
-		menu->add_item(RTR("Copy"), MENU_COPY, is_shortcut_keys_enabled() ? _get_menu_action_accelerator("ui_copy") : Key::NONE);
-		menu->add_item(RTR("Select All"), MENU_SELECT_ALL, is_shortcut_keys_enabled() ? _get_menu_action_accelerator("ui_text_select_all") : Key::NONE);
+	int idx = -1;
+
+#define MENU_ITEM_ACTION_DISABLED(m_menu, m_id, m_action, m_disabled)                                                  \
+	idx = m_menu->get_item_index(m_id);                                                                                \
+	if (idx >= 0) {                                                                                                    \
+		m_menu->set_item_accelerator(idx, shortcut_keys_enabled ? _get_menu_action_accelerator(m_action) : Key::NONE); \
+		m_menu->set_item_disabled(idx, m_disabled);                                                                    \
 	}
+
+	MENU_ITEM_ACTION_DISABLED(menu, MENU_COPY, "ui_copy", !selection.enabled)
+	MENU_ITEM_ACTION_DISABLED(menu, MENU_SELECT_ALL, "ui_text_select_all", !selection.enabled)
+
+#undef MENU_ITEM_ACTION_DISABLED
 }
 
 Key RichTextLabel::_get_menu_action_accelerator(const String &p_action) {
@@ -5703,7 +5735,7 @@ Key RichTextLabel::_get_menu_action_accelerator(const String &p_action) {
 	}
 }
 
-void RichTextLabel::_menu_option(int p_option) {
+void RichTextLabel::menu_option(int p_option) {
 	switch (p_option) {
 		case MENU_COPY: {
 			selection_copy();
