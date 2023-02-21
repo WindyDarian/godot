@@ -702,6 +702,7 @@ void EditorProperty::gui_input(const Ref<InputEvent> &p_event) {
 
 		if (revert_rect.has_point(mpos)) {
 			accept_event();
+			get_viewport()->gui_release_focus();
 			bool is_valid_revert = false;
 			Variant revert_value = EditorPropertyRevert::get_property_revert_value(object, property, &is_valid_revert);
 			ERR_FAIL_COND(!is_valid_revert);
@@ -3373,6 +3374,9 @@ void EditorInspector::set_keying(bool p_active) {
 }
 
 void EditorInspector::set_read_only(bool p_read_only) {
+	if (p_read_only == read_only) {
+		return;
+	}
 	read_only = p_read_only;
 	update_tree();
 }
