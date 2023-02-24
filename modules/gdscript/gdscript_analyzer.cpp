@@ -657,6 +657,10 @@ GDScriptParser::DataType GDScriptAnalyzer::resolve_datatype(GDScriptParser::Type
 	} else if (ProjectSettings::get_singleton()->has_autoload(first) && ProjectSettings::get_singleton()->get_autoload(first).is_singleton) {
 		const ProjectSettings::AutoloadInfo &autoload = ProjectSettings::get_singleton()->get_autoload(first);
 		Ref<GDScriptParserRef> ref = get_parser_for(autoload.path);
+		if (ref.is_null()) {
+			push_error(vformat(R"(The referenced autoload "%s" (from "%s") could not be loaded.)", first, autoload.path), p_type);
+			return bad_type;
+		}
 		if (ref->raise_status(GDScriptParserRef::INHERITANCE_SOLVED) != OK) {
 			push_error(vformat(R"(Could not parse singleton "%s" from "%s".)", first, autoload.path), p_type);
 			return bad_type;
@@ -727,7 +731,7 @@ GDScriptParser::DataType GDScriptAnalyzer::resolve_datatype(GDScriptParser::Type
 		}
 	}
 	if (!result.is_set()) {
-		push_error(vformat(R"("%s" was not found in the current scope.)", first), p_type);
+		push_error(vformat(R"(Could not find type "%s" in the current scope.)", first), p_type);
 		return bad_type;
 	}
 
@@ -1534,6 +1538,7 @@ void GDScriptAnalyzer::resolve_function_signature(GDScriptParser::FunctionNode *
 		// Check if the function signature matches the parent. If not it's an error since it breaks polymorphism.
 		// Not for the constructor which can vary in signature.
 		GDScriptParser::DataType base_type = parser->current_class->base_type;
+		base_type.is_meta_type = false;
 		GDScriptParser::DataType parent_return_type;
 		List<GDScriptParser::DataType> parameters_types;
 		int default_par_count = 0;
@@ -1852,33 +1857,40 @@ void GDScriptAnalyzer::resolve_for(GDScriptParser::ForNode *p_for) {
 					push_error(vformat(R"*(Invalid call for "range()" function. Expected at most 3 arguments, %d given.)*", call->arguments.size()), call->callee);
 				} else {
 					// Now we can optimize it.
-					bool all_is_constant = true;
+					bool can_reduce = true;
 					Vector<Variant> args;
 					args.resize(call->arguments.size());
 					for (int i = 0; i < call->arguments.size(); i++) {
-						reduce_expression(call->arguments[i]);
+						GDScriptParser::ExpressionNode *argument = call->arguments[i];
+						reduce_expression(argument);
 
-						if (!call->arguments[i]->is_constant) {
-							all_is_constant = false;
-						} else if (all_is_constant) {
-							args.write[i] = call->arguments[i]->reduced_value;
-						}
-
-						GDScriptParser::DataType arg_type = call->arguments[i]->get_datatype();
-						if (!arg_type.is_variant()) {
-							if (arg_type.kind != GDScriptParser::DataType::BUILTIN) {
-								all_is_constant = false;
-								push_error(vformat(R"*(Invalid argument for "range()" call. Argument %d should be int or float but "%s" was given.)*", i + 1, arg_type.to_string()), call->arguments[i]);
-							} else if (arg_type.builtin_type != Variant::INT && arg_type.builtin_type != Variant::FLOAT) {
-								all_is_constant = false;
-								push_error(vformat(R"*(Invalid argument for "range()" call. Argument %d should be int or float but "%s" was given.)*", i + 1, arg_type.to_string()), call->arguments[i]);
+						if (argument->is_constant) {
+							if (argument->reduced_value.get_type() != Variant::INT && argument->reduced_value.get_type() != Variant::FLOAT) {
+								can_reduce = false;
+								push_error(vformat(R"*(Invalid argument for "range()" call. Argument %d should be int or float but "%s" was given.)*", i + 1, Variant::get_type_name(argument->reduced_value.get_type())), argument);
+							}
+							if (can_reduce) {
+								args.write[i] = argument->reduced_value;
+							}
+						} else {
+							can_reduce = false;
+							GDScriptParser::DataType argument_type = argument->get_datatype();
+							if (argument_type.is_variant() || !argument_type.is_hard_type()) {
+								mark_node_unsafe(argument);
+							}
+							if (!argument_type.is_variant() && (argument_type.builtin_type != Variant::INT && argument_type.builtin_type != Variant::FLOAT)) {
+								if (!argument_type.is_hard_type()) {
+									downgrade_node_type_source(argument);
+								} else {
+									push_error(vformat(R"*(Invalid argument for "range()" call. Argument %d should be int or float but "%s" was given.)*", i + 1, argument_type.to_string()), argument);
+								}
 							}
 						}
 					}
 
 					Variant reduced;
 
-					if (all_is_constant) {
+					if (can_reduce) {
 						switch (args.size()) {
 							case 1:
 								reduced = (int32_t)args[0];
