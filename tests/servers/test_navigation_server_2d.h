@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  renames_map_3_to_4.h                                                  */
+/*  test_navigation_server_2d.h                                           */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,29 +28,20 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef RENAMES_MAP_3_TO_4_H
-#define RENAMES_MAP_3_TO_4_H
+#ifndef TEST_NAVIGATION_SERVER_2D_H
+#define TEST_NAVIGATION_SERVER_2D_H
 
-#ifndef DISABLE_DEPRECATED
+#include "servers/navigation_server_2d.h"
 
-struct RenamesMap3To4 {
-	static const char *enum_renames[][2];
-	static const char *gdscript_function_renames[][2];
-	static const char *csharp_function_renames[][2];
-	static const char *gdscript_properties_renames[][2];
-	static const char *csharp_properties_renames[][2];
-	static const char *gdscript_signals_renames[][2];
-	static const char *csharp_signals_renames[][2];
-	static const char *project_settings_renames[][2];
-	static const char *project_godot_renames[][2];
-	static const char *input_map_renames[][2];
-	static const char *builtin_types_renames[][2];
-	static const char *shaders_renames[][2];
-	static const char *class_renames[][2];
-	static const char *color_renames[][2];
-	static const char *theme_override_renames[][2];
-};
+#include "tests/test_macros.h"
 
-#endif // DISABLE_DEPRECATED
+namespace TestNavigationServer2D {
+TEST_SUITE("[Navigation]") {
+	TEST_CASE("[NavigationServer2D] Server should be empty when initialized") {
+		NavigationServer2D *navigation_server = NavigationServer2D::get_singleton();
+		CHECK_EQ(navigation_server->get_maps().size(), 0);
+	}
+}
+} //namespace TestNavigationServer2D
 
-#endif // RENAMES_MAP_3_TO_4_H
+#endif // TEST_NAVIGATION_SERVER_2D_H

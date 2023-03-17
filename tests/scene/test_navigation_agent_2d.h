@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  renames_map_3_to_4.h                                                  */
+/*  test_navigation_agent_2d.h                                            */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,29 +28,45 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef RENAMES_MAP_3_TO_4_H
-#define RENAMES_MAP_3_TO_4_H
+#ifndef TEST_NAVIGATION_AGENT_2D_H
+#define TEST_NAVIGATION_AGENT_2D_H
 
-#ifndef DISABLE_DEPRECATED
+#include "scene/2d/navigation_agent_2d.h"
+#include "scene/2d/node_2d.h"
+#include "scene/main/window.h"
+#include "scene/resources/world_2d.h"
 
-struct RenamesMap3To4 {
-	static const char *enum_renames[][2];
-	static const char *gdscript_function_renames[][2];
-	static const char *csharp_function_renames[][2];
-	static const char *gdscript_properties_renames[][2];
-	static const char *csharp_properties_renames[][2];
-	static const char *gdscript_signals_renames[][2];
-	static const char *csharp_signals_renames[][2];
-	static const char *project_settings_renames[][2];
-	static const char *project_godot_renames[][2];
-	static const char *input_map_renames[][2];
-	static const char *builtin_types_renames[][2];
-	static const char *shaders_renames[][2];
-	static const char *class_renames[][2];
-	static const char *color_renames[][2];
-	static const char *theme_override_renames[][2];
-};
+#include "tests/test_macros.h"
 
-#endif // DISABLE_DEPRECATED
+namespace TestNavigationAgent2D {
 
-#endif // RENAMES_MAP_3_TO_4_H
+TEST_SUITE("[Navigation]") {
+	TEST_CASE("[SceneTree][NavigationAgent2D] New agent should have valid RID") {
+		NavigationAgent2D *agent_node = memnew(NavigationAgent2D);
+		CHECK(agent_node->get_rid().is_valid());
+		memdelete(agent_node);
+	}
+
+	TEST_CASE("[SceneTree][NavigationAgent2D] New agent should attach to default map") {
+		Node2D *node_2d = memnew(Node2D);
+		SceneTree::get_singleton()->get_root()->add_child(node_2d);
+
+		NavigationAgent2D *agent_node = memnew(NavigationAgent2D);
+
+		// agent should not be attached to any map when outside of tree
+		CHECK_FALSE(agent_node->get_navigation_map().is_valid());
+
+		SUBCASE("Agent should attach to default map when it enters the tree") {
+			node_2d->add_child(agent_node);
+			CHECK(agent_node->get_navigation_map().is_valid());
+			CHECK(agent_node->get_navigation_map() == node_2d->get_world_2d()->get_navigation_map());
+		}
+
+		memdelete(agent_node);
+		memdelete(node_2d);
+	}
+}
+
+} //namespace TestNavigationAgent2D
+
+#endif // TEST_NAVIGATION_AGENT_2D_H
