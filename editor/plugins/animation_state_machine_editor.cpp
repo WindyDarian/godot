@@ -312,8 +312,8 @@ void AnimationNodeStateMachineEditor::_state_machine_gui_input(const Ref<InputEv
 			Ref<AnimationNodeStateMachine> anodesm = node;
 			Ref<AnimationNodeEndState> end_node = node;
 
-			if (anodesm.is_valid() || end_node.is_valid()) {
-				_open_connect_menu(mb->get_position());
+			if (state_machine->has_transition(connecting_from, connecting_to_node) && state_machine->can_edit_node(connecting_to_node) && !anodesm.is_valid()) {
+				connecting = false;
 			} else {
 				_add_transition();
 			}
@@ -776,6 +776,7 @@ void AnimationNodeStateMachineEditor::_connect_to(int p_index) {
 
 void AnimationNodeStateMachineEditor::_add_transition(const bool p_nested_action) {
 	if (connecting_from != StringName() && connecting_to_node != StringName()) {
+
 		Ref<AnimationNodeStateMachineTransition> tr;
 		tr.instantiate();
 		tr->set_advance_mode(auto_advance->is_pressed() ? AnimationNodeStateMachineTransition::AdvanceMode::ADVANCE_MODE_AUTO : AnimationNodeStateMachineTransition::AdvanceMode::ADVANCE_MODE_ENABLED);
