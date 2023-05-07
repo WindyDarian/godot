@@ -1642,6 +1642,7 @@ void ScriptEditor::_notification(int p_what) {
 			get_tree()->connect("tree_changed", callable_mp(this, &ScriptEditor::_tree_changed));
 			InspectorDock::get_singleton()->connect("request_help", callable_mp(this, &ScriptEditor::_help_class_open));
 			EditorNode::get_singleton()->connect("request_help_search", callable_mp(this, &ScriptEditor::_help_search));
+			EditorNode::get_singleton()->connect("scene_closed", callable_mp(this, &ScriptEditor::_close_builtin_scripts_from_scene));
 		} break;
 
 		case NOTIFICATION_EXIT_TREE: {
@@ -1676,7 +1677,7 @@ bool ScriptEditor::can_take_away_focus() const {
 	}
 }
 
-void ScriptEditor::close_builtin_scripts_from_scene(const String &p_scene) {
+void ScriptEditor::_close_builtin_scripts_from_scene(const String &p_scene) {
 	for (int i = 0; i < tab_container->get_tab_count(); i++) {
 		ScriptEditorBase *se = Object::cast_to<ScriptEditorBase>(tab_container->get_tab_control(i));
 
@@ -1686,7 +1687,7 @@ void ScriptEditor::close_builtin_scripts_from_scene(const String &p_scene) {
 				continue;
 			}
 
-			if (scr->is_built_in() && scr->get_path().begins_with(p_scene)) { //is an internal script and belongs to scene being closed
+			if (scr->is_built_in() && scr->get_path().begins_with(p_scene)) { // Is an internal script and belongs to scene being closed.
 				_close_tab(i, false);
 				i--;
 			}
@@ -3316,7 +3317,7 @@ void ScriptEditor::_help_class_open(const String &p_class) {
 	eh->set_name(p_class);
 	tab_container->add_child(eh);
 	_go_to_tab(tab_container->get_tab_count() - 1);
-	eh->go_to_class(p_class, 0);
+	eh->go_to_class(p_class);
 	eh->connect("go_to_help", callable_mp(this, &ScriptEditor::_help_class_goto));
 	_add_recent_script(p_class);
 	_sort_list_on_update = true;

@@ -2992,6 +2992,15 @@ static void _find_call_arguments(GDScriptParser::CompletionContext &p_context, c
 
 			List<MethodInfo> virtual_methods;
 			ClassDB::get_virtual_methods(class_name, &virtual_methods);
+
+			{
+				// Not truly a virtual method, but can also be "overridden".
+				MethodInfo static_init("_static_init");
+				static_init.return_val.type = Variant::NIL;
+				static_init.flags |= METHOD_FLAG_STATIC | METHOD_FLAG_VIRTUAL;
+				virtual_methods.push_back(static_init);
+			}
+
 			for (const MethodInfo &mi : virtual_methods) {
 				String method_hint = mi.name;
 				if (method_hint.contains(":")) {
@@ -3089,12 +3098,7 @@ String GDScriptLanguage::_get_indentation() const {
 
 		if (use_space_indentation) {
 			int indent_size = EDITOR_GET("text_editor/behavior/indent/size");
-
-			String space_indent = "";
-			for (int i = 0; i < indent_size; i++) {
-				space_indent += " ";
-			}
-			return space_indent;
+			return String(" ").repeat(indent_size);
 		}
 	}
 #endif
@@ -3141,12 +3145,7 @@ void GDScriptLanguage::auto_indent_code(String &p_code, int p_from_line, int p_t
 		}
 
 		if (i >= p_from_line) {
-			l = "";
-			for (int j = 0; j < indent_stack.size(); j++) {
-				l += indent;
-			}
-			l += st;
-
+			l = indent.repeat(indent_stack.size()) + st;
 		} else if (i > p_to_line) {
 			break;
 		}

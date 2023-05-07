@@ -270,7 +270,9 @@ void NavigationRegion3D::bake_navigation_mesh(bool p_on_thread) {
 
 void NavigationRegion3D::_bake_finished(Ref<NavigationMesh> p_nav_mesh) {
 	set_navigation_mesh(p_nav_mesh);
-	bake_thread.wait_to_finish();
+	if (bake_thread.is_started()) {
+		bake_thread.wait_to_finish();
+	}
 	emit_signal(SNAME("bake_finished"));
 }
 
@@ -372,6 +374,10 @@ NavigationRegion3D::NavigationRegion3D() {
 }
 
 NavigationRegion3D::~NavigationRegion3D() {
+	if (bake_thread.is_started()) {
+		bake_thread.wait_to_finish();
+	}
+
 	if (navigation_mesh.is_valid()) {
 		navigation_mesh->disconnect("changed", callable_mp(this, &NavigationRegion3D::_navigation_changed));
 	}
