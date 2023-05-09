@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  editor_sectioned_inspector.h                                          */
+/*  remote_filesystem_client.h                                            */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,50 +28,38 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef EDITOR_SECTIONED_INSPECTOR_H
-#define EDITOR_SECTIONED_INSPECTOR_H
+#ifndef REMOTE_FILESYSTEM_CLIENT_H
+#define REMOTE_FILESYSTEM_CLIENT_H
 
-#include "editor/editor_inspector.h"
-#include "scene/gui/split_container.h"
-#include "scene/gui/tree.h"
+#include "core/io/ip_address.h"
+#include "core/string/ustring.h"
+#include "core/templates/hash_set.h"
+#include "core/templates/local_vector.h"
 
-class SectionedInspectorFilter;
+class RemoteFilesystemClient {
+	String cache_path;
+	HashSet<String> validated_directories;
 
-class SectionedInspector : public HSplitContainer {
-	GDCLASS(SectionedInspector, HSplitContainer);
+protected:
+	String _get_cache_path() { return cache_path; }
+	struct FileCache {
+		String path; // Local path (as in "folder/to/file.png")
+		uint64_t server_modified_time; // MD5 checksum.
+		uint64_t modified_time;
+	};
+	virtual bool _is_configured() { return !cache_path.is_empty(); }
+	// Can be re-implemented per platform. If so, feel free to ignore get_cache_path()
+	virtual Vector<FileCache> _load_cache_file();
+	virtual Error _store_file(const String &p_path, const LocalVector<uint8_t> &p_file, uint64_t &modified_time);
+	virtual Error _remove_file(const String &p_path);
+	virtual Error _store_cache_file(const Vector<FileCache> &p_cache);
+	virtual Error _synchronize_with_server(const String &p_host, int p_port, const String &p_password, String &r_cache_path);
 
-	ObjectID obj;
-
-	Tree *sections = nullptr;
-	SectionedInspectorFilter *filter = nullptr;
-
-	HashMap<String, TreeItem *> section_map;
-	EditorInspector *inspector = nullptr;
-	LineEdit *search_box = nullptr;
-
-	String selected_category;
-
-	bool restrict_to_basic = false;
-
-	static void _bind_methods();
-	void _section_selected();
-
-	void _search_changed(const String &p_what);
+	virtual void _update_cache_path(String &r_cache_path);
 
 public:
-	void register_search_box(LineEdit *p_box);
-	EditorInspector *get_inspector();
-	void edit(Object *p_object);
-	String get_full_item_path(const String &p_item);
-
-	void set_current_section(const String &p_section);
-	String get_current_section() const;
-
-	void set_restrict_to_basic_settings(bool p_restrict);
-	void update_category_list();
-
-	SectionedInspector();
-	~SectionedInspector();
+	Error synchronize_with_server(const String &p_host, int p_port, const String &p_password, String &r_cache_path);
+	virtual ~RemoteFilesystemClient() {}
 };
 
-#endif // EDITOR_SECTIONED_INSPECTOR_H
+#endif // REMOTE_FILESYSTEM_CLIENT_H
