@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  GodotRenderView.java                                                  */
+/*  gltf_document_extension_texture_webp.cpp                              */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,31 +28,41 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-package org.godotengine.godot;
+#include "gltf_document_extension_texture_webp.h"
 
-import org.godotengine.godot.input.GodotInputHandler;
+#include "scene/3d/area_3d.h"
 
-import android.view.SurfaceView;
-
-public interface GodotRenderView {
-	SurfaceView getView();
-
-	void initInputDevices();
-
-	void queueOnRenderThread(Runnable event);
-
-	void onActivityPaused();
-	void onActivityResumed();
-
-	void onBackPressed();
-
-	GodotInputHandler getInputHandler();
-
-	void configurePointerIcon(int pointerType, String imagePath, float hotSpotX, float hotSpotY);
-
-	void setPointerIcon(int pointerType);
-
-	default boolean canCapturePointer() {
-		return getInputHandler().canCapturePointer();
+// Import process.
+Error GLTFDocumentExtensionTextureWebP::import_preflight(Ref<GLTFState> p_state, Vector<String> p_extensions) {
+	if (!p_extensions.has("EXT_texture_webp")) {
+		return ERR_SKIP;
 	}
+	return OK;
+}
+
+Vector<String> GLTFDocumentExtensionTextureWebP::get_supported_extensions() {
+	Vector<String> ret;
+	ret.push_back("EXT_texture_webp");
+	return ret;
+}
+
+Error GLTFDocumentExtensionTextureWebP::parse_image_data(Ref<GLTFState> p_state, const PackedByteArray &p_image_data, const String &p_mime_type, Ref<Image> r_image) {
+	if (p_mime_type == "image/webp") {
+		return r_image->load_webp_from_buffer(p_image_data);
+	}
+	return OK;
+}
+
+Error GLTFDocumentExtensionTextureWebP::parse_texture_json(Ref<GLTFState> p_state, const Dictionary &p_texture_json, Ref<GLTFTexture> r_gltf_texture) {
+	if (!p_texture_json.has("extensions")) {
+		return OK;
+	}
+	const Dictionary &extensions = p_texture_json["extensions"];
+	if (!extensions.has("EXT_texture_webp")) {
+		return OK;
+	}
+	const Dictionary &texture_webp = extensions["EXT_texture_webp"];
+	ERR_FAIL_COND_V(!texture_webp.has("source"), ERR_PARSE_ERROR);
+	r_gltf_texture->set_src_image(texture_webp["source"]);
+	return OK;
 }

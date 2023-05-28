@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  GodotRenderView.java                                                  */
+/*  gltf_document_extension_texture_webp.h                                */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,31 +28,20 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-package org.godotengine.godot;
+#ifndef GLTF_DOCUMENT_EXTENSION_TEXTURE_WEBP_H
+#define GLTF_DOCUMENT_EXTENSION_TEXTURE_WEBP_H
 
-import org.godotengine.godot.input.GodotInputHandler;
+#include "gltf_document_extension.h"
 
-import android.view.SurfaceView;
+class GLTFDocumentExtensionTextureWebP : public GLTFDocumentExtension {
+	GDCLASS(GLTFDocumentExtensionTextureWebP, GLTFDocumentExtension);
 
-public interface GodotRenderView {
-	SurfaceView getView();
+public:
+	// Import process.
+	Error import_preflight(Ref<GLTFState> p_state, Vector<String> p_extensions) override;
+	Vector<String> get_supported_extensions() override;
+	Error parse_image_data(Ref<GLTFState> p_state, const PackedByteArray &p_image_data, const String &p_mime_type, Ref<Image> r_image) override;
+	Error parse_texture_json(Ref<GLTFState> p_state, const Dictionary &p_texture_json, Ref<GLTFTexture> r_gltf_texture) override;
+};
 
-	void initInputDevices();
-
-	void queueOnRenderThread(Runnable event);
-
-	void onActivityPaused();
-	void onActivityResumed();
-
-	void onBackPressed();
-
-	GodotInputHandler getInputHandler();
-
-	void configurePointerIcon(int pointerType, String imagePath, float hotSpotX, float hotSpotY);
-
-	void setPointerIcon(int pointerType);
-
-	default boolean canCapturePointer() {
-		return getInputHandler().canCapturePointer();
-	}
-}
+#endif // GLTF_DOCUMENT_EXTENSION_TEXTURE_WEBP_H
