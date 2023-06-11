@@ -1582,22 +1582,6 @@ void Control::_update_minimum_size() {
 		return;
 	}
 
-	Size2 minsize = get_combined_minimum_size();
-	data.updating_last_minimum_size = false;
-
-	if (minsize != data.last_minimum_size) {
-		data.last_minimum_size = minsize;
-		_size_changed();
-		emit_signal(SceneStringNames::get_singleton()->minimum_size_changed);
-	}
-}
-
-void Control::update_minimum_size() {
-	ERR_MAIN_THREAD_GUARD;
-	if (!is_inside_tree() || data.block_minimum_size_adjust) {
-		return;
-	}
-
 	Control *invalidate = this;
 
 	// Invalidate cache upwards.
@@ -1617,6 +1601,21 @@ void Control::update_minimum_size() {
 	}
 
 	if (!is_visible_in_tree()) {
+		return;
+	}
+
+	Size2 minsize = get_combined_minimum_size();
+	data.updating_last_minimum_size = false;
+	if (minsize != data.last_minimum_size) {
+		data.last_minimum_size = minsize;
+		_size_changed();
+		emit_signal(SceneStringNames::get_singleton()->minimum_size_changed);
+	}
+}
+
+void Control::update_minimum_size() {
+	ERR_MAIN_THREAD_GUARD;
+	if (!is_inside_tree() || data.block_minimum_size_adjust) {
 		return;
 	}
 
@@ -1713,7 +1712,7 @@ void Control::_size_changed() {
 	}
 
 	if (is_layout_rtl()) {
-		new_pos_cache.x = parent_rect.size.x - new_pos_cache.x - new_size_cache.x;
+		new_pos_cache.x = parent_rect.size.x + 2 * parent_rect.position.x - new_pos_cache.x - new_size_cache.x;
 	}
 
 	if (minimum_size.height > new_size_cache.height) {
@@ -2400,7 +2399,8 @@ void Control::set_default_cursor_shape(CursorShape p_shape) {
 		return;
 	}
 
-	get_viewport()->get_base_window()->update_mouse_cursor_shape();
+	// Display the new cursor shape instantly.
+	get_viewport()->update_mouse_cursor_state();
 }
 
 Control::CursorShape Control::get_default_cursor_shape() const {
@@ -3139,7 +3139,6 @@ void Control::_notification(int p_notification) {
 		} break;
 
 		case NOTIFICATION_POST_ENTER_TREE: {
-			data.minimum_size_valid = false;
 			data.is_rtl_dirty = true;
 			_size_changed();
 		} break;
@@ -3181,7 +3180,7 @@ void Control::_notification(int p_notification) {
 			} else {
 				// Is a regular root control or top_level.
 				Viewport *viewport = get_viewport();
-				ERR_FAIL_COND(!viewport);
+				ERR_FAIL_NULL(viewport);
 				data.RI = viewport->_gui_add_root_control(this);
 
 				get_parent()->connect(SNAME("child_order_changed"), callable_mp(get_viewport(), &Viewport::gui_set_root_order_dirty), CONNECT_REFERENCE_COUNTED);
@@ -3194,7 +3193,7 @@ void Control::_notification(int p_notification) {
 			} else {
 				// Connect viewport.
 				Viewport *viewport = get_viewport();
-				ERR_FAIL_COND(!viewport);
+				ERR_FAIL_NULL(viewport);
 				viewport->connect("size_changed", callable_mp(this, &Control::_size_changed));
 			}
 		} break;
@@ -3206,7 +3205,7 @@ void Control::_notification(int p_notification) {
 			} else {
 				// Disconnect viewport.
 				Viewport *viewport = get_viewport();
-				ERR_FAIL_COND(!viewport);
+				ERR_FAIL_NULL(viewport);
 				viewport->disconnect("size_changed", callable_mp(this, &Control::_size_changed));
 			}
 
@@ -3268,9 +3267,7 @@ void Control::_notification(int p_notification) {
 					get_viewport()->_gui_hide_control(this);
 				}
 			} else {
-				data.minimum_size_valid = false;
 				_update_minimum_size();
-				_size_changed();
 			}
 		} break;
 

@@ -46,14 +46,14 @@
 #include "scene/property_utils.h"
 #include "scene/resources/packed_scene.h"
 
-static bool _property_path_matches(const String &p_property_path, const String &p_filter, EditorPropertyNameProcessor::Style p_style) {
+bool EditorInspector::_property_path_matches(const String &p_property_path, const String &p_filter, EditorPropertyNameProcessor::Style p_style) {
 	if (p_property_path.findn(p_filter) != -1) {
 		return true;
 	}
 
-	const Vector<String> sections = p_property_path.split("/");
-	for (int i = 0; i < sections.size(); i++) {
-		if (p_filter.is_subsequence_ofn(EditorPropertyNameProcessor::get_singleton()->process_name(sections[i], p_style))) {
+	const Vector<String> prop_sections = p_property_path.split("/");
+	for (int i = 0; i < prop_sections.size(); i++) {
+		if (p_filter.is_subsequence_ofn(EditorPropertyNameProcessor::get_singleton()->process_name(prop_sections[i], p_style))) {
 			return true;
 		}
 	}
@@ -598,6 +598,9 @@ void EditorProperty::add_focusable(Control *p_control) {
 
 void EditorProperty::select(int p_focusable) {
 	bool already_selected = selected;
+	if (!selectable) {
+		return;
+	}
 
 	if (p_focusable >= 0) {
 		ERR_FAIL_INDEX(p_focusable, focusables.size());
@@ -671,11 +674,7 @@ void EditorProperty::gui_input(const Ref<InputEvent> &p_event) {
 			mpos.x = get_size().x - mpos.x;
 		}
 
-		if (!selected && selectable) {
-			selected = true;
-			emit_signal(SNAME("selected"), property, -1);
-			queue_redraw();
-		}
+		select();
 
 		if (keying_rect.has_point(mpos)) {
 			accept_event();
@@ -2809,18 +2808,22 @@ void EditorInspector::update_tree() {
 			category->label = label;
 
 			if (use_doc_hints) {
+				String descr = "";
 				// Sets the category tooltip to show documentation.
 				if (!class_descr_cache.has(doc_name)) {
-					String descr;
 					DocTools *dd = EditorHelp::get_doc_data();
 					HashMap<String, DocData::ClassDoc>::Iterator E = dd->class_list.find(doc_name);
 					if (E) {
 						descr = DTR(E->value.brief_description);
 					}
-					class_descr_cache[doc_name] = descr;
+					if (ClassDB::class_exists(doc_name)) {
+						class_descr_cache[doc_name] = descr; // Do not cache the class description of scripts.
+					}
+				} else {
+					descr = class_descr_cache[doc_name];
 				}
 
-				category->set_tooltip_text(p.name + "::" + (class_descr_cache[doc_name].is_empty() ? "" : class_descr_cache[doc_name]));
+				category->set_tooltip_text(p.name + "::" + descr);
 			}
 
 			// Add editors at the start of a category.
@@ -3213,7 +3216,9 @@ void EditorInspector::update_tree() {
 					}
 				}
 
-				doc_info_cache[classname][propname] = doc_info;
+				if (ClassDB::class_exists(classname)) {
+					doc_info_cache[classname][propname] = doc_info; // Do not cache the doc information of scripts.
+				}
 			}
 		}
 

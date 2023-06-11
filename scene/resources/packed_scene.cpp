@@ -45,8 +45,6 @@
 
 #define PACKED_SCENE_VERSION 3
 
-const String PackedScene::META_POINTER_PROPERTY_BASE = "metadata/_editor_prop_ptr_";
-
 bool SceneState::can_instantiate() const {
 	return nodes.size() > 0;
 }
@@ -144,7 +142,7 @@ Node *SceneState::instantiate(GenEditState p_edit_state) const {
 			Ref<PackedScene> sdata = props[base_scene_idx];
 			ERR_FAIL_COND_V(!sdata.is_valid(), nullptr);
 			node = sdata->instantiate(p_edit_state == GEN_EDIT_STATE_DISABLED ? PackedScene::GEN_EDIT_STATE_DISABLED : PackedScene::GEN_EDIT_STATE_INSTANCE); //only main gets main edit state
-			ERR_FAIL_COND_V(!node, nullptr);
+			ERR_FAIL_NULL_V(node, nullptr);
 			if (p_edit_state != GEN_EDIT_STATE_DISABLED) {
 				node->set_scene_inherited_state(sdata->get_state());
 			}
@@ -157,7 +155,7 @@ Node *SceneState::instantiate(GenEditState p_edit_state) const {
 					Ref<PackedScene> sdata = ResourceLoader::load(scene_path, "PackedScene");
 					ERR_FAIL_COND_V(!sdata.is_valid(), nullptr);
 					node = sdata->instantiate(p_edit_state == GEN_EDIT_STATE_DISABLED ? PackedScene::GEN_EDIT_STATE_DISABLED : PackedScene::GEN_EDIT_STATE_INSTANCE);
-					ERR_FAIL_COND_V(!node, nullptr);
+					ERR_FAIL_NULL_V(node, nullptr);
 				} else {
 					InstancePlaceholder *ip = memnew(InstancePlaceholder);
 					ip->set_instance_path(scene_path);
@@ -168,7 +166,7 @@ Node *SceneState::instantiate(GenEditState p_edit_state) const {
 				Ref<PackedScene> sdata = props[n.instance & FLAG_MASK];
 				ERR_FAIL_COND_V(!sdata.is_valid(), nullptr);
 				node = sdata->instantiate(p_edit_state == GEN_EDIT_STATE_DISABLED ? PackedScene::GEN_EDIT_STATE_DISABLED : PackedScene::GEN_EDIT_STATE_INSTANCE);
-				ERR_FAIL_COND_V(!node, nullptr);
+				ERR_FAIL_NULL_V(node, nullptr);
 			}
 
 		} else if (n.type == TYPE_INSTANTIATED) {
@@ -246,13 +244,14 @@ Node *SceneState::instantiate(GenEditState p_edit_state) const {
 						const Variant &prop_variant = props[nprops[j].value];
 
 						if (prop_variant.get_type() == Variant::ARRAY) {
-							if (Engine::get_singleton()->is_editor_hint()) {
-								// If editor, simply set the original array of NodePaths.
-								node->set(prop_name, prop_variant);
-								continue;
-							}
-
 							const Array &array = prop_variant;
+							if (Engine::get_singleton()->is_editor_hint()) {
+								if (array.get_typed_builtin() == Variant::NODE_PATH) {
+									// If editor, simply set the original array of NodePaths.
+									node->set(prop_name, prop_variant);
+									continue;
+								}
+							}
 							for (int k = 0; k < array.size(); k++) {
 								DeferredNodePathProperties dnp;
 								dnp.path = array[k];
@@ -263,16 +262,12 @@ Node *SceneState::instantiate(GenEditState p_edit_state) const {
 							}
 
 						} else {
-							node->set(PackedScene::META_POINTER_PROPERTY_BASE + String(prop_name), prop_variant);
-
-							if (!Engine::get_singleton()->is_editor_hint()) {
-								// If not editor, do an actual deferred sed of the property path.
-								DeferredNodePathProperties dnp;
-								dnp.path = prop_variant;
-								dnp.base = node;
-								dnp.property = prop_name;
-								deferred_node_paths.push_back(dnp);
-							}
+							// Do an actual deferred set of the property path.
+							DeferredNodePathProperties dnp;
+							dnp.path = prop_variant;
+							dnp.base = node;
+							dnp.property = prop_name;
+							deferred_node_paths.push_back(dnp);
 						}
 						continue;
 					}
@@ -626,9 +621,6 @@ Error SceneState::_parse_node(Node *p_owner, Node *p_node, int p_parent_idx, Has
 		if (E.name == META_PROPERTY_MISSING_RESOURCES) {
 			continue; // Ignore this property when packing.
 		}
-		if (E.name.begins_with(PackedScene::META_POINTER_PROPERTY_BASE)) {
-			continue; // do not save.
-		}
 
 		// If instance or inheriting, not saving if property requested so.
 		if (!states_stack.is_empty()) {
@@ -642,11 +634,15 @@ Error SceneState::_parse_node(Node *p_owner, Node *p_node, int p_parent_idx, Has
 		bool use_deferred_node_path_bit = false;
 
 		if (E.type == Variant::OBJECT && E.hint == PROPERTY_HINT_NODE_TYPE) {
-			value = p_node->get(PackedScene::META_POINTER_PROPERTY_BASE + E.name);
+			if (value.get_type() == Variant::OBJECT) {
+				if (Node *n = Object::cast_to<Node>(value)) {
+					value = p_node->get_path_to(n);
+				}
+				use_deferred_node_path_bit = true;
+			}
 			if (value.get_type() != Variant::NODE_PATH) {
 				continue; //was never set, ignore.
 			}
-			use_deferred_node_path_bit = true;
 		} else if (E.type == Variant::OBJECT && missing_resource_properties.has(E.name)) {
 			// Was this missing resource overridden? If so do not save the old value.
 			Ref<Resource> ures = value;
@@ -665,7 +661,22 @@ Error SceneState::_parse_node(Node *p_owner, Node *p_node, int p_parent_idx, Has
 				}
 				Variant::Type subtype = Variant::Type(subtype_string.to_int());
 
-				use_deferred_node_path_bit = subtype == Variant::OBJECT && subtype_hint == PROPERTY_HINT_NODE_TYPE;
+				if (subtype == Variant::OBJECT && subtype_hint == PROPERTY_HINT_NODE_TYPE) {
+					use_deferred_node_path_bit = true;
+					Array array = value;
+					Array new_array;
+					for (int i = 0; i < array.size(); i++) {
+						Variant elem = array[i];
+						if (elem.get_type() == Variant::OBJECT) {
+							if (Node *n = Object::cast_to<Node>(elem)) {
+								new_array.push_back(p_node->get_path_to(n));
+								continue;
+							}
+						}
+						new_array.push_back(elem);
+					}
+					value = new_array;
+				}
 			}
 		}
 
@@ -1789,10 +1800,6 @@ void SceneState::add_connection(int p_from, int p_to, int p_signal, int p_method
 
 void SceneState::add_editable_instance(const NodePath &p_path) {
 	editable_instances.push_back(p_path);
-}
-
-String SceneState::get_meta_pointer_property(const String &p_property) {
-	return PackedScene::META_POINTER_PROPERTY_BASE + p_property;
 }
 
 Vector<String> SceneState::_get_node_groups(int p_idx) const {

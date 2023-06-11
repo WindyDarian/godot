@@ -55,6 +55,7 @@ _helper_module("modules.modules_builders", "modules/modules_builders.py")
 import methods
 import glsl_builders
 import gles3_builders
+import scu_builders
 from platform_methods import architectures, architecture_aliases
 
 if ARGUMENTS.get("target", "editor") == "editor":
@@ -223,6 +224,7 @@ opts.Add(
     "",
 )
 opts.Add(BoolVariable("use_precise_math_checks", "Math checks use very precise epsilon (debug option)", False))
+opts.Add(BoolVariable("scu_build", "Use single compilation unit build", False))
 
 # Thirdparty libraries
 opts.Add(BoolVariable("builtin_certs", "Use the built-in SSL certificates bundles", True))
@@ -549,6 +551,10 @@ if selected_platform in platform_list:
         env["debug_symbols"] = methods.get_cmdline_bool("debug_symbols", False)
         # LTO "auto" means we handle the preferred option in each platform detect.py.
         env["lto"] = ARGUMENTS.get("lto", "auto")
+
+    # Run SCU file generation script if in a SCU build.
+    if env["scu_build"]:
+        methods.set_scu_folders(scu_builders.generate_scu_files(env["verbose"], env_base.dev_build == False))
 
     # Must happen after the flags' definition, as configure is when most flags
     # are actually handled to change compile options, etc.

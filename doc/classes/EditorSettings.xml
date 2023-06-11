@@ -228,9 +228,6 @@
 		<member name="editors/2d/bone_width" type="int" setter="" getter="">
 			The bone width in the 2D skeleton editor (in pixels). See also [member editors/2d/bone_outline_size].
 		</member>
-		<member name="editors/2d/constrain_editor_view" type="bool" setter="" getter="">
-			If [code]true[/code], prevents the 2D editor viewport from leaving the scene. Limits are calculated dynamically based on nodes present in the current scene. If [code]false[/code], the 2D editor viewport will be able to move freely, but you risk getting lost when zooming out too far. You can refocus on the scene by selecting a node then pressing [kbd]F[/kbd].
-		</member>
 		<member name="editors/2d/grid_color" type="Color" setter="" getter="">
 			The grid color to use in the 2D editor.
 		</member>
@@ -699,6 +696,10 @@
 		</member>
 		<member name="run/output/font_size" type="int" setter="" getter="">
 			The size of the font in the [b]Output[/b] panel at the bottom of the editor. This setting does not impact the font size of the script editor (see [member interface/editor/code_font_size]).
+		</member>
+		<member name="run/window_placement/android_window" type="int" setter="" getter="">
+			The Android window to display the project on when starting the project from the editor.
+			[b]Note:[/b] Only available in the Android editor.
 		</member>
 		<member name="run/window_placement/rect" type="int" setter="" getter="">
 			The window mode to use to display the project when starting the project from the editor.

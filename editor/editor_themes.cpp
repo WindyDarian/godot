@@ -626,6 +626,8 @@ Ref<Theme> create_editor_theme(const Ref<Theme> p_theme) {
 	theme->set_constant("dark_theme", "Editor", dark_theme);
 	theme->set_constant("color_picker_button_height", "Editor", 28 * EDSCALE);
 	theme->set_constant("gizmo_handle_scale", "Editor", gizmo_handle_scale);
+	theme->set_constant("window_border_margin", "Editor", 8);
+	theme->set_constant("top_bar_separation", "Editor", 8 * EDSCALE);
 
 	// Register editor icons.
 	// If the settings are comparable to the old theme, then just copy them over.
@@ -938,6 +940,33 @@ Ref<Theme> create_editor_theme(const Ref<Theme> p_theme) {
 	editor_log_button_pressed->set_border_width(SIDE_BOTTOM, 2 * EDSCALE);
 	editor_log_button_pressed->set_border_color(accent_color);
 	theme->set_stylebox("pressed", "EditorLogFilterButton", editor_log_button_pressed);
+
+	// ProjectTag
+	{
+		theme->set_type_variation("ProjectTag", "Button");
+
+		Ref<StyleBoxFlat> tag = style_widget->duplicate();
+		tag->set_bg_color(dark_theme ? tag->get_bg_color().lightened(0.2) : tag->get_bg_color().darkened(0.2));
+		tag->set_corner_radius(CORNER_TOP_LEFT, 0);
+		tag->set_corner_radius(CORNER_BOTTOM_LEFT, 0);
+		tag->set_corner_radius(CORNER_TOP_RIGHT, 4);
+		tag->set_corner_radius(CORNER_BOTTOM_RIGHT, 4);
+		theme->set_stylebox("normal", "ProjectTag", tag);
+
+		tag = style_widget_hover->duplicate();
+		tag->set_corner_radius(CORNER_TOP_LEFT, 0);
+		tag->set_corner_radius(CORNER_BOTTOM_LEFT, 0);
+		tag->set_corner_radius(CORNER_TOP_RIGHT, 4);
+		tag->set_corner_radius(CORNER_BOTTOM_RIGHT, 4);
+		theme->set_stylebox("hover", "ProjectTag", tag);
+
+		tag = style_widget_pressed->duplicate();
+		tag->set_corner_radius(CORNER_TOP_LEFT, 0);
+		tag->set_corner_radius(CORNER_BOTTOM_LEFT, 0);
+		tag->set_corner_radius(CORNER_TOP_RIGHT, 4);
+		tag->set_corner_radius(CORNER_BOTTOM_RIGHT, 4);
+		theme->set_stylebox("pressed", "ProjectTag", tag);
+	}
 
 	// MenuBar
 	theme->set_stylebox("normal", "MenuBar", style_widget);

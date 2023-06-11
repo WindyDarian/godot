@@ -2870,8 +2870,8 @@ TypedArray<StringName> RenderingServer::_global_shader_parameter_get_list() cons
 }
 
 void RenderingServer::init() {
-	GLOBAL_DEF_RST_NOVAL_BASIC("rendering/textures/vram_compression/import_s3tc_bptc", false);
-	GLOBAL_DEF_RST_NOVAL_BASIC("rendering/textures/vram_compression/import_etc2_astc", false);
+	GLOBAL_DEF_RST("rendering/textures/vram_compression/import_s3tc_bptc", true);
+	GLOBAL_DEF_RST("rendering/textures/vram_compression/import_etc2_astc", false);
 
 	GLOBAL_DEF("rendering/textures/lossless_compression/force_png", false);
 
