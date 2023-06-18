@@ -170,12 +170,10 @@ Ref<Image> ViewportTexture::get_image() const {
 }
 
 void ViewportTexture::_setup_local_to_scene(const Node *p_loc_scene) {
-	Node *vpn = p_loc_scene->get_node(path);
-	ERR_FAIL_COND_MSG(!vpn, "ViewportTexture: Path to node is invalid.");
-
+	Node *vpn = p_loc_scene->get_node_or_null(path);
+	ERR_FAIL_NULL_MSG(vpn, "Path to node is invalid: '" + path + "'.");
 	vp = Object::cast_to<Viewport>(vpn);
-
-	ERR_FAIL_COND_MSG(!vp, "ViewportTexture: Path to node does not point to a viewport.");
+	ERR_FAIL_NULL_MSG(vp, "Path to node does not point to a viewport: '" + path + "'.");
 
 	vp->viewport_textures.insert(this);
 
@@ -287,7 +285,11 @@ void Viewport::_sub_window_register(Window *p_window) {
 	gui.sub_windows.push_back(sw);
 
 	if (gui.subwindow_drag == SUB_WINDOW_DRAG_DISABLED) {
-		_sub_window_grab_focus(p_window);
+		if (p_window->get_flag(Window::FLAG_NO_FOCUS)) {
+			_sub_window_update_order();
+		} else {
+			_sub_window_grab_focus(p_window);
+		}
 	} else {
 		int index = _sub_window_find(gui.currently_dragged_subwindow);
 		sw = gui.sub_windows[index];

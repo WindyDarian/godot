@@ -30,9 +30,6 @@
 
 #include "gdscript.h"
 
-#include "core/config/engine.h"
-#include "core/core_constants.h"
-#include "core/io/file_access.h"
 #include "gdscript_analyzer.h"
 #include "gdscript_compiler.h"
 #include "gdscript_parser.h"
@@ -40,10 +37,17 @@
 #include "gdscript_utility_functions.h"
 
 #ifdef TOOLS_ENABLED
+#include "editor/script_templates/templates.gen.h"
+#endif
+
+#include "core/config/engine.h"
+#include "core/core_constants.h"
+#include "core/io/file_access.h"
+
+#ifdef TOOLS_ENABLED
 #include "core/config/project_settings.h"
 #include "editor/editor_file_system.h"
 #include "editor/editor_settings.h"
-#include "editor/script_templates/templates.gen.h"
 #endif
 
 void GDScriptLanguage::get_comment_delimiters(List<String> *p_delimiters) const {
@@ -3399,7 +3403,8 @@ static Error _lookup_symbol_from_base(const GDScriptParser::DataType &p_base, co
 		}
 		case GDScriptParser::COMPLETION_ASSIGN:
 		case GDScriptParser::COMPLETION_CALL_ARGUMENTS:
-		case GDScriptParser::COMPLETION_IDENTIFIER: {
+		case GDScriptParser::COMPLETION_IDENTIFIER:
+		case GDScriptParser::COMPLETION_PROPERTY_METHOD: {
 			GDScriptParser::DataType base_type;
 			if (context.current_class) {
 				if (context.type != GDScriptParser::COMPLETION_SUPER_METHOD) {

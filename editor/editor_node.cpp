@@ -2027,6 +2027,9 @@ void EditorNode::_dialog_action(String p_file) {
 			if (err) {
 				show_accept(TTR("Error saving MeshLibrary!"), TTR("OK"));
 				return;
+			} else if (ResourceCache::has(p_file)) {
+				// Make sure MeshLibrary is updated in the editor.
+				ResourceLoader::load(p_file)->reload_from_file();
 			}
 
 		} break;
@@ -3417,10 +3420,12 @@ void EditorNode::_remove_scene(int index, bool p_change_tab) {
 }
 
 void EditorNode::set_edited_scene(Node *p_scene) {
-	if (get_editor_data().get_edited_scene_root()) {
-		if (get_editor_data().get_edited_scene_root()->get_parent() == scene_root) {
-			scene_root->remove_child(get_editor_data().get_edited_scene_root());
+	Node *old_edited_scene_root = get_editor_data().get_edited_scene_root();
+	if (old_edited_scene_root) {
+		if (old_edited_scene_root->get_parent() == scene_root) {
+			scene_root->remove_child(old_edited_scene_root);
 		}
+		old_edited_scene_root->disconnect(SNAME("replacing_by"), callable_mp(this, &EditorNode::set_edited_scene));
 	}
 	get_editor_data().set_edited_scene_root(p_scene);
 
@@ -3436,6 +3441,7 @@ void EditorNode::set_edited_scene(Node *p_scene) {
 		if (p_scene->get_parent() != scene_root) {
 			scene_root->add_child(p_scene, true);
 		}
+		p_scene->connect(SNAME("replacing_by"), callable_mp(this, &EditorNode::set_edited_scene));
 	}
 }
 
@@ -4100,6 +4106,13 @@ void EditorNode::add_io_error(const String &p_error) {
 	DEV_ASSERT(Thread::get_caller_id() == Thread::get_main_id());
 	singleton->load_errors->add_image(singleton->gui_base->get_theme_icon(SNAME("Error"), SNAME("EditorIcons")));
 	singleton->load_errors->add_text(p_error + "\n");
+	EditorInterface::get_singleton()->popup_dialog_centered_ratio(singleton->load_error_dialog, 0.5);
+}
+
+void EditorNode::add_io_warning(const String &p_warning) {
+	DEV_ASSERT(Thread::get_caller_id() == Thread::get_main_id());
+	singleton->load_errors->add_image(singleton->gui_base->get_theme_icon(SNAME("Warning"), SNAME("EditorIcons")));
+	singleton->load_errors->add_text(p_warning + "\n");
 	EditorInterface::get_singleton()->popup_dialog_centered_ratio(singleton->load_error_dialog, 0.5);
 }
 
@@ -4926,7 +4939,10 @@ void EditorNode::_save_open_scenes_to_config(Ref<ConfigFile> p_layout) {
 	p_layout->set_value(EDITOR_NODE_CONFIG_SECTION, "open_scenes", scenes);
 
 	String currently_edited_scene_path = editor_data.get_scene_path(editor_data.get_edited_scene());
-	p_layout->set_value(EDITOR_NODE_CONFIG_SECTION, "current_scene", currently_edited_scene_path);
+	// Don't save a bad path to the config.
+	if (!currently_edited_scene_path.is_empty()) {
+		p_layout->set_value(EDITOR_NODE_CONFIG_SECTION, "current_scene", currently_edited_scene_path);
+	}
 }
 
 void EditorNode::save_editor_layout_delayed() {
@@ -6804,6 +6820,11 @@ EditorNode::EditorNode() {
 	ResourceLoader::set_abort_on_missing_resources(false);
 	ResourceLoader::set_error_notify_func(&EditorNode::add_io_error);
 	ResourceLoader::set_dependency_error_notify_func(&EditorNode::_dependency_error_report);
+
+	SceneState::set_instantiation_warning_notify_func([](const String &p_warning) {
+		add_io_warning(p_warning);
+		callable_mp(EditorInterface::get_singleton(), &EditorInterface::mark_scene_as_unsaved).call_deferred();
+	});
 
 	{
 		// Register importers at the beginning, so dialogs are created with the right extensions.

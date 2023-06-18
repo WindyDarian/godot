@@ -30,23 +30,27 @@
 
 #include "gdscript_parser.h"
 
+#include "gdscript.h"
+
+#ifdef DEBUG_ENABLED
+#include "gdscript_warning.h"
+#endif
+
 #include "core/config/project_settings.h"
 #include "core/io/file_access.h"
 #include "core/io/resource_loader.h"
 #include "core/math/math_defs.h"
-#include "gdscript.h"
 #include "scene/main/multiplayer_api.h"
 
 #ifdef DEBUG_ENABLED
 #include "core/os/os.h"
 #include "core/string/string_builder.h"
-#include "gdscript_warning.h"
 #include "servers/text_server.h"
-#endif // DEBUG_ENABLED
+#endif
 
 #ifdef TOOLS_ENABLED
 #include "editor/editor_settings.h"
-#endif // TOOLS_ENABLED
+#endif
 
 static HashMap<StringName, Variant::Type> builtin_types;
 Variant::Type GDScriptParser::get_builtin_type(const StringName &p_type) {
@@ -2760,12 +2764,12 @@ GDScriptParser::ExpressionNode *GDScriptParser::parse_dictionary(ExpressionNode 
 			switch (dictionary->style) {
 				case DictionaryNode::LUA_TABLE:
 					if (key != nullptr && key->type != Node::IDENTIFIER && key->type != Node::LITERAL) {
-						push_error("Expected identifier or string as LUA-style dictionary key.");
+						push_error(R"(Expected identifier or string as Lua-style dictionary key (e.g "{ key = value }").)");
 						advance();
 						break;
 					}
 					if (key != nullptr && key->type == Node::LITERAL && static_cast<LiteralNode *>(key)->value.get_type() != Variant::STRING) {
-						push_error("Expected identifier or string as LUA-style dictionary key.");
+						push_error(R"(Expected identifier or string as Lua-style dictionary key (e.g "{ key = value }").)");
 						advance();
 						break;
 					}

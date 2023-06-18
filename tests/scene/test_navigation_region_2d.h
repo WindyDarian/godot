@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  gltf_collider.h                                                       */
+/*  test_navigation_region_2d.h                                           */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,61 +28,24 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef GLTF_COLLIDER_H
-#define GLTF_COLLIDER_H
+#ifndef TEST_NAVIGATION_REGION_2D_H
+#define TEST_NAVIGATION_REGION_2D_H
 
-#include "../../gltf_defines.h"
-#include "scene/3d/collision_shape_3d.h"
+#include "scene/2d/navigation_region_2d.h"
+#include "scene/main/window.h"
 
-class ImporterMesh;
+#include "tests/test_macros.h"
 
-// GLTFCollider is an intermediary between OMI_collider and Godot's collision shape nodes.
-// https://github.com/omigroup/gltf-extensions/tree/main/extensions/2.0/OMI_collider
+namespace TestNavigationRegion2D {
 
-class GLTFCollider : public Resource {
-	GDCLASS(GLTFCollider, Resource)
+TEST_SUITE("[Navigation]") {
+	TEST_CASE("[SceneTree][NavigationRegion2D] New region should have valid RID") {
+		NavigationRegion2D *region_node = memnew(NavigationRegion2D);
+		CHECK(region_node->get_region_rid().is_valid());
+		memdelete(region_node);
+	}
+}
 
-protected:
-	static void _bind_methods();
+} //namespace TestNavigationRegion2D
 
-private:
-	String shape_type;
-	Vector3 size = Vector3(1.0, 1.0, 1.0);
-	real_t radius = 0.5;
-	real_t height = 2.0;
-	bool is_trigger = false;
-	GLTFMeshIndex mesh_index = -1;
-	Ref<ImporterMesh> importer_mesh = nullptr;
-	// Internal only, for caching Godot shape resources. Used in `to_node`.
-	Ref<Shape3D> _shape_cache = nullptr;
-
-public:
-	String get_shape_type() const;
-	void set_shape_type(String p_shape_type);
-
-	Vector3 get_size() const;
-	void set_size(Vector3 p_size);
-
-	real_t get_radius() const;
-	void set_radius(real_t p_radius);
-
-	real_t get_height() const;
-	void set_height(real_t p_height);
-
-	bool get_is_trigger() const;
-	void set_is_trigger(bool p_is_trigger);
-
-	GLTFMeshIndex get_mesh_index() const;
-	void set_mesh_index(GLTFMeshIndex p_mesh_index);
-
-	Ref<ImporterMesh> get_importer_mesh() const;
-	void set_importer_mesh(Ref<ImporterMesh> p_importer_mesh);
-
-	static Ref<GLTFCollider> from_node(const CollisionShape3D *p_collider_node);
-	CollisionShape3D *to_node(bool p_cache_shapes = false);
-
-	static Ref<GLTFCollider> from_dictionary(const Dictionary p_dictionary);
-	Dictionary to_dictionary() const;
-};
-
-#endif // GLTF_COLLIDER_H
+#endif // TEST_NAVIGATION_REGION_2D_H
