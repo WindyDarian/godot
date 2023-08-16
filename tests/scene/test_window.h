@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  thorvg_svg_in_ot.h                                                    */
+/*  test_window.h                                                         */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,61 +28,69 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef THORVG_SVG_IN_OT_H
-#define THORVG_SVG_IN_OT_H
+#ifndef TEST_WINDOW_H
+#define TEST_WINDOW_H
 
-#ifdef GDEXTENSION
-// Headers for building as GDExtension plug-in.
+#include "scene/gui/control.h"
+#include "scene/main/window.h"
 
-#include <godot_cpp/core/mutex_lock.hpp>
-#include <godot_cpp/godot.hpp>
-#include <godot_cpp/templates/hash_map.hpp>
+#include "tests/test_macros.h"
 
-using namespace godot;
+namespace TestWindow {
 
-#else
-// Headers for building as built-in module.
+class NotificationControl : public Control {
+	GDCLASS(NotificationControl, Control);
 
-#include "core/os/mutex.h"
-#include "core/templates/hash_map.h"
-#include "core/typedefs.h"
+protected:
+	void _notification(int p_what) {
+		switch (p_what) {
+			case NOTIFICATION_MOUSE_ENTER: {
+				mouse_over = true;
+			} break;
 
-#include "modules/modules_enabled.gen.h" // For svg, freetype.
-#endif
+			case NOTIFICATION_MOUSE_EXIT: {
+				mouse_over = false;
+			} break;
+		}
+	}
 
-#ifdef MODULE_SVG_ENABLED
-#ifdef MODULE_FREETYPE_ENABLED
-
-#include <freetype/freetype.h>
-#include <freetype/otsvg.h>
-#include <ft2build.h>
-#include <thorvg.h>
-
-struct GL_State {
-	bool ready = false;
-	float bmp_x = 0;
-	float bmp_y = 0;
-	float x = 0;
-	float y = 0;
-	float w = 0;
-	float h = 0;
-	CharString xml_code;
-	tvg::Matrix m;
+public:
+	bool mouse_over = false;
 };
 
-struct TVG_State {
-	Mutex mutex;
-	HashMap<uint32_t, GL_State> glyph_map;
-};
+TEST_CASE("[SceneTree][Window]") {
+	Window *root = SceneTree::get_singleton()->get_root();
 
-FT_Error tvg_svg_in_ot_init(FT_Pointer *p_state);
-void tvg_svg_in_ot_free(FT_Pointer *p_state);
-FT_Error tvg_svg_in_ot_preset_slot(FT_GlyphSlot p_slot, FT_Bool p_cache, FT_Pointer *p_state);
-FT_Error tvg_svg_in_ot_render(FT_GlyphSlot p_slot, FT_Pointer *p_state);
+	SUBCASE("Control-mouse-over within Window-black bars should not happen") {
+		Window *w = memnew(Window);
+		root->add_child(w);
+		w->set_size(Size2i(400, 200));
+		w->set_position(Size2i(0, 0));
+		w->set_content_scale_size(Size2i(200, 200));
+		w->set_content_scale_mode(Window::CONTENT_SCALE_MODE_CANVAS_ITEMS);
+		w->set_content_scale_aspect(Window::CONTENT_SCALE_ASPECT_KEEP);
+		NotificationControl *c = memnew(NotificationControl);
+		w->add_child(c);
+		c->set_size(Size2i(100, 100));
+		c->set_position(Size2i(-50, -50));
 
-SVG_RendererHooks *get_tvg_svg_in_ot_hooks();
+		CHECK_FALSE(c->mouse_over);
+		SEND_GUI_MOUSE_MOTION_EVENT(Point2i(110, 10), MouseButtonMask::NONE, Key::NONE);
+		CHECK(c->mouse_over);
+		SEND_GUI_MOUSE_MOTION_EVENT(Point2i(90, 10), MouseButtonMask::NONE, Key::NONE);
+		CHECK_FALSE(c->mouse_over); // GH-80011
 
-#endif // MODULE_FREETYPE_ENABLED
-#endif // MODULE_SVG_ENABLED
+		/* TODO:
+		SEND_GUI_MOUSE_BUTTON_EVENT(Point2i(90, 10), MouseButton::LEFT, MouseButtonMask::LEFT, Key::NONE);
+		SEND_GUI_MOUSE_BUTTON_RELEASED_EVENT(Point2i(90, 10), MouseButton::LEFT, MouseButtonMask::NONE, Key::NONE);
+		CHECK(Control was not pressed);
+		*/
 
-#endif // THORVG_SVG_IN_OT_H
+		memdelete(c);
+		memdelete(w);
+	}
+}
+
+} // namespace TestWindow
+
+#endif // TEST_WINDOW_H
