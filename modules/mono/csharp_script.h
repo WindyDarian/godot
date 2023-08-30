@@ -164,6 +164,9 @@ public:
 		Vector<DocData::ClassDoc> docs;
 		return docs;
 	}
+	virtual String get_class_icon_path() const override {
+		return icon_path;
+	}
 #endif // TOOLS_ENABLED
 
 	Error reload(bool p_keep_state = false) override;
@@ -255,6 +258,7 @@ public:
 	bool get(const StringName &p_name, Variant &r_ret) const override;
 	void get_property_list(List<PropertyInfo> *p_properties) const override;
 	Variant::Type get_property_type(const StringName &p_name, bool *r_is_valid) const override;
+	virtual void validate_property(PropertyInfo &p_property) const override;
 
 	bool property_can_revert(const StringName &p_name) const override;
 	bool property_get_revert(const StringName &p_name, Variant &r_ret) const override;
@@ -279,8 +283,8 @@ public:
 
 	const Variant get_rpc_config() const override;
 
-	void notification(int p_notification) override;
-	void _call_notification(int p_notification);
+	void notification(int p_notification, bool p_reversed = false) override;
+	void _call_notification(int p_notification, bool p_reversed = false);
 
 	String to_string(bool *r_valid) override;
 

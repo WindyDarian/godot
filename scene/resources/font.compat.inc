@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  image_loader_dds.h                                                    */
+/*  font.compat.inc                                                       */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,16 +28,14 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef IMAGE_LOADER_DDS_H
-#define IMAGE_LOADER_DDS_H
+#ifndef DISABLE_DEPRECATED
 
-#include "core/io/image_loader.h"
+RID Font::_find_variation_compat_80954(const Dictionary &p_variation_coordinates, int p_face_index, float p_strength, Transform2D p_transform) const {
+	return find_variation(p_variation_coordinates, p_face_index, p_strength, p_transform, 0, 0, 0, 0);
+}
 
-class ImageLoaderDDS : public ImageFormatLoader {
-public:
-	virtual Error load_image(Ref<Image> p_image, Ref<FileAccess> f, BitField<ImageFormatLoader::LoaderFlags> p_flags, float p_scale);
-	virtual void get_recognized_extensions(List<String> *p_extensions) const;
-	ImageLoaderDDS();
-};
+void Font::_bind_compatibility_methods() {
+	ClassDB::bind_compatibility_method(D_METHOD("find_variation", "variation_coordinates", "face_index", "strength", "transform"), &Font::_find_variation_compat_80954, DEFVAL(0), DEFVAL(0.0), DEFVAL(Transform2D()));
+}
 
-#endif // IMAGE_LOADER_DDS_H
+#endif

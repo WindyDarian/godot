@@ -1656,7 +1656,8 @@ void CSharpInstance::get_property_list(List<PropertyInfo> *p_properties) const {
 		}
 	}
 
-	for (const PropertyInfo &prop : props) {
+	for (PropertyInfo &prop : props) {
+		validate_property(prop);
 		p_properties->push_back(prop);
 	}
 }
@@ -1692,6 +1693,24 @@ bool CSharpInstance::property_can_revert(const StringName &p_name) const {
 	}
 
 	return (bool)ret;
+}
+
+void CSharpInstance::validate_property(PropertyInfo &p_property) const {
+	ERR_FAIL_COND(!script.is_valid());
+
+	Variant property_arg = (Dictionary)p_property;
+	const Variant *args[1] = { &property_arg };
+
+	Variant ret;
+	Callable::CallError call_error;
+	GDMonoCache::managed_callbacks.CSharpInstanceBridge_Call(
+			gchandle.get_intptr(), &SNAME("_validate_property"), args, 1, &call_error, &ret);
+
+	if (call_error.error != Callable::CallError::CALL_OK) {
+		return;
+	}
+
+	p_property = PropertyInfo::from_dict(property_arg);
 }
 
 bool CSharpInstance::property_get_revert(const StringName &p_name, Variant &r_ret) const {
@@ -1959,7 +1978,7 @@ const Variant CSharpInstance::get_rpc_config() const {
 	return script->get_rpc_config();
 }
 
-void CSharpInstance::notification(int p_notification) {
+void CSharpInstance::notification(int p_notification, bool p_reversed) {
 	if (p_notification == Object::NOTIFICATION_PREDELETE) {
 		// When NOTIFICATION_PREDELETE is sent, we also take the chance to call Dispose().
 		// It's safe to call Dispose() multiple times and NOTIFICATION_PREDELETE is guaranteed
@@ -1977,7 +1996,7 @@ void CSharpInstance::notification(int p_notification) {
 			return;
 		}
 
-		_call_notification(p_notification);
+		_call_notification(p_notification, p_reversed);
 
 		GDMonoCache::managed_callbacks.CSharpInstanceBridge_CallDispose(
 				gchandle.get_intptr(), /* okIfNull */ false);
@@ -1985,10 +2004,10 @@ void CSharpInstance::notification(int p_notification) {
 		return;
 	}
 
-	_call_notification(p_notification);
+	_call_notification(p_notification, p_reversed);
 }
 
-void CSharpInstance::_call_notification(int p_notification) {
+void CSharpInstance::_call_notification(int p_notification, bool p_reversed) {
 	Variant arg = p_notification;
 	const Variant *args[1] = { &arg };
 	StringName method_name = SNAME("_notification");
