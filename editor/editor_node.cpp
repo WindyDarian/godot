@@ -3331,6 +3331,9 @@ bool EditorNode::is_addon_plugin_enabled(const String &p_addon) const {
 }
 
 void EditorNode::_remove_edited_scene(bool p_change_tab) {
+	// When scene gets closed no node is edited anymore, so make sure the editors are notified before nodes are freed.
+	hide_unused_editors(SceneTreeDock::get_singleton());
+
 	int new_index = editor_data.get_edited_scene();
 	int old_index = new_index;
 
@@ -4237,8 +4240,18 @@ Ref<Texture2D> EditorNode::_get_class_or_script_icon(const String &p_class, cons
 			return gui_base->get_theme_icon(p_class, SNAME("EditorIcons"));
 		}
 
-		if (p_fallback.length() && gui_base->has_theme_icon(p_fallback, SNAME("EditorIcons"))) {
+		if (!p_fallback.is_empty() && gui_base->has_theme_icon(p_fallback, SNAME("EditorIcons"))) {
 			return gui_base->get_theme_icon(p_fallback, SNAME("EditorIcons"));
+		}
+
+		// If the fallback is empty or wasn't found, use the default fallback.
+		if (ClassDB::class_exists(p_class)) {
+			bool instantiable = !ClassDB::is_virtual(p_class) && ClassDB::can_instantiate(p_class);
+			if (ClassDB::is_parent_class(p_class, SNAME("Node"))) {
+				return gui_base->get_theme_icon(instantiable ? "Node" : "NodeDisabled", SNAME("EditorIcons"));
+			} else {
+				return gui_base->get_theme_icon(instantiable ? "Object" : "ObjectDisabled", SNAME("EditorIcons"));
+			}
 		}
 	}
 
