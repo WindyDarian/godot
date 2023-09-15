@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  platform_config.h                                                     */
+/*  editor_string_names.cpp                                               */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,4 +28,13 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#include <malloc.h>
+#include "editor_string_names.h"
+
+EditorStringNames *EditorStringNames::singleton = nullptr;
+
+EditorStringNames::EditorStringNames() {
+	Editor = StaticCString::create("Editor");
+	EditorFonts = StaticCString::create("EditorFonts");
+	EditorIcons = StaticCString::create("EditorIcons");
+	EditorStyles = StaticCString::create("EditorStyles");
+}

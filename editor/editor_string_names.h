@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  context_egl_uwp.h                                                     */
+/*  editor_string_names.h                                                 */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,57 +28,31 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef CONTEXT_EGL_UWP_H
-#define CONTEXT_EGL_UWP_H
+#ifndef EDITOR_STRING_NAMES_H
+#define EDITOR_STRING_NAMES_H
 
-#include "core/error/error_list.h"
-#include "core/os/os.h"
+#include "core/string/string_name.h"
 
-#include <EGL/egl.h>
-#include <wrl.h>
+class EditorStringNames {
+	static EditorStringNames *singleton;
 
-using namespace Windows::UI::Core;
-
-class ContextEGL_UWP {
-public:
-	enum Driver {
-		GLES_2_0,
-		VULKAN, // FIXME: Add Vulkan support.
-	};
-
-private:
-	CoreWindow ^ window;
-
-	EGLDisplay mEglDisplay;
-	EGLContext mEglContext;
-	EGLSurface mEglSurface;
-
-	EGLint width;
-	EGLint height;
-
-	bool vsync;
-
-	Driver driver;
+	EditorStringNames();
 
 public:
-	void release_current();
+	static void create() { singleton = memnew(EditorStringNames); }
+	static void free() {
+		memdelete(singleton);
+		singleton = nullptr;
+	}
 
-	void make_current();
+	_FORCE_INLINE_ static EditorStringNames *get_singleton() { return singleton; }
 
-	int get_window_width();
-	int get_window_height();
-	void swap_buffers();
-
-	void set_use_vsync(bool use) { vsync = use; }
-	bool is_using_vsync() const { return vsync; }
-
-	Error initialize();
-	void reset();
-
-	void cleanup();
-
-	ContextEGL_UWP(CoreWindow ^ p_window, Driver p_driver);
-	~ContextEGL_UWP();
+	StringName Editor;
+	StringName EditorFonts;
+	StringName EditorIcons;
+	StringName EditorStyles;
 };
 
-#endif // CONTEXT_EGL_UWP_H
+#define EditorStringName(m_name) EditorStringNames::get_singleton()->m_name
+
+#endif // EDITOR_STRING_NAMES_H

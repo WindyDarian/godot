@@ -1269,7 +1269,9 @@ void Window::_notification(int p_what) {
 				notification(NOTIFICATION_TRANSLATION_CHANGED);
 			}
 #endif
-			notification(NOTIFICATION_THEME_CHANGED);
+
+			// Emits NOTIFICATION_THEME_CHANGED internally.
+			set_theme_context(ThemeDB::get_singleton()->get_nearest_theme_context(this));
 		} break;
 
 		case NOTIFICATION_READY: {
@@ -1313,6 +1315,8 @@ void Window::_notification(int p_what) {
 		} break;
 
 		case NOTIFICATION_EXIT_TREE: {
+			set_theme_context(nullptr, false);
+
 			if (transient) {
 				_clear_transient();
 			}
@@ -1889,6 +1893,11 @@ bool Window::has_theme_owner_node() const {
 	return theme_owner->has_owner_node();
 }
 
+void Window::set_theme_context(ThemeContext *p_context, bool p_propagate) {
+	ERR_MAIN_THREAD_GUARD;
+	theme_owner->set_owner_context(p_context, p_propagate);
+}
+
 void Window::set_theme(const Ref<Theme> &p_theme) {
 	ERR_MAIN_THREAD_GUARD;
 	if (theme == p_theme) {
@@ -1956,6 +1965,8 @@ void Window::_update_theme_item_cache() {
 	} else {
 		child_controls_changed();
 	}
+
+	ThemeDB::get_singleton()->update_class_instance_items(this);
 }
 
 void Window::_update_embedded_window() {
@@ -2128,6 +2139,33 @@ int Window::get_theme_constant(const StringName &p_name, const StringName &p_the
 	theme_constant_cache[p_theme_type][p_name] = constant;
 	return constant;
 }
+
+Variant Window::get_theme_item(Theme::DataType p_data_type, const StringName &p_name, const StringName &p_theme_type) const {
+	switch (p_data_type) {
+		case Theme::DATA_TYPE_COLOR:
+			return get_theme_color(p_name, p_theme_type);
+		case Theme::DATA_TYPE_CONSTANT:
+			return get_theme_constant(p_name, p_theme_type);
+		case Theme::DATA_TYPE_FONT:
+			return get_theme_font(p_name, p_theme_type);
+		case Theme::DATA_TYPE_FONT_SIZE:
+			return get_theme_font_size(p_name, p_theme_type);
+		case Theme::DATA_TYPE_ICON:
+			return get_theme_icon(p_name, p_theme_type);
+		case Theme::DATA_TYPE_STYLEBOX:
+			return get_theme_stylebox(p_name, p_theme_type);
+		case Theme::DATA_TYPE_MAX:
+			break; // Can't happen, but silences warning.
+	}
+
+	return Variant();
+}
+
+#ifdef TOOLS_ENABLED
+Ref<Texture2D> Window::get_editor_theme_icon(const StringName &p_name) const {
+	return get_theme_icon(p_name, SNAME("EditorIcons"));
+}
+#endif
 
 bool Window::has_theme_icon(const StringName &p_name, const StringName &p_theme_type) const {
 	ERR_READ_THREAD_GUARD_V(false);
@@ -2881,7 +2919,7 @@ Window::Window() {
 		max_size_used = max_size; // Update max_size_used.
 	}
 
-	theme_owner = memnew(ThemeOwner);
+	theme_owner = memnew(ThemeOwner(this));
 	RS::get_singleton()->viewport_set_update_mode(get_viewport_rid(), RS::VIEWPORT_UPDATE_DISABLED);
 }
 

@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  uwpdef.h                                                              */
+/*  script_instance.cpp                                                   */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,11 +28,44 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef UWPDEF_H
-#define UWPDEF_H
+#include "script_instance.h"
 
-// "generic" is a reserved keyword in C++/CX code
-// this avoids the errors in the variable name from Freetype code
-#define generic freetype_generic
+#include "core/object/script_language.h"
 
-#endif // UWPDEF_H
+Variant ScriptInstance::call_const(const StringName &p_method, const Variant **p_args, int p_argcount, Callable::CallError &r_error) {
+	return callp(p_method, p_args, p_argcount, r_error);
+}
+
+void ScriptInstance::get_property_state(List<Pair<StringName, Variant>> &state) {
+	List<PropertyInfo> pinfo;
+	get_property_list(&pinfo);
+	for (const PropertyInfo &E : pinfo) {
+		if (E.usage & PROPERTY_USAGE_STORAGE) {
+			Pair<StringName, Variant> p;
+			p.first = E.name;
+			if (get(p.first, p.second)) {
+				state.push_back(p);
+			}
+		}
+	}
+}
+
+void ScriptInstance::property_set_fallback(const StringName &, const Variant &, bool *r_valid) {
+	if (r_valid) {
+		*r_valid = false;
+	}
+}
+
+Variant ScriptInstance::property_get_fallback(const StringName &, bool *r_valid) {
+	if (r_valid) {
+		*r_valid = false;
+	}
+	return Variant();
+}
+
+const Variant ScriptInstance::get_rpc_config() const {
+	return get_script()->get_rpc_config();
+}
+
+ScriptInstance::~ScriptInstance() {
+}

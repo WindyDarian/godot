@@ -1055,6 +1055,7 @@ static GDExtensionScriptInstancePtr gdextension_script_instance_create(const GDE
 	info_2->get_method_list_func = p_info->get_method_list_func;
 	info_2->free_method_list_func = p_info->free_method_list_func;
 	info_2->get_property_type_func = p_info->get_property_type_func;
+	info_2->validate_property_func = nullptr;
 	info_2->has_method_func = p_info->has_method_func;
 	info_2->call_func = p_info->call_func;
 	info_2->notification_func = nullptr;
@@ -1096,7 +1097,7 @@ static GDExtensionScriptInstancePtr gdextension_placeholder_script_instance_crea
 
 static void gdextension_placeholder_script_instance_update(GDExtensionScriptInstancePtr p_placeholder, GDExtensionConstTypePtr p_properties, GDExtensionConstTypePtr p_values) {
 	PlaceHolderScriptInstance *placeholder = dynamic_cast<PlaceHolderScriptInstance *>(reinterpret_cast<ScriptInstance *>(p_placeholder));
-	ERR_FAIL_COND_MSG(!placeholder, "Unable to update placeholder, expected a PlaceHolderScriptInstance but received an invalid type.");
+	ERR_FAIL_NULL_MSG(placeholder, "Unable to update placeholder, expected a PlaceHolderScriptInstance but received an invalid type.");
 
 	const Array &properties = *reinterpret_cast<const Array *>(p_properties);
 	const Dictionary &values = *reinterpret_cast<const Dictionary *>(p_values);
@@ -1147,7 +1148,7 @@ static GDExtensionMethodBindPtr gdextension_classdb_get_method_bind(GDExtensionC
 		ERR_PRINT("Method '" + classname + "." + methodname + "' has changed and no compatibility fallback has been provided. Please open an issue.");
 		return nullptr;
 	}
-	ERR_FAIL_COND_V(!mb, nullptr);
+	ERR_FAIL_NULL_V(mb, nullptr);
 	if (mb->get_hash() != p_hash) {
 		ERR_PRINT("Hash mismatch for method '" + classname + "." + methodname + "'.");
 		return nullptr;

@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  export.cpp                                                            */
+/*  graph_element.h                                                       */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,29 +28,66 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#include "export.h"
+#ifndef GRAPH_ELEMENT_H
+#define GRAPH_ELEMENT_H
 
-#include "export_plugin.h"
+#include "scene/gui/container.h"
 
-#include "editor/editor_settings.h"
-#include "editor/export/editor_export.h"
+class GraphElement : public Container {
+	GDCLASS(GraphElement, Container);
 
-void register_uwp_exporter_types() {
-	// GDREGISTER_VIRTUAL_CLASS(EditorExportPlatformUWP);
-}
+protected:
+	bool selected = false;
+	bool resizable = false;
+	bool resizing = false;
+	bool draggable = true;
+	bool selectable = true;
 
-void register_uwp_exporter() {
-#ifdef WINDOWS_ENABLED
-	EDITOR_DEF("export/uwp/signtool", "");
-	EditorSettings::get_singleton()->add_property_hint(PropertyInfo(Variant::STRING, "export/uwp/signtool", PROPERTY_HINT_GLOBAL_FILE, "*.exe"));
-	EDITOR_DEF("export/uwp/debug_certificate", "");
-	EditorSettings::get_singleton()->add_property_hint(PropertyInfo(Variant::STRING, "export/uwp/debug_certificate", PROPERTY_HINT_GLOBAL_FILE, "*.pfx"));
-	EDITOR_DEF("export/uwp/debug_password", "");
-	EDITOR_DEF("export/uwp/debug_algorithm", 2); // SHA256 is the default
-	EditorSettings::get_singleton()->add_property_hint(PropertyInfo(Variant::INT, "export/uwp/debug_algorithm", PROPERTY_HINT_ENUM, "MD5,SHA1,SHA256"));
-#endif // WINDOWS_ENABLED
+	Vector2 drag_from;
+	Vector2 resizing_from;
+	Vector2 resizing_from_size;
 
-	Ref<EditorExportPlatformUWP> exporter;
-	exporter.instantiate();
-	EditorExport::get_singleton()->add_export_platform(exporter);
-}
+	Vector2 position_offset;
+
+#ifdef TOOLS_ENABLED
+	void _edit_set_position(const Point2 &p_position) override;
+#endif
+
+protected:
+	virtual void gui_input(const Ref<InputEvent> &p_ev) override;
+	void _notification(int p_what);
+	static void _bind_methods();
+
+	virtual void _resort();
+
+	void _validate_property(PropertyInfo &p_property) const;
+
+public:
+	void set_position_offset(const Vector2 &p_offset);
+	Vector2 get_position_offset() const;
+
+	void set_selected(bool p_selected);
+	bool is_selected();
+
+	void set_drag(bool p_drag);
+	Vector2 get_drag_from();
+
+	void set_resizable(bool p_enable);
+	bool is_resizable() const;
+
+	void set_draggable(bool p_draggable);
+	bool is_draggable();
+
+	void set_selectable(bool p_selectable);
+	bool is_selectable();
+
+	virtual Size2 get_minimum_size() const override;
+
+	bool is_resizing() const {
+		return resizing;
+	}
+
+	GraphElement() {}
+};
+
+#endif // GRAPH_ELEMENT_H
