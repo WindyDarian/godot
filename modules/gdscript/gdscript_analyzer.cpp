@@ -3204,7 +3204,13 @@ void GDScriptAnalyzer::reduce_call(GDScriptParser::CallNode *p_call, bool p_is_a
 	bool is_constructor = (base_type.is_meta_type || (p_call->callee && p_call->callee->type == GDScriptParser::Node::IDENTIFIER)) && p_call->function_name == SNAME("new");
 
 	if (get_function_signature(p_call, is_constructor, base_type, p_call->function_name, return_type, par_types, default_arg_count, method_flags)) {
-		// If the function require typed arrays we must make literals be typed.
+		// If the method is implemented in the class hierarchy, the virtual flag will not be set for that MethodInfo and the search stops there.
+		// Virtual check only possible for super() calls because class hierarchy is known. Node/Objects may have scripts attached we don't know of at compile-time.
+		if (p_call->is_super && method_flags.has_flag(METHOD_FLAG_VIRTUAL)) {
+			push_error(vformat(R"*(Cannot call the parent class' virtual function "%s()" because it hasn't been defined.)*", p_call->function_name), p_call);
+		}
+
+		// If the function requires typed arrays we must make literals be typed.
 		for (const KeyValue<int, GDScriptParser::ArrayNode *> &E : arrays) {
 			int index = E.key;
 			if (index < par_types.size() && par_types[index].has_container_element_type()) {
@@ -3457,7 +3463,7 @@ void GDScriptAnalyzer::reduce_identifier_from_base_set_class(GDScriptParser::Ide
 
 	p_identifier->set_datatype(p_identifier_datatype);
 	Error err = OK;
-	Ref<GDScript> scr = GDScriptCache::get_shallow_script(p_identifier_datatype.script_path, err);
+	Ref<GDScript> scr = GDScriptCache::get_shallow_script(p_identifier_datatype.script_path, err, parser->script_path);
 	if (err) {
 		push_error(vformat(R"(Error while getting cache for script "%s".)", p_identifier_datatype.script_path), p_identifier);
 		return;
@@ -4581,7 +4587,7 @@ Array GDScriptAnalyzer::make_array_from_element_datatype(const GDScriptParser::D
 		Ref<Script> script_type = p_element_datatype.script_type;
 		if (p_element_datatype.kind == GDScriptParser::DataType::CLASS && script_type.is_null()) {
 			Error err = OK;
-			Ref<GDScript> scr = GDScriptCache::get_shallow_script(p_element_datatype.script_path, err);
+			Ref<GDScript> scr = GDScriptCache::get_shallow_script(p_element_datatype.script_path, err, parser->script_path);
 			if (err) {
 				push_error(vformat(R"(Error while getting cache for script "%s".)", p_element_datatype.script_path), p_source_node);
 				return array;

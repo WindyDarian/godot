@@ -808,7 +808,7 @@ List<CanvasItem *> CanvasItemEditor::_get_edited_canvas_items(bool retrieve_lock
 }
 
 Vector2 CanvasItemEditor::_anchor_to_position(const Control *p_control, Vector2 anchor) {
-	ERR_FAIL_COND_V(!p_control, Vector2());
+	ERR_FAIL_NULL_V(p_control, Vector2());
 
 	Transform2D parent_transform = p_control->get_transform().affine_inverse();
 	Rect2 parent_rect = p_control->get_parent_anchorable_rect();
@@ -821,7 +821,7 @@ Vector2 CanvasItemEditor::_anchor_to_position(const Control *p_control, Vector2 
 }
 
 Vector2 CanvasItemEditor::_position_to_anchor(const Control *p_control, Vector2 position) {
-	ERR_FAIL_COND_V(!p_control, Vector2());
+	ERR_FAIL_NULL_V(p_control, Vector2());
 
 	Rect2 parent_rect = p_control->get_parent_anchorable_rect();
 
@@ -2056,27 +2056,31 @@ bool CanvasItemEditor::_gui_input_move(const Ref<InputEvent> &p_event) {
 
 	if (drag_type == DRAG_MOVE || drag_type == DRAG_MOVE_X || drag_type == DRAG_MOVE_Y) {
 		// Move the nodes
-		if (m.is_valid()) {
+		if (m.is_valid() && !drag_selection.is_empty()) {
 			_restore_canvas_item_state(drag_selection, true);
 
 			drag_to = transform.affine_inverse().xform(m->get_position());
 			Point2 previous_pos;
-			if (!drag_selection.is_empty()) {
-				if (drag_selection.size() == 1) {
-					Transform2D xform = drag_selection[0]->get_global_transform_with_canvas() * drag_selection[0]->get_transform().affine_inverse();
-					previous_pos = xform.xform(drag_selection[0]->_edit_get_position());
+			if (drag_selection.size() == 1) {
+				Transform2D xform = drag_selection[0]->get_global_transform_with_canvas() * drag_selection[0]->get_transform().affine_inverse();
+				previous_pos = xform.xform(drag_selection[0]->_edit_get_position());
+			} else {
+				previous_pos = _get_encompassing_rect_from_list(drag_selection).position;
+			}
+
+			Point2 drag_delta = drag_to - drag_from;
+			if (drag_selection.size() == 1 && (drag_type == DRAG_MOVE_X || drag_type == DRAG_MOVE_Y)) {
+				const CanvasItem *selected = drag_selection.front()->get();
+				drag_delta = selected->get_transform().affine_inverse().basis_xform(drag_delta);
+
+				if (drag_type == DRAG_MOVE_X) {
+					drag_delta.y = 0;
 				} else {
-					previous_pos = _get_encompassing_rect_from_list(drag_selection).position;
+					drag_delta.x = 0;
 				}
+				drag_delta = selected->get_transform().basis_xform(drag_delta);
 			}
-
-			Point2 new_pos = snap_point(previous_pos + (drag_to - drag_from), SNAP_GRID | SNAP_GUIDES | SNAP_PIXEL | SNAP_NODE_PARENT | SNAP_NODE_ANCHORS | SNAP_OTHER_NODES, 0, nullptr, drag_selection);
-
-			if (drag_type == DRAG_MOVE_X) {
-				new_pos.y = previous_pos.y;
-			} else if (drag_type == DRAG_MOVE_Y) {
-				new_pos.x = previous_pos.x;
-			}
+			Point2 new_pos = snap_point(previous_pos + drag_delta, SNAP_GRID | SNAP_GUIDES | SNAP_PIXEL | SNAP_NODE_PARENT | SNAP_NODE_ANCHORS | SNAP_OTHER_NODES, 0, nullptr, drag_selection);
 
 			bool single_axis = m->is_shift_pressed();
 			if (single_axis) {
@@ -3608,7 +3612,7 @@ void CanvasItemEditor::_draw_axis() {
 }
 
 void CanvasItemEditor::_draw_invisible_nodes_positions(Node *p_node, const Transform2D &p_parent_xform, const Transform2D &p_canvas_xform) {
-	ERR_FAIL_COND(!p_node);
+	ERR_FAIL_NULL(p_node);
 
 	Node *scene = EditorNode::get_singleton()->get_edited_scene();
 	if (p_node != scene && p_node->get_owner() != scene && !scene->is_editable_instance(p_node->get_owner())) {
@@ -3739,7 +3743,7 @@ void CanvasItemEditor::_draw_transform_message() {
 }
 
 void CanvasItemEditor::_draw_locks_and_groups(Node *p_node, const Transform2D &p_parent_xform, const Transform2D &p_canvas_xform) {
-	ERR_FAIL_COND(!p_node);
+	ERR_FAIL_NULL(p_node);
 
 	Node *scene = EditorNode::get_singleton()->get_edited_scene();
 	if (p_node != scene && p_node->get_owner() != scene && !scene->is_editable_instance(p_node->get_owner())) {
@@ -3991,7 +3995,7 @@ void CanvasItemEditor::_notification(int p_what) {
 			select_sb->set_texture_margin_all(4);
 			select_sb->set_content_margin_all(4);
 
-			AnimationPlayerEditor::get_singleton()->get_track_editor()->connect("visibility_changed", callable_mp(this, &CanvasItemEditor::_keying_changed));
+			AnimationPlayerEditor::get_singleton()->get_track_editor()->connect("keying_changed", callable_mp(this, &CanvasItemEditor::_keying_changed));
 			AnimationPlayerEditor::get_singleton()->connect("animation_selected", callable_mp(this, &CanvasItemEditor::_keying_changed).unbind(1));
 			_keying_changed();
 			_update_editor_settings();
@@ -5050,7 +5054,7 @@ CanvasItemEditor::CanvasItemEditor() {
 	EditorRunBar::get_singleton()->call_deferred(SNAME("connect"), "play_pressed", callable_mp(this, &CanvasItemEditor::_update_override_camera_button).bind(true));
 	EditorRunBar::get_singleton()->call_deferred(SNAME("connect"), "stop_pressed", callable_mp(this, &CanvasItemEditor::_update_override_camera_button).bind(false));
 
-	// Add some margin to the sides for better aesthetics.
+	// Add some margin to the sides for better esthetics.
 	// This prevents the first button's hover/pressed effect from "touching" the panel's border,
 	// which looks ugly.
 	MarginContainer *toolbar_margin = memnew(MarginContainer);

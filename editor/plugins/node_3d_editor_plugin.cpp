@@ -1460,14 +1460,10 @@ Transform3D Node3DEditorViewport::_compute_transform(TransformMode p_mode, const
 			}
 
 			if (p_local) {
-				p_motion = p_original.basis.xform(p_motion);
+				return p_original_local.translated_local(p_motion);
 			}
 
-			// Apply translation
-			Transform3D t = p_original;
-			t.origin += p_motion;
-
-			return t;
+			return p_original.translated(p_motion);
 		}
 		case TRANSFORM_ROTATE: {
 			Transform3D r;
@@ -3161,7 +3157,7 @@ void Node3DEditorViewport::_draw() {
 							get_editor_theme_icon(SNAME("ViewportSpeed")),
 							get_theme_font(SNAME("font"), SNAME("Label")),
 							get_theme_font_size(SNAME("font_size"), SNAME("Label")),
-							vformat("%s u/s", String::num(freelook_speed).pad_decimals(precision)),
+							vformat("%s m/s", String::num(freelook_speed).pad_decimals(precision)),
 							Color(1.0, 0.95, 0.7));
 				}
 
@@ -3184,7 +3180,7 @@ void Node3DEditorViewport::_draw() {
 							get_editor_theme_icon(SNAME("ViewportZoom")),
 							get_theme_font(SNAME("font"), SNAME("Label")),
 							get_theme_font_size(SNAME("font_size"), SNAME("Label")),
-							vformat("%s u", String::num(cursor.distance).pad_decimals(precision)),
+							vformat("%s m", String::num(cursor.distance).pad_decimals(precision)),
 							Color(0.7, 0.95, 1.0));
 				}
 			}
@@ -7499,7 +7495,7 @@ void Node3DEditor::_add_sun_to_scene(bool p_already_added_environment) {
 		SceneTreeDock::get_singleton()->add_root_node(memnew(Node3D));
 		base = get_tree()->get_edited_scene_root();
 	}
-	ERR_FAIL_COND(!base);
+	ERR_FAIL_NULL(base);
 	Node *new_sun = preview_sun->duplicate();
 
 	EditorUndoRedoManager *undo_redo = EditorUndoRedoManager::get_singleton();
@@ -7528,7 +7524,7 @@ void Node3DEditor::_add_environment_to_scene(bool p_already_added_sun) {
 		SceneTreeDock::get_singleton()->add_root_node(memnew(Node3D));
 		base = get_tree()->get_edited_scene_root();
 	}
-	ERR_FAIL_COND(!base);
+	ERR_FAIL_NULL(base);
 
 	WorldEnvironment *new_env = memnew(WorldEnvironment);
 	new_env->set_environment(preview_environment->get_environment()->duplicate(true));
@@ -8201,7 +8197,7 @@ Node3DEditor::Node3DEditor() {
 
 	camera_override_viewport_id = 0;
 
-	// Add some margin to the sides for better aesthetics.
+	// Add some margin to the sides for better esthetics.
 	// This prevents the first button's hover/pressed effect from "touching" the panel's border,
 	// which looks ugly.
 	MarginContainer *toolbar_margin = memnew(MarginContainer);
