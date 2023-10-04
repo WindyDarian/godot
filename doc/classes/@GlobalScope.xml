@@ -85,6 +85,14 @@
 				[/codeblock]
 			</description>
 		</method>
+		<method name="angle_difference">
+			<return type="float" />
+			<param index="0" name="from" type="float" />
+			<param index="1" name="to" type="float" />
+			<description>
+				Returns the difference between the two angles, in the range of [code][-PI, +PI][/code]. When [param from] and [param to] are opposite, returns [code]-PI[/code] if [param from] is smaller than [param to], or [code]PI[/code] otherwise.
+			</description>
+		</method>
 		<method name="asin">
 			<return type="float" />
 			<param index="0" name="x" type="float" />
@@ -1110,6 +1118,17 @@
 				Creates a RID from a [param base]. This is used mainly from native extensions to build servers.
 			</description>
 		</method>
+		<method name="rotate_toward">
+			<return type="float" />
+			<param index="0" name="from" type="float" />
+			<param index="1" name="to" type="float" />
+			<param index="2" name="delta" type="float" />
+			<description>
+				Rotates [param from] toward [param to] by the [param delta] amount. Will not go past [param to].
+				Similar to [method move_toward], but interpolates correctly when the angles wrap around [constant @GDScript.TAU].
+				If [param delta] is negative, this function will rotate away from [param to], toward the opposite angle, and will not go past the opposite angle.
+			</description>
+		</method>
 		<method name="round">
 			<return type="Variant" />
 			<param index="0" name="x" type="Variant" />
@@ -1384,6 +1403,19 @@
 				[/codeblock]
 			</description>
 		</method>
+		<method name="type_string">
+			<return type="String" />
+			<param index="0" name="type" type="int" />
+			<description>
+				Returns a human-readable name of the given [param type], using the [enum Variant.Type] values.
+				[codeblock]
+				print(TYPE_INT) # Prints 2.
+				print(type_string(TYPE_INT)) # Prints "int".
+				print(type_string(TYPE_STRING)) # Prints "String".
+				[/codeblock]
+				See also [method typeof].
+			</description>
+		</method>
 		<method name="typeof">
 			<return type="int" />
 			<param index="0" name="variable" type="Variant" />
@@ -1398,6 +1430,7 @@
 				else:
 				    print("Unexpected result")
 				[/codeblock]
+				See also [method type_string].
 			</description>
 		</method>
 		<method name="var_to_bytes">

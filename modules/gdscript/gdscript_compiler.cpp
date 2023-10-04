@@ -612,11 +612,8 @@ GDScriptCodeGenerator::Address GDScriptCompiler::_parse_expression(CodeGen &code
 				arguments.push_back(arg);
 			}
 
-			if (!call->is_super && call->callee->type == GDScriptParser::Node::IDENTIFIER && GDScriptParser::get_builtin_type(call->function_name) != Variant::VARIANT_MAX) {
-				// Construct a built-in type.
-				Variant::Type vtype = GDScriptParser::get_builtin_type(static_cast<GDScriptParser::IdentifierNode *>(call->callee)->name);
-
-				gen->write_construct(result, vtype, arguments);
+			if (!call->is_super && call->callee->type == GDScriptParser::Node::IDENTIFIER && GDScriptParser::get_builtin_type(call->function_name) < Variant::VARIANT_MAX) {
+				gen->write_construct(result, GDScriptParser::get_builtin_type(call->function_name), arguments);
 			} else if (!call->is_super && call->callee->type == GDScriptParser::Node::IDENTIFIER && Variant::has_utility_function(call->function_name)) {
 				// Variant utility function.
 				gen->write_call_utility(result, call->function_name, arguments);
@@ -1928,6 +1925,26 @@ Error GDScriptCompiler::_parse_block(CodeGen &codegen, const GDScriptParser::Sui
 						}
 					}
 
+					// If there's a guard, check its condition too.
+					if (branch->guard_body != nullptr) {
+						// Do this first so the guard does not run unless the pattern matched.
+						gen->write_and_left_operand(pattern_result);
+
+						// Don't actually use the block for the guard.
+						// The binds are already in the locals and we don't want to clear the result of the guard condition before we check the actual match.
+						GDScriptCodeGenerator::Address guard_result = _parse_expression(codegen, err, static_cast<GDScriptParser::ExpressionNode *>(branch->guard_body->statements[0]));
+						if (err) {
+							return err;
+						}
+
+						gen->write_and_right_operand(guard_result);
+						gen->write_end_and(pattern_result);
+
+						if (guard_result.mode == GDScriptCodeGenerator::Address::TEMPORARY) {
+							codegen.generator->pop_temporary();
+						}
+					}
+
 					// Check if pattern did match.
 					gen->write_if(pattern_result);
 
@@ -2794,7 +2811,7 @@ Error GDScriptCompiler::_prepare_compilation(GDScript *p_script, const GDScriptP
 				minfo.property_info = prop_info;
 
 				p_script->member_indices[name] = minfo;
-				p_script->members.insert(Variant());
+				p_script->members.insert(name);
 			} break;
 
 			case GDScriptParser::ClassNode::Member::FUNCTION: {
