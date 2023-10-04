@@ -375,6 +375,8 @@ for name, path in modules_detected.items():
     else:
         enabled = False
 
+    opts.Add(BoolVariable("module_" + name + "_enabled", "Enable module '%s'" % (name,), enabled))
+
     # Add module-specific options.
     try:
         for opt in config.get_opts(selected_platform):
@@ -384,7 +386,6 @@ for name, path in modules_detected.items():
 
     sys.path.remove(path)
     sys.modules.pop("config")
-    opts.Add(BoolVariable("module_" + name + "_enabled", "Enable module '%s'" % (name,), enabled))
 
 methods.write_modules(modules_detected)
 
@@ -987,9 +988,10 @@ if selected_platform in platform_list:
     # Check for the existence of headers
     conf = Configure(env)
     if "check_c_headers" in env:
-        for header in env["check_c_headers"]:
-            if conf.CheckCHeader(header[0]):
-                env.AppendUnique(CPPDEFINES=[header[1]])
+        headers = env["check_c_headers"]
+        for header in headers:
+            if conf.CheckCHeader(header):
+                env.AppendUnique(CPPDEFINES=[headers[header]])
 
 elif selected_platform != "":
     if selected_platform == "list":
