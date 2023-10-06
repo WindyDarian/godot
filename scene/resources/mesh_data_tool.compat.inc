@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  sprite_3d_gizmo_plugin.cpp                                            */
+/*  mesh_data_tool.compat.inc                                             */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,37 +28,14 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#include "sprite_3d_gizmo_plugin.h"
+#ifndef DISABLE_DEPRECATED
 
-#include "editor/plugins/node_3d_editor_plugin.h"
-#include "scene/3d/sprite_3d.h"
-
-Sprite3DGizmoPlugin::Sprite3DGizmoPlugin() {
+Error MeshDataTool::commit_to_surface_bind_compat_81138(const Ref<ArrayMesh> &p_mesh) {
+	return commit_to_surface(p_mesh, 0);
 }
 
-bool Sprite3DGizmoPlugin::has_gizmo(Node3D *p_spatial) {
-	return Object::cast_to<Sprite3D>(p_spatial) != nullptr;
+void MeshDataTool::_bind_compatibility_methods() {
+	ClassDB::bind_compatibility_method(D_METHOD("commit_to_surface", "mesh"), &MeshDataTool::commit_to_surface_bind_compat_81138);
 }
 
-String Sprite3DGizmoPlugin::get_gizmo_name() const {
-	return "Sprite3D";
-}
-
-int Sprite3DGizmoPlugin::get_priority() const {
-	return -1;
-}
-
-bool Sprite3DGizmoPlugin::can_be_hidden() const {
-	return false;
-}
-
-void Sprite3DGizmoPlugin::redraw(EditorNode3DGizmo *p_gizmo) {
-	Sprite3D *sprite = Object::cast_to<Sprite3D>(p_gizmo->get_node_3d());
-
-	p_gizmo->clear();
-
-	Ref<TriangleMesh> tm = sprite->generate_triangle_mesh();
-	if (tm.is_valid()) {
-		p_gizmo->add_collision_triangles(tm);
-	}
-}
+#endif
