@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  sprite_3d_gizmo_plugin.h                                              */
+/*  sprite_base_3d_gizmo_plugin.h                                         */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,13 +28,13 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef SPRITE_3D_GIZMO_PLUGIN_H
-#define SPRITE_3D_GIZMO_PLUGIN_H
+#ifndef SPRITE_BASE_3D_GIZMO_PLUGIN_H
+#define SPRITE_BASE_3D_GIZMO_PLUGIN_H
 
 #include "editor/plugins/node_3d_editor_gizmos.h"
 
-class Sprite3DGizmoPlugin : public EditorNode3DGizmoPlugin {
-	GDCLASS(Sprite3DGizmoPlugin, EditorNode3DGizmoPlugin);
+class SpriteBase3DGizmoPlugin : public EditorNode3DGizmoPlugin {
+	GDCLASS(SpriteBase3DGizmoPlugin, EditorNode3DGizmoPlugin);
 
 public:
 	bool has_gizmo(Node3D *p_spatial) override;
@@ -43,7 +43,7 @@ public:
 	bool can_be_hidden() const override;
 	void redraw(EditorNode3DGizmo *p_gizmo) override;
 
-	Sprite3DGizmoPlugin();
+	SpriteBase3DGizmoPlugin();
 };
 
-#endif // SPRITE_3D_GIZMO_PLUGIN_H
+#endif // SPRITE_BASE_3D_GIZMO_PLUGIN_H

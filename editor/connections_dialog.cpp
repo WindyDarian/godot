@@ -32,7 +32,6 @@
 
 #include "core/config/project_settings.h"
 #include "core/templates/hash_set.h"
-#include "editor/doc_tools.h"
 #include "editor/editor_help.h"
 #include "editor/editor_inspector.h"
 #include "editor/editor_node.h"
@@ -1000,7 +999,9 @@ void ConnectionsDock::_tree_item_selected() {
 	} else if (item && _get_item_type(*item) == TREE_ITEM_TYPE_CONNECTION) {
 		connect_button->set_text(TTR("Disconnect"));
 		connect_button->set_icon(get_editor_theme_icon(SNAME("Unlinked")));
-		connect_button->set_disabled(false);
+
+		Object::Connection connection = item->get_metadata(0);
+		connect_button->set_disabled(_is_connection_inherited(connection));
 	} else {
 		connect_button->set_text(TTR("Connect..."));
 		connect_button->set_icon(get_editor_theme_icon(SNAME("Instance")));
