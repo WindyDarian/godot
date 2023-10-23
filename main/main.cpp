@@ -213,6 +213,7 @@ static bool debug_collisions = false;
 static bool debug_paths = false;
 static bool debug_navigation = false;
 static bool debug_avoidance = false;
+static bool debug_canvas_item_redraw = false;
 #endif
 static int max_fps = -1;
 static int frame_delay = 0;
@@ -486,6 +487,7 @@ void Main::print_help(const char *p_binary) {
 	OS::get_singleton()->print("  --debug-navigation                Show navigation polygons when running the scene.\n");
 	OS::get_singleton()->print("  --debug-avoidance                 Show navigation avoidance debug visuals when running the scene.\n");
 	OS::get_singleton()->print("  --debug-stringnames               Print all StringName allocations to stdout when the engine quits.\n");
+	OS::get_singleton()->print("  --debug-canvas-item-redraw        Display a rectangle each time a canvas item requests a redraw (useful to troubleshoot low processor mode).\n");
 #endif
 	OS::get_singleton()->print("  --max-fps <fps>                   Set a maximum number of frames per second rendered (can be used to limit power usage). A value of 0 results in unlimited framerate.\n");
 	OS::get_singleton()->print("  --frame-delay <ms>                Simulate high CPU load (delay each frame by <ms> milliseconds). Do not use as a FPS limiter; use --max-fps instead.\n");
@@ -1455,6 +1457,8 @@ Error Main::setup(const char *execpath, int argc, char *argv[], bool p_second_ph
 			debug_navigation = true;
 		} else if (I->get() == "--debug-avoidance") {
 			debug_avoidance = true;
+		} else if (I->get() == "--debug-canvas-item-redraw") {
+			debug_canvas_item_redraw = true;
 		} else if (I->get() == "--debug-stringnames") {
 			StringName::set_debug_stringnames(true);
 #endif
@@ -1542,7 +1546,7 @@ Error Main::setup(const char *execpath, int argc, char *argv[], bool p_second_ph
 				OS::get_singleton()->print("Missing <path> argument for --benchmark-file <path>.\n");
 				goto error;
 			}
-#if defined(TOOLS_ENABLED) && !defined(GDSCRIPT_NO_LSP)
+#if defined(TOOLS_ENABLED) && defined(MODULE_GDSCRIPT_ENABLED) && !defined(GDSCRIPT_NO_LSP)
 		} else if (I->get() == "--lsp-port") {
 			if (I->next()) {
 				int port_override = I->next()->get().to_int();
@@ -1556,7 +1560,7 @@ Error Main::setup(const char *execpath, int argc, char *argv[], bool p_second_ph
 				OS::get_singleton()->print("Missing <port> argument for --lsp-port <port>.\n");
 				goto error;
 			}
-#endif // TOOLS_ENABLED && !GDSCRIPT_NO_LSP
+#endif // TOOLS_ENABLED && MODULE_GDSCRIPT_ENABLED && !GDSCRIPT_NO_LSP
 		} else if (I->get() == "--" || I->get() == "++") {
 			adding_user_args = true;
 		} else {
@@ -1956,19 +1960,29 @@ Error Main::setup(const char *execpath, int argc, char *argv[], bool p_second_ph
 		}
 		window_mode = (DisplayServer::WindowMode)(GLOBAL_GET("display/window/size/mode").operator int());
 		int initial_position_type = GLOBAL_GET("display/window/size/initial_position_type").operator int();
-		if (initial_position_type == 0) {
+		if (initial_position_type == 0) { // Absolute.
 			if (!init_use_custom_pos) {
 				init_custom_pos = GLOBAL_GET("display/window/size/initial_position").operator Vector2i();
 				init_use_custom_pos = true;
 			}
-		} else if (initial_position_type == 1) {
+		} else if (initial_position_type == 1) { // Center of Primary Screen.
 			if (!init_use_custom_screen) {
 				init_screen = DisplayServer::SCREEN_PRIMARY;
 				init_use_custom_screen = true;
 			}
-		} else if (initial_position_type == 2) {
+		} else if (initial_position_type == 2) { // Center of Other Screen.
 			if (!init_use_custom_screen) {
 				init_screen = GLOBAL_GET("display/window/size/initial_screen").operator int();
+				init_use_custom_screen = true;
+			}
+		} else if (initial_position_type == 3) { // Center of Screen With Mouse Pointer.
+			if (!init_use_custom_screen) {
+				init_screen = DisplayServer::SCREEN_WITH_MOUSE_FOCUS;
+				init_use_custom_screen = true;
+			}
+		} else if (initial_position_type == 4) { // Center of Screen With Keyboard Focus.
+			if (!init_use_custom_screen) {
+				init_screen = DisplayServer::SCREEN_WITH_KEYBOARD_FOCUS;
 				init_use_custom_screen = true;
 			}
 		}
@@ -2565,6 +2579,9 @@ Error Main::setup2() {
 		id->set_emulate_mouse_from_touch(bool(GLOBAL_DEF_BASIC("input_devices/pointing/emulate_mouse_from_touch", true)));
 	}
 
+	GLOBAL_DEF_BASIC("input_devices/pointing/android/enable_long_press_as_right_click", false);
+	GLOBAL_DEF_BASIC("input_devices/pointing/android/enable_pan_and_scale_gestures", false);
+
 	MAIN_PRINT("Main: Load Translations and Remaps");
 
 	translation_server->setup(); //register translations, load them, etc.
@@ -2857,7 +2874,11 @@ bool Main::start() {
 	}
 
 #ifdef TOOLS_ENABLED
+#ifdef MODULE_GDSCRIPT_ENABLED
 	if (!doc_tool_path.is_empty() && gdscript_docs_path.is_empty()) {
+#else
+	if (!doc_tool_path.is_empty()) {
+#endif
 		// Needed to instance editor-only classes for their default values
 		Engine::get_singleton()->set_editor_hint(true);
 
@@ -2949,6 +2970,7 @@ bool Main::start() {
 	}
 
 	if (dump_extension_api) {
+		Engine::get_singleton()->set_editor_hint(true); // "extension_api.json" should always contains editor singletons.
 		GDExtensionAPIDump::generate_extension_json_file("extension_api.json", include_docs_in_extension_api_dump);
 	}
 
@@ -3099,6 +3121,9 @@ bool Main::start() {
 		if (debug_navigation || debug_avoidance) {
 			NavigationServer3D::get_singleton()->set_active(true);
 			NavigationServer3D::get_singleton()->set_debug_enabled(true);
+		}
+		if (debug_canvas_item_redraw) {
+			RenderingServer::get_singleton()->canvas_item_set_debug_redraw(true);
 		}
 #endif
 

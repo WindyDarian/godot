@@ -651,8 +651,8 @@ void SceneTreeDock::_tool_selected(int p_tool, bool p_confirm_override) {
 				Node *top_node = selection[i];
 				Node *bottom_node = selection[selection.size() - 1 - i];
 
-				ERR_FAIL_COND(!top_node->get_parent());
-				ERR_FAIL_COND(!bottom_node->get_parent());
+				ERR_FAIL_NULL(top_node->get_parent());
+				ERR_FAIL_NULL(bottom_node->get_parent());
 
 				int bottom_node_pos = bottom_node->get_index(false);
 				int top_node_pos_next = top_node->get_index(false) + (MOVING_DOWN ? 1 : -1);
@@ -1040,7 +1040,7 @@ void SceneTreeDock::_tool_selected(int p_tool, bool p_confirm_override) {
 
 					// Fire confirmation dialog when children are editable.
 					if (editable && !placeholder) {
-						placeholder_editable_instance_remove_dialog->set_text(TTR("Enabling \"Load As Placeholder\" will disable \"Editable Children\" and cause all properties of the node to be reverted to their default."));
+						placeholder_editable_instance_remove_dialog->set_text(TTR("Enabling \"Load as Placeholder\" will disable \"Editable Children\" and cause all properties of the node to be reverted to their default."));
 						placeholder_editable_instance_remove_dialog->popup_centered();
 						break;
 					}
@@ -1058,6 +1058,10 @@ void SceneTreeDock::_tool_selected(int p_tool, bool p_confirm_override) {
 		} break;
 		case TOOL_SCENE_MAKE_LOCAL: {
 			if (!profile_allow_editing) {
+				break;
+			}
+
+			if (!_validate_no_foreign()) {
 				break;
 			}
 
@@ -1546,6 +1550,14 @@ void SceneTreeDock::_fill_path_renames(Vector<StringName> base_path, Vector<Stri
 }
 
 bool SceneTreeDock::_has_tracks_to_delete(Node *p_node, List<Node *> &p_to_delete) const {
+	// Skip if this node will be deleted.
+	for (const Node *F : p_to_delete) {
+		if (F == p_node || F->is_ancestor_of(p_node)) {
+			return false;
+		}
+	}
+
+	// This is an AnimationPlayer that survives the deletion.
 	AnimationPlayer *ap = Object::cast_to<AnimationPlayer>(p_node);
 	if (ap) {
 		Node *root = ap->get_node(ap->get_root_node());
@@ -1574,11 +1586,13 @@ bool SceneTreeDock::_has_tracks_to_delete(Node *p_node, List<Node *> &p_to_delet
 		}
 	}
 
+	// Recursively check child nodes.
 	for (int i = 0; i < p_node->get_child_count(); i++) {
 		if (_has_tracks_to_delete(p_node->get_child(i), p_to_delete)) {
 			return true;
 		}
 	}
+
 	return false;
 }
 
@@ -1635,10 +1649,15 @@ bool SceneTreeDock::_update_node_path(Node *p_root_node, NodePath &r_node_path, 
 	return false;
 }
 
-bool SceneTreeDock::_check_node_path_recursive(Node *p_root_node, Variant &r_variant, HashMap<Node *, NodePath> *p_renames) const {
+bool SceneTreeDock::_check_node_path_recursive(Node *p_root_node, Variant &r_variant, HashMap<Node *, NodePath> *p_renames, bool p_inside_resource) const {
 	switch (r_variant.get_type()) {
 		case Variant::NODE_PATH: {
 			NodePath node_path = r_variant;
+			if (p_inside_resource && !p_root_node->has_node(node_path)) {
+				// Resources may have NodePaths to nodes that aren't on the scene, so skip them.
+				return false;
+			}
+
 			if (!node_path.is_empty() && _update_node_path(p_root_node, node_path, p_renames)) {
 				r_variant = node_path;
 				return true;
@@ -1650,7 +1669,7 @@ bool SceneTreeDock::_check_node_path_recursive(Node *p_root_node, Variant &r_var
 			bool updated = false;
 			for (int i = 0; i < a.size(); i++) {
 				Variant value = a[i];
-				if (_check_node_path_recursive(p_root_node, value, p_renames)) {
+				if (_check_node_path_recursive(p_root_node, value, p_renames, p_inside_resource)) {
 					if (!updated) {
 						a = a.duplicate(); // Need to duplicate for undo-redo to work.
 						updated = true;
@@ -1669,7 +1688,7 @@ bool SceneTreeDock::_check_node_path_recursive(Node *p_root_node, Variant &r_var
 			bool updated = false;
 			for (int i = 0; i < d.size(); i++) {
 				Variant value = d.get_value_at_index(i);
-				if (_check_node_path_recursive(p_root_node, value, p_renames)) {
+				if (_check_node_path_recursive(p_root_node, value, p_renames, p_inside_resource)) {
 					if (!updated) {
 						d = d.duplicate(); // Need to duplicate for undo-redo to work.
 						updated = true;
@@ -1699,7 +1718,7 @@ bool SceneTreeDock::_check_node_path_recursive(Node *p_root_node, Variant &r_var
 				String propertyname = E.name;
 				Variant old_variant = resource->get(propertyname);
 				Variant updated_variant = old_variant;
-				if (_check_node_path_recursive(p_root_node, updated_variant, p_renames)) {
+				if (_check_node_path_recursive(p_root_node, updated_variant, p_renames, true)) {
 					EditorUndoRedoManager *undo_redo = EditorUndoRedoManager::get_singleton();
 					undo_redo->add_do_property(resource, propertyname, updated_variant);
 					undo_redo->add_undo_property(resource, propertyname, old_variant);
@@ -1934,6 +1953,8 @@ void SceneTreeDock::_do_reparent(Node *p_new_parent, int p_position_in_parent, V
 
 	p_nodes.sort_custom<Node::Comparator>(); //Makes result reliable.
 
+	const int first_idx = p_position_in_parent == -1 ? p_new_parent->get_child_count(false) : p_position_in_parent;
+	int nodes_before = first_idx;
 	bool no_change = true;
 	for (int ni = 0; ni < p_nodes.size(); ni++) {
 		if (p_nodes[ni] == p_new_parent) {
@@ -1942,7 +1963,17 @@ void SceneTreeDock::_do_reparent(Node *p_new_parent, int p_position_in_parent, V
 		// `move_child` + `get_index` doesn't really work for internal nodes.
 		ERR_FAIL_COND_MSG(p_nodes[ni]->get_internal_mode() != INTERNAL_MODE_DISABLED, "Trying to move internal node, this is not supported.");
 
-		if (p_nodes[ni]->get_parent() != p_new_parent || p_position_in_parent + ni != p_nodes[ni]->get_index(false)) {
+		if (p_nodes[ni]->get_index(false) < first_idx) {
+			nodes_before--;
+		}
+
+		if (p_nodes[ni]->get_parent() != p_new_parent) {
+			no_change = false;
+		}
+	}
+
+	for (int ni = 0; ni < p_nodes.size() && no_change; ni++) {
+		if (p_nodes[ni]->get_index(false) != nodes_before + ni) {
 			no_change = false;
 		}
 	}
@@ -3128,13 +3159,13 @@ void SceneTreeDock::_tree_rmb(const Vector2 &p_menu_pos) {
 				bool placeholder = selection[0]->get_scene_instance_load_placeholder();
 				if (profile_allow_editing) {
 					menu->add_check_item(TTR("Editable Children"), TOOL_SCENE_EDITABLE_CHILDREN);
-					menu->add_check_item(TTR("Load As Placeholder"), TOOL_SCENE_USE_PLACEHOLDER);
+					menu->add_check_item(TTR("Load as Placeholder"), TOOL_SCENE_USE_PLACEHOLDER);
 					menu->add_item(TTR("Make Local"), TOOL_SCENE_MAKE_LOCAL);
 				}
 				menu->add_icon_item(get_editor_theme_icon(SNAME("Load")), TTR("Open in Editor"), TOOL_SCENE_OPEN);
 				if (profile_allow_editing) {
 					menu->set_item_checked(menu->get_item_idx_from_text(TTR("Editable Children")), editable);
-					menu->set_item_checked(menu->get_item_idx_from_text(TTR("Load As Placeholder")), placeholder);
+					menu->set_item_checked(menu->get_item_idx_from_text(TTR("Load as Placeholder")), placeholder);
 				}
 			}
 		}
