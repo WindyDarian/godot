@@ -29,6 +29,7 @@
 /**************************************************************************/
 
 #include "scene_tree_dock.h"
+#include "node_dock.h"
 
 #include "core/config/project_settings.h"
 #include "core/input/input.h"
@@ -377,6 +378,9 @@ void SceneTreeDock::_tool_selected(int p_tool, bool p_confirm_override) {
 				break;
 			}
 			if (editor_selection->get_selected_node_list().size() > 1) {
+				if (!_validate_no_foreign()) {
+					break;
+				}
 				rename_dialog->popup_centered();
 			}
 		} break;
@@ -387,6 +391,9 @@ void SceneTreeDock::_tool_selected(int p_tool, bool p_confirm_override) {
 			}
 			Tree *tree = scene_tree->get_scene_tree();
 			if (tree->is_anything_selected()) {
+				if (!_validate_no_foreign()) {
+					break;
+				}
 				tree->grab_focus();
 				tree->edit_selected();
 			}
@@ -680,10 +687,6 @@ void SceneTreeDock::_tool_selected(int p_tool, bool p_confirm_override) {
 				break;
 			}
 
-			if (!_validate_no_foreign()) {
-				break;
-			}
-
 			List<Node *> selection = editor_selection->get_selected_node_list();
 			if (selection.size() == 0) {
 				break;
@@ -703,7 +706,15 @@ void SceneTreeDock::_tool_selected(int p_tool, bool p_confirm_override) {
 				Node *parent = node->get_parent();
 
 				List<Node *> owned;
-				node->get_owned_by(node->get_owner(), &owned);
+				Node *owner = node;
+				while (owner) {
+					List<Node *> cur_owned;
+					node->get_owned_by(owner, &cur_owned);
+					owner = owner->get_owner();
+					for (Node *F : cur_owned) {
+						owned.push_back(F);
+					}
+				}
 
 				HashMap<const Node *, Node *> duplimap;
 				Node *dup = node->duplicate_from_editor(duplimap);
@@ -723,9 +734,10 @@ void SceneTreeDock::_tool_selected(int p_tool, bool p_confirm_override) {
 						continue;
 					}
 					Node *d = duplimap[F];
-					undo_redo->add_do_method(d, "set_owner", node->get_owner());
+					undo_redo->add_do_method(d, "set_owner", edited_scene);
 				}
 				undo_redo->add_do_method(editor_selection, "add_node", dup);
+				undo_redo->add_do_method(dup, "set_owner", edited_scene);
 				undo_redo->add_undo_method(parent, "remove_child", dup);
 				undo_redo->add_do_reference(dup);
 
@@ -1081,6 +1093,8 @@ void SceneTreeDock::_tool_selected(int p_tool, bool p_confirm_override) {
 					undo_redo->add_do_method(node, "set_scene_file_path", "");
 					undo_redo->add_undo_method(node, "set_scene_file_path", node->get_scene_file_path());
 					_node_replace_owner(node, node, root);
+					_node_strip_signal_inheritance(node);
+					NodeDock::get_singleton()->set_node(node); // Refresh.
 					undo_redo->add_do_method(scene_tree, "update_tree");
 					undo_redo->add_undo_method(scene_tree, "update_tree");
 					undo_redo->commit_action();
@@ -1476,6 +1490,19 @@ void SceneTreeDock::_node_replace_owner(Node *p_base, Node *p_node, Node *p_root
 
 	for (int i = 0; i < p_node->get_child_count(); i++) {
 		_node_replace_owner(p_base, p_node->get_child(i), p_root, p_mode);
+	}
+}
+
+void SceneTreeDock::_node_strip_signal_inheritance(Node *p_node) {
+	List<Object::Connection> conns;
+	p_node->get_all_signal_connections(&conns);
+
+	for (Object::Connection conn : conns) {
+		conn.signal.disconnect(conn.callable);
+		conn.signal.connect(conn.callable, conn.flags & ~CONNECT_INHERITED);
+	}
+	for (int i = 0; i < p_node->get_child_count(); i++) {
+		_node_strip_signal_inheritance(p_node->get_child(i));
 	}
 }
 
@@ -2146,8 +2173,13 @@ void SceneTreeDock::_script_created(Ref<Script> p_script) {
 	}
 	undo_redo->commit_action();
 
+	// Avoid changing the currently edited object.
+	Object *edited_object = InspectorDock::get_inspector_singleton()->get_edited_object();
+
 	_push_item(p_script.ptr());
 	_update_script_button();
+
+	InspectorDock::get_inspector_singleton()->edit(edited_object);
 }
 
 void SceneTreeDock::_shader_created(Ref<Shader> p_shader) {

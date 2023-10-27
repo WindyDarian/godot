@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  multimesh_instance_3d.h                                               */
+/*  surface_upgrade_tool.h                                                */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,31 +28,22 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef MULTIMESH_INSTANCE_3D_H
-#define MULTIMESH_INSTANCE_3D_H
+#ifndef SURFACE_UPGRADE_TOOL_H
+#define SURFACE_UPGRADE_TOOL_H
 
-#include "scene/3d/visual_instance_3d.h"
-#include "scene/resources/multimesh.h"
+#include "scene/main/node.h"
 
-class MultiMeshInstance3D : public GeometryInstance3D {
-	GDCLASS(MultiMeshInstance3D, GeometryInstance3D);
+class EditorFileSystemDirectory;
 
-	Ref<MultiMesh> multimesh;
+class SurfaceUpgradeTool {
+	static void upgrade_all_meshes();
 
-protected:
-	static void _bind_methods();
-	// bind helpers
+	static void _show_popup();
+	static void _add_files(EditorFileSystemDirectory *p_dir, HashSet<String> &r_paths, PackedStringArray &r_files);
 
 public:
-	void set_multimesh(const Ref<MultiMesh> &p_multimesh);
-	Ref<MultiMesh> get_multimesh() const;
-
-	Array get_meshes() const;
-
-	virtual AABB get_aabb() const override;
-
-	MultiMeshInstance3D();
-	~MultiMeshInstance3D();
+	SurfaceUpgradeTool();
+	~SurfaceUpgradeTool();
 };
 
-#endif // MULTIMESH_INSTANCE_3D_H
+#endif // SURFACE_UPGRADE_TOOL_H
