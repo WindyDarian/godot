@@ -756,6 +756,14 @@ void FileSystemDock::_navigate_to_path(const String &p_path, bool p_select_in_fa
 void FileSystemDock::navigate_to_path(const String &p_path) {
 	file_list_search_box->clear();
 	_navigate_to_path(p_path);
+
+	// Ensure that the FileSystem dock is visible.
+	if (get_window() == get_tree()->get_root()) {
+		TabContainer *tab_container = (TabContainer *)get_parent_control();
+		tab_container->set_current_tab(tab_container->get_tab_idx_from_control((Control *)this));
+	} else {
+		get_window()->grab_focus();
+	}
 }
 
 void FileSystemDock::_file_list_thumbnail_done(const String &p_path, const Ref<Texture2D> &p_preview, const Ref<Texture2D> &p_small_preview, const Variant &p_udata) {
@@ -1288,6 +1296,13 @@ void FileSystemDock::_fs_changed() {
 		_update_file_list(true);
 	}
 
+	if (!select_after_scan.is_empty()) {
+		_navigate_to_path(select_after_scan);
+		select_after_scan.clear();
+		import_dock_needs_update = true;
+		_update_import_dock();
+	}
+
 	set_process(false);
 }
 
@@ -1467,8 +1482,6 @@ void FileSystemDock::_try_duplicate_item(const FileOrFolder &p_item, const Strin
 		EditorNode::get_singleton()->add_io_error(TTR("Cannot move a folder into itself.") + "\n" + old_path + "\n");
 		return;
 	}
-	const_cast<FileSystemDock *>(this)->current_path = new_path;
-
 	Ref<DirAccess> da = DirAccess::create(DirAccess::ACCESS_RESOURCES);
 
 	if (p_item.is_file) {
@@ -1908,6 +1921,7 @@ void FileSystemDock::_move_operation_confirm(const String &p_to_path, bool p_cop
 		for (int i = 0; i < to_move.size(); i++) {
 			if (to_move[i].path != new_paths[i]) {
 				_try_duplicate_item(to_move[i], new_paths[i]);
+				select_after_scan = new_paths[i];
 				is_copied = true;
 			}
 		}
@@ -3462,6 +3476,14 @@ void FileSystemDock::set_file_sort(FileSortOption p_file_sort) {
 
 void FileSystemDock::_file_sort_popup(int p_id) {
 	set_file_sort((FileSortOption)p_id);
+}
+
+const HashMap<String, Color> &FileSystemDock::get_folder_colors() const {
+	return folder_colors;
+}
+
+Dictionary FileSystemDock::get_assigned_folder_colors() const {
+	return assigned_folder_colors;
 }
 
 MenuButton *FileSystemDock::_create_file_menu_button() {
