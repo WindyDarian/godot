@@ -3692,7 +3692,7 @@ void EditorNode::_set_current_scene_nocheck(int p_idx) {
 	_edit_current(true);
 
 	_update_title();
-	scene_tabs->update_scene_tabs();
+	callable_mp(scene_tabs, &EditorSceneTabs::update_scene_tabs).call_deferred();
 
 	if (tabs_to_close.is_empty()) {
 		call_deferred(SNAME("_set_main_scene_state"), state, get_edited_scene()); // Do after everything else is done setting up.
@@ -6864,6 +6864,10 @@ EditorNode::EditorNode() {
 		AcceptDialog::set_swap_cancel_ok(swap_cancel_ok == 2);
 	}
 
+	int ed_root_dir = EDITOR_GET("interface/editor/ui_layout_direction");
+	Control::set_root_layout_direction(ed_root_dir);
+	Window::set_root_layout_direction(ed_root_dir);
+
 	ResourceLoader::set_abort_on_missing_resources(false);
 	ResourceLoader::set_error_notify_func(&EditorNode::add_io_error);
 	ResourceLoader::set_dependency_error_notify_func(&EditorNode::_dependency_error_report);
@@ -7357,6 +7361,20 @@ EditorNode::EditorNode() {
 		file_menu->add_shortcut(ED_SHORTCUT_AND_COMMAND("editor/file_quit", TTR("Quit"), KeyModifierMask::CMD_OR_CTRL + Key::Q), FILE_QUIT, true);
 	}
 
+	ED_SHORTCUT_AND_COMMAND("editor/editor_settings", TTR("Editor Settings..."));
+	ED_SHORTCUT_OVERRIDE("editor/editor_settings", "macos", KeyModifierMask::META + Key::COMMA);
+#ifdef MACOS_ENABLED
+	if (global_menu) {
+		apple_menu = memnew(PopupMenu);
+		apple_menu->set_system_menu_root("_apple");
+		main_menu->add_child(apple_menu);
+
+		apple_menu->add_shortcut(ED_GET_SHORTCUT("editor/editor_settings"), SETTINGS_PREFERENCES);
+		apple_menu->add_separator();
+		apple_menu->connect("id_pressed", callable_mp(this, &EditorNode::_menu_option));
+	}
+#endif
+
 	project_menu = memnew(PopupMenu);
 	project_menu->set_name(TTR("Project"));
 	main_menu->add_child(project_menu);
@@ -7422,9 +7440,13 @@ EditorNode::EditorNode() {
 	settings_menu->set_name(TTR("Editor"));
 	main_menu->add_child(settings_menu);
 
-	ED_SHORTCUT_AND_COMMAND("editor/editor_settings", TTR("Editor Settings..."));
-	ED_SHORTCUT_OVERRIDE("editor/editor_settings", "macos", KeyModifierMask::META + Key::COMMA);
+#ifdef MACOS_ENABLED
+	if (!global_menu) {
+		settings_menu->add_shortcut(ED_GET_SHORTCUT("editor/editor_settings"), SETTINGS_PREFERENCES);
+	}
+#else
 	settings_menu->add_shortcut(ED_GET_SHORTCUT("editor/editor_settings"), SETTINGS_PREFERENCES);
+#endif
 	settings_menu->add_shortcut(ED_SHORTCUT("editor/command_palette", TTR("Command Palette..."), KeyModifierMask::CMD_OR_CTRL | KeyModifierMask::SHIFT | Key::P), HELP_COMMAND_PALETTE);
 	settings_menu->add_separator();
 
@@ -7471,6 +7493,7 @@ EditorNode::EditorNode() {
 
 	help_menu = memnew(PopupMenu);
 	help_menu->set_name(TTR("Help"));
+	help_menu->set_system_menu_root("_help");
 	main_menu->add_child(help_menu);
 
 	help_menu->connect("id_pressed", callable_mp(this, &EditorNode::_menu_option));
