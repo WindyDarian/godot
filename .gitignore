@@ -132,6 +132,10 @@ cppcheck-cppcheck-build-dir/
 *.pydevproject
 *.launch
 
+# Emacs
+\#*\#
+.\#*
+
 # GCOV code coverage
 *.gcda
 *.gcno
@@ -367,6 +371,7 @@ $RECYCLE.BIN/
 *.msm
 *.msp
 *.lnk
+*.generated.props
 
 #==========================================
 # Windy Fork Specific
