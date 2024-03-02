@@ -215,3 +215,19 @@ Renamed to EditorSceneFormatImporterFBX2GLTF.
 The compat breakage was deemed necessary as this is a class most users wouldn't
 use directly, and the name needs to be disambiguated with the new
 EditorSceneFormatImporterUFBX.
+
+
+GH-88791
+--------
+Validate extension JSON: JSON file: Field was added in a way that breaks compatibility 'classes/Skeleton3D/methods/add_bone': return_value
+
+Added a return value for add_bone.
+Should not affect existing regular use - the return value would just be unused.
+Compatibility method registered.
+
+
+GH-89024
+--------
+Validate extension JSON: Error: Field 'classes/RichTextLabel/methods/push_meta/arguments': size changed value in new API, from 1 to 2.
+
+Added optional argument. Compatibility method registered.
