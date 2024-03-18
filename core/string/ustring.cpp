@@ -2459,7 +2459,7 @@ bool String::is_numeric() const {
 	return true; // TODO: Use the parser below for this instead
 }
 
-template <class C>
+template <typename C>
 static double built_in_strtod(
 		/* A decimal ASCII floating-point number,
 		 * optionally preceded by white space. Must
@@ -3329,8 +3329,12 @@ bool String::begins_with(const String &p_string) const {
 
 bool String::begins_with(const char *p_string) const {
 	int l = length();
-	if (l == 0 || !p_string) {
+	if (!p_string) {
 		return false;
+	}
+
+	if (l == 0) {
+		return *p_string == 0;
 	}
 
 	const char32_t *str = &operator[](0);
