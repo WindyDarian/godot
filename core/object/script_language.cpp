@@ -34,6 +34,7 @@
 #include "core/core_string_names.h"
 #include "core/debugger/engine_debugger.h"
 #include "core/debugger/script_debugger.h"
+#include "core/io/resource_loader.h"
 
 #include <stdint.h>
 
@@ -170,6 +171,24 @@ void Script::_bind_methods() {
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "source_code", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NONE), "set_source_code", "get_source_code");
 }
 
+void Script::reload_from_file() {
+#ifdef TOOLS_ENABLED
+	// Replicates how the ScriptEditor reloads script resources, which generally handles it.
+	// However, when scripts are to be reloaded but aren't open in the internal editor, we go through here instead.
+	const Ref<Script> rel = ResourceLoader::load(ResourceLoader::path_remap(get_path()), get_class(), ResourceFormatLoader::CACHE_MODE_IGNORE);
+	if (rel.is_null()) {
+		return;
+	}
+
+	set_source_code(rel->get_source_code());
+	set_last_modified_time(rel->get_last_modified_time());
+
+	reload();
+#else
+	Resource::reload_from_file();
+#endif
+}
+
 void ScriptServer::set_scripting_enabled(bool p_enabled) {
 	scripting_enabled = p_enabled;
 }
@@ -232,8 +251,8 @@ void ScriptServer::init_languages() {
 		if (ProjectSettings::get_singleton()->has_setting("_global_script_classes")) {
 			Array script_classes = GLOBAL_GET("_global_script_classes");
 
-			for (int i = 0; i < script_classes.size(); i++) {
-				Dictionary c = script_classes[i];
+			for (const Variant &script_class : script_classes) {
+				Dictionary c = script_class;
 				if (!c.has("class") || !c.has("language") || !c.has("path") || !c.has("base")) {
 					continue;
 				}
@@ -244,8 +263,8 @@ void ScriptServer::init_languages() {
 #endif
 
 		Array script_classes = ProjectSettings::get_singleton()->get_global_class_list();
-		for (int i = 0; i < script_classes.size(); i++) {
-			Dictionary c = script_classes[i];
+		for (const Variant &script_class : script_classes) {
+			Dictionary c = script_class;
 			if (!c.has("class") || !c.has("language") || !c.has("path") || !c.has("base")) {
 				continue;
 			}
@@ -444,8 +463,8 @@ void ScriptServer::save_global_classes() {
 	Dictionary class_icons;
 
 	Array script_classes = ProjectSettings::get_singleton()->get_global_class_list();
-	for (int i = 0; i < script_classes.size(); i++) {
-		Dictionary d = script_classes[i];
+	for (const Variant &script_class : script_classes) {
+		Dictionary d = script_class;
 		if (!d.has("name") || !d.has("icon")) {
 			continue;
 		}

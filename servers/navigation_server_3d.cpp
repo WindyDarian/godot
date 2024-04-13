@@ -186,6 +186,8 @@ void NavigationServer3D::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("bake_from_source_geometry_data_async", "navigation_mesh", "source_geometry_data", "callback"), &NavigationServer3D::bake_from_source_geometry_data_async, DEFVAL(Callable()));
 	ClassDB::bind_method(D_METHOD("is_baking_navigation_mesh", "navigation_mesh"), &NavigationServer3D::is_baking_navigation_mesh);
 
+	ClassDB::bind_method(D_METHOD("simplify_path", "path", "epsilon"), &NavigationServer3D::simplify_path);
+
 	ClassDB::bind_method(D_METHOD("free_rid", "rid"), &NavigationServer3D::free);
 
 	ClassDB::bind_method(D_METHOD("set_active", "active"), &NavigationServer3D::set_active);
@@ -235,6 +237,7 @@ NavigationServer3D::NavigationServer3D() {
 	GLOBAL_DEF("navigation/avoidance/thread_model/avoidance_use_multiple_threads", true);
 	GLOBAL_DEF("navigation/avoidance/thread_model/avoidance_use_high_priority_threads", true);
 
+	GLOBAL_DEF("navigation/baking/use_crash_prevention_checks", true);
 	GLOBAL_DEF("navigation/baking/thread_model/baking_use_multiple_threads", true);
 	GLOBAL_DEF("navigation/baking/thread_model/baking_use_high_priority_threads", true);
 
@@ -293,7 +296,11 @@ void NavigationServer3D::set_debug_enabled(bool p_enabled) {
 	debug_enabled = p_enabled;
 
 	if (debug_dirty) {
+		navigation_debug_dirty = true;
 		callable_mp(this, &NavigationServer3D::_emit_navigation_debug_changed_signal).call_deferred();
+
+		avoidance_debug_dirty = true;
+		callable_mp(this, &NavigationServer3D::_emit_avoidance_debug_changed_signal).call_deferred();
 	}
 #endif // DEBUG_ENABLED
 }

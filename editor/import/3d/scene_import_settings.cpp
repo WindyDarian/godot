@@ -50,6 +50,8 @@ class SceneImportSettingsData : public Object {
 	HashMap<StringName, Variant> current;
 	HashMap<StringName, Variant> defaults;
 	List<ResourceImporter::ImportOption> options;
+	Vector<String> animation_list;
+
 	bool hide_options = false;
 	String path;
 
@@ -96,6 +98,7 @@ class SceneImportSettingsData : public Object {
 		}
 		return false;
 	}
+
 	bool _get(const StringName &p_name, Variant &r_ret) const {
 		if (settings) {
 			if (settings->has(p_name)) {
@@ -109,29 +112,81 @@ class SceneImportSettingsData : public Object {
 		}
 		return false;
 	}
-	void _get_property_list(List<PropertyInfo> *p_list) const {
+
+	void handle_special_properties(PropertyInfo &r_option) const {
+		ERR_FAIL_NULL(settings);
+		if (r_option.name == "rest_pose/load_pose") {
+			if (!settings->has("rest_pose/load_pose") || int((*settings)["rest_pose/load_pose"]) != 2) {
+				(*settings)["rest_pose/external_animation_library"] = Variant();
+			}
+		}
+		if (r_option.name == "rest_pose/selected_animation") {
+			if (!settings->has("rest_pose/load_pose")) {
+				return;
+			}
+			String hint_string;
+
+			switch (int((*settings)["rest_pose/load_pose"])) {
+				case 1: {
+					hint_string = String(",").join(animation_list);
+					if (animation_list.size() == 1) {
+						(*settings)["rest_pose/selected_animation"] = animation_list[0];
+					}
+				} break;
+				case 2: {
+					Object *res = (*settings)["rest_pose/external_animation_library"];
+					Ref<Animation> anim(res);
+					Ref<AnimationLibrary> library(res);
+					if (anim.is_valid()) {
+						hint_string = anim->get_name();
+					}
+					if (library.is_valid()) {
+						List<StringName> anim_names;
+						library->get_animation_list(&anim_names);
+						if (anim_names.size() == 1) {
+							(*settings)["rest_pose/selected_animation"] = String(anim_names[0]);
+						}
+						for (StringName anim_name : anim_names) {
+							hint_string += "," + anim_name; // Include preceding, as a catch-all.
+						}
+					}
+				} break;
+				default:
+					break;
+			}
+			r_option.hint = PROPERTY_HINT_ENUM;
+			r_option.hint_string = hint_string;
+		}
+	}
+
+	void _get_property_list(List<PropertyInfo> *r_list) const {
 		if (hide_options) {
 			return;
 		}
 		for (const ResourceImporter::ImportOption &E : options) {
+			PropertyInfo option = E.option;
 			if (SceneImportSettingsDialog::get_singleton()->is_editing_animation()) {
 				if (category == ResourceImporterScene::INTERNAL_IMPORT_CATEGORY_MAX) {
 					if (ResourceImporterScene::get_animation_singleton()->get_option_visibility(path, E.option.name, current)) {
-						p_list->push_back(E.option);
+						handle_special_properties(option);
+						r_list->push_back(option);
 					}
 				} else {
 					if (ResourceImporterScene::get_animation_singleton()->get_internal_option_visibility(category, E.option.name, current)) {
-						p_list->push_back(E.option);
+						handle_special_properties(option);
+						r_list->push_back(option);
 					}
 				}
 			} else {
 				if (category == ResourceImporterScene::INTERNAL_IMPORT_CATEGORY_MAX) {
 					if (ResourceImporterScene::get_scene_singleton()->get_option_visibility(path, E.option.name, current)) {
-						p_list->push_back(E.option);
+						handle_special_properties(option);
+						r_list->push_back(option);
 					}
 				} else {
 					if (ResourceImporterScene::get_scene_singleton()->get_internal_option_visibility(category, E.option.name, current)) {
-						p_list->push_back(E.option);
+						handle_special_properties(option);
+						r_list->push_back(option);
 					}
 				}
 			}
@@ -376,10 +431,15 @@ void SceneImportSettingsDialog::_fill_scene(Node *p_node, TreeItem *p_parent_ite
 
 	AnimationPlayer *anim_node = Object::cast_to<AnimationPlayer>(p_node);
 	if (anim_node) {
+		Vector<String> animation_list;
 		List<StringName> animations;
 		anim_node->get_animation_list(&animations);
 		for (const StringName &E : animations) {
 			_fill_animation(scene_tree, anim_node->get_animation(E), E, item);
+			animation_list.append(E);
+		}
+		if (scene_import_settings_data != nullptr) {
+			scene_import_settings_data->animation_list = animation_list;
 		}
 	}
 
@@ -433,13 +493,20 @@ void SceneImportSettingsDialog::_update_view_gizmos() {
 		return;
 	}
 	const HashMap<StringName, Variant> &main_settings = scene_import_settings_data->current;
+	bool reshow_settings = false;
 	if (main_settings.has("nodes/import_as_skeleton_bones")) {
 		bool new_import_as_skeleton = main_settings["nodes/import_as_skeleton_bones"];
-		if (new_import_as_skeleton != previous_import_as_skeleton) {
-			previous_import_as_skeleton = new_import_as_skeleton;
-			_re_import();
-			open_settings(base_path);
-		}
+		reshow_settings = reshow_settings || (new_import_as_skeleton != previous_import_as_skeleton);
+		previous_import_as_skeleton = new_import_as_skeleton;
+	}
+	if (main_settings.has("animation/import_rest_as_RESET")) {
+		bool new_rest_as_reset = main_settings["animation/import_rest_as_RESET"];
+		reshow_settings = reshow_settings || (new_rest_as_reset != previous_rest_as_reset);
+		previous_rest_as_reset = new_rest_as_reset;
+	}
+	if (reshow_settings) {
+		_re_import();
+		open_settings(base_path);
 		return;
 	}
 	for (const KeyValue<String, NodeData> &e : node_map) {
@@ -687,6 +754,9 @@ void SceneImportSettingsDialog::open_settings(const String &p_path, bool p_for_a
 	const HashMap<StringName, Variant> &main_settings = scene_import_settings_data->current;
 	if (main_settings.has("nodes/import_as_skeleton_bones")) {
 		previous_import_as_skeleton = main_settings["nodes/import_as_skeleton_bones"];
+	}
+	if (main_settings.has("animation/import_rest_as_RESET")) {
+		previous_rest_as_reset = main_settings["animation/import_rest_as_RESET"];
 	}
 	popup_centered_ratio();
 	_update_view_gizmos();
@@ -1273,6 +1343,7 @@ void SceneImportSettingsDialog::_save_dir_callback(const String &p_path) {
 						item->set_metadata(0, E.key);
 						item->set_editable(0, true);
 						item->set_checked(0, true);
+						name = name.validate_filename();
 						String path = p_path.path_join(name);
 						if (external_extension_type->get_selected() == 0) {
 							path += ".tres";
@@ -1326,6 +1397,7 @@ void SceneImportSettingsDialog::_save_dir_callback(const String &p_path) {
 						item->set_metadata(0, E.key);
 						item->set_editable(0, true);
 						item->set_checked(0, true);
+						name = name.validate_filename();
 						String path = p_path.path_join(name);
 						if (external_extension_type->get_selected() == 0) {
 							path += ".tres";
@@ -1378,6 +1450,7 @@ void SceneImportSettingsDialog::_save_dir_callback(const String &p_path) {
 					item->set_metadata(0, E.key);
 					item->set_editable(0, true);
 					item->set_checked(0, true);
+					name = name.validate_filename();
 					String path = p_path.path_join(name);
 					if (external_extension_type->get_selected() == 0) {
 						path += ".tres";
@@ -1503,17 +1576,20 @@ SceneImportSettingsDialog::SceneImportSettingsDialog() {
 
 	scene_tree = memnew(Tree);
 	scene_tree->set_name(TTR("Scene"));
+	scene_tree->set_auto_translate_mode(AUTO_TRANSLATE_MODE_DISABLED);
 	data_mode->add_child(scene_tree);
 	scene_tree->connect("cell_selected", callable_mp(this, &SceneImportSettingsDialog::_scene_tree_selected));
 
 	mesh_tree = memnew(Tree);
 	mesh_tree->set_name(TTR("Meshes"));
+	mesh_tree->set_auto_translate_mode(AUTO_TRANSLATE_MODE_DISABLED);
 	data_mode->add_child(mesh_tree);
 	mesh_tree->set_hide_root(true);
 	mesh_tree->connect("cell_selected", callable_mp(this, &SceneImportSettingsDialog::_mesh_tree_selected));
 
 	material_tree = memnew(Tree);
 	material_tree->set_name(TTR("Materials"));
+	material_tree->set_auto_translate_mode(AUTO_TRANSLATE_MODE_DISABLED);
 	data_mode->add_child(material_tree);
 	material_tree->connect("cell_selected", callable_mp(this, &SceneImportSettingsDialog::_material_tree_selected));
 
@@ -1576,6 +1652,28 @@ SceneImportSettingsDialog::SceneImportSettingsDialog() {
 		camera_attributes.instantiate();
 		camera->set_attributes(camera_attributes);
 	}
+
+	// Use a grayscale gradient sky to avoid skewing the preview towards a specific color,
+	// but still allow shaded areas to be easily distinguished (using the ambient and reflected light).
+	// This also helps the user orient themselves in the preview, since the bottom of the sky is black
+	// and the top of the sky is white.
+	procedural_sky_material.instantiate();
+	procedural_sky_material->set_sky_top_color(Color(1, 1, 1));
+	procedural_sky_material->set_sky_horizon_color(Color(0.5, 0.5, 0.5));
+	procedural_sky_material->set_ground_horizon_color(Color(0.5, 0.5, 0.5));
+	procedural_sky_material->set_ground_bottom_color(Color(0, 0, 0));
+	procedural_sky_material->set_sky_curve(2.0);
+	procedural_sky_material->set_ground_curve(0.5);
+	// Hide the sun from the sky.
+	procedural_sky_material->set_sun_angle_max(0.0);
+	sky.instantiate();
+	sky->set_material(procedural_sky_material);
+	environment.instantiate();
+	environment->set_background(Environment::BG_SKY);
+	environment->set_sky(sky);
+	// A custom FOV must be specified, as an orthogonal camera is used for the preview.
+	environment->set_sky_custom_fov(50.0);
+	camera->set_environment(environment);
 
 	light = memnew(DirectionalLight3D);
 	light->set_transform(Transform3D().looking_at(Vector3(-1, -2, -0.6), Vector3(0, 1, 0)));
@@ -1649,6 +1747,7 @@ SceneImportSettingsDialog::SceneImportSettingsDialog() {
 	external_paths->add_child(external_path_tree);
 	external_path_tree->connect("button_clicked", callable_mp(this, &SceneImportSettingsDialog::_browse_save_callback));
 	external_paths->connect("confirmed", callable_mp(this, &SceneImportSettingsDialog::_save_dir_confirm));
+	external_path_tree->set_auto_translate_mode(AUTO_TRANSLATE_MODE_DISABLED);
 	external_path_tree->set_columns(3);
 	external_path_tree->set_column_titles_visible(true);
 	external_path_tree->set_column_expand(0, true);

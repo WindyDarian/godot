@@ -127,6 +127,9 @@ class OS_Windows : public OS {
 	bool dwrite_init = false;
 	bool dwrite2_init = false;
 
+	HashMap<void *, String> temp_libraries;
+
+	void _remove_temp_library(void *p_library_handle);
 	String _get_default_fontname(const String &p_font_name) const;
 	DWRITE_FONT_WEIGHT _weight_to_dw(int p_weight) const;
 	DWRITE_FONT_STRETCH _stretch_to_dw(int p_stretch) const;
@@ -155,7 +158,7 @@ public:
 
 	virtual Error get_entropy(uint8_t *r_buffer, int p_bytes) override;
 
-	virtual Error open_dynamic_library(const String &p_path, void *&p_library_handle, bool p_also_set_library_path = false, String *r_resolved_path = nullptr) override;
+	virtual Error open_dynamic_library(const String &p_path, void *&p_library_handle, bool p_also_set_library_path = false, String *r_resolved_path = nullptr, bool p_generate_temp_files = false) override;
 	virtual Error close_dynamic_library(void *p_library_handle) override;
 	virtual Error get_dynamic_library_symbol_handle(void *p_library_handle, const String &p_name, void *&p_symbol_handle, bool p_optional = false) override;
 
@@ -181,6 +184,7 @@ public:
 	virtual Dictionary get_memory_info() const override;
 
 	virtual Error execute(const String &p_path, const List<String> &p_arguments, String *r_pipe = nullptr, int *r_exitcode = nullptr, bool read_stderr = false, Mutex *p_pipe_mutex = nullptr, bool p_open_console = false) override;
+	virtual Dictionary execute_with_pipe(const String &p_path, const List<String> &p_arguments) override;
 	virtual Error create_process(const String &p_path, const List<String> &p_arguments, ProcessID *r_child_id = nullptr, bool p_open_console = false) override;
 	virtual Error kill(const ProcessID &p_pid) override;
 	virtual int get_process_id() const override;

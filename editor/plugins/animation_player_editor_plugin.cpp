@@ -73,6 +73,8 @@ void AnimationPlayerEditor::_node_removed(Node *p_node) {
 		_update_player();
 
 		_ensure_dummy_player();
+
+		pin->set_pressed(false);
 	}
 }
 
@@ -2039,10 +2041,10 @@ AnimationPlayerEditor::AnimationPlayerEditor(AnimationPlayerEditorPlugin *p_plug
 	vb->add_child(name_hb);
 	name_dialog->register_text_enter(name);
 
-	error_dialog = memnew(ConfirmationDialog);
+	error_dialog = memnew(AcceptDialog);
 	error_dialog->set_ok_button_text(TTR("Close"));
 	error_dialog->set_title(TTR("Error!"));
-	add_child(error_dialog);
+	name_dialog->add_child(error_dialog);
 
 	name_dialog->connect(SNAME("confirmed"), callable_mp(this, &AnimationPlayerEditor::_animation_name_edited));
 
@@ -2056,6 +2058,7 @@ AnimationPlayerEditor::AnimationPlayerEditor(AnimationPlayerEditorPlugin *p_plug
 	blend_editor.dialog->add_child(blend_vb);
 
 	blend_editor.tree = memnew(Tree);
+	blend_editor.tree->set_auto_translate_mode(AUTO_TRANSLATE_MODE_DISABLED);
 	blend_editor.tree->set_hide_root(true);
 	blend_editor.tree->set_columns(2);
 	blend_editor.tree->set_column_expand_ratio(0, 10);

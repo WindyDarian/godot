@@ -47,9 +47,6 @@ class GDExtension : public Resource {
 
 	void *library = nullptr; // pointer if valid,
 	String library_path;
-#if defined(WINDOWS_ENABLED) && defined(TOOLS_ENABLED)
-	String temp_lib_path;
-#endif
 	bool reloadable = false;
 
 	struct Extension {
@@ -130,10 +127,6 @@ public:
 	Error open_library(const String &p_path, const String &p_entry_symbol);
 	void close_library();
 
-#if defined(WINDOWS_ENABLED) && defined(TOOLS_ENABLED)
-	String get_temp_library_path() const { return temp_lib_path; }
-#endif
-
 	enum InitializationLevel {
 		INITIALIZATION_LEVEL_CORE = GDEXTENSION_INITIALIZATION_CORE,
 		INITIALIZATION_LEVEL_SERVERS = GDEXTENSION_INITIALIZATION_SERVERS,
@@ -176,10 +169,10 @@ class GDExtensionResourceLoader : public ResourceFormatLoader {
 public:
 	static Error load_gdextension_resource(const String &p_path, Ref<GDExtension> &p_extension);
 
-	virtual Ref<Resource> load(const String &p_path, const String &p_original_path, Error *r_error, bool p_use_sub_threads = false, float *r_progress = nullptr, CacheMode p_cache_mode = CACHE_MODE_REUSE);
-	virtual void get_recognized_extensions(List<String> *p_extensions) const;
-	virtual bool handles_type(const String &p_type) const;
-	virtual String get_resource_type(const String &p_path) const;
+	virtual Ref<Resource> load(const String &p_path, const String &p_original_path, Error *r_error, bool p_use_sub_threads = false, float *r_progress = nullptr, CacheMode p_cache_mode = CACHE_MODE_REUSE) override;
+	virtual void get_recognized_extensions(List<String> *p_extensions) const override;
+	virtual bool handles_type(const String &p_type) const override;
+	virtual String get_resource_type(const String &p_path) const override;
 };
 
 #ifdef TOOLS_ENABLED
