@@ -4992,7 +4992,7 @@ void DisplayServerX11::process_events() {
 						files.write[i] = files[i].replace("file://", "").uri_decode();
 					}
 
-					if (!windows[window_id].drop_files_callback.is_null()) {
+					if (windows[window_id].drop_files_callback.is_valid()) {
 						windows[window_id].drop_files_callback.call(files);
 					}
 
@@ -5096,6 +5096,12 @@ void DisplayServerX11::process_events() {
 		printf("Win: %d,%d\n", win_x, win_y);
 		*/
 	}
+
+#ifdef DBUS_ENABLED
+	if (portal_desktop) {
+		portal_desktop->process_file_dialog_callbacks();
+	}
+#endif
 
 	_THREAD_SAFE_UNLOCK_
 
