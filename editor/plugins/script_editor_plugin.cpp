@@ -731,6 +731,7 @@ void ScriptEditor::_go_to_tab(int p_idx) {
 	_update_members_overview();
 	_update_help_overview();
 	_update_selected_editor_menu();
+	_update_online_doc();
 	_update_members_overview_visibility();
 	_update_help_overview_visibility();
 }
@@ -764,7 +765,7 @@ void ScriptEditor::_update_recent_scripts() {
 	}
 
 	recent_scripts->add_separator();
-	recent_scripts->add_shortcut(ED_SHORTCUT("script_editor/clear_recent", TTR("Clear Recent Files")));
+	recent_scripts->add_shortcut(ED_GET_SHORTCUT("script_editor/clear_recent"));
 	recent_scripts->set_item_disabled(recent_scripts->get_item_id(recent_scripts->get_item_count() - 1), rc.is_empty());
 
 	recent_scripts->reset_size();
@@ -903,6 +904,7 @@ void ScriptEditor::_close_tab(int p_idx, bool p_save, bool p_history_back) {
 			_go_to_tab(idx);
 		} else {
 			_update_selected_editor_menu();
+			_update_online_doc();
 		}
 
 		_update_history_arrows();
@@ -1350,7 +1352,21 @@ void ScriptEditor::_menu_option(int p_option) {
 			help_search_dialog->popup_dialog();
 		} break;
 		case SEARCH_WEBSITE: {
-			OS::get_singleton()->shell_open(VERSION_DOCS_URL "/");
+			Control *tab = tab_container->get_current_tab_control();
+
+			EditorHelp *eh = Object::cast_to<EditorHelp>(tab);
+			bool native_class_doc = false;
+			if (eh) {
+				const HashMap<String, DocData::ClassDoc>::ConstIterator E = EditorHelp::get_doc_data()->class_list.find(eh->get_class());
+				native_class_doc = E && !E->value.is_script_doc;
+			}
+			if (native_class_doc) {
+				String name = eh->get_class().to_lower();
+				String doc_url = vformat(VERSION_DOCS_URL "/classes/class_%s.html", name);
+				OS::get_singleton()->shell_open(doc_url);
+			} else {
+				OS::get_singleton()->shell_open(VERSION_DOCS_URL "/");
+			}
 		} break;
 		case WINDOW_NEXT: {
 			_history_forward();
@@ -2026,6 +2042,26 @@ void ScriptEditor::_update_help_overview() {
 	for (int i = 0; i < sections.size(); i++) {
 		help_overview->add_item(sections[i].first);
 		help_overview->set_item_metadata(i, sections[i].second);
+	}
+}
+
+void ScriptEditor::_update_online_doc() {
+	Node *current = tab_container->get_tab_control(tab_container->get_current_tab());
+
+	EditorHelp *eh = Object::cast_to<EditorHelp>(current);
+	bool native_class_doc = false;
+	if (eh) {
+		const HashMap<String, DocData::ClassDoc>::ConstIterator E = EditorHelp::get_doc_data()->class_list.find(eh->get_class());
+		native_class_doc = E && !E->value.is_script_doc;
+	}
+	if (native_class_doc) {
+		String name = eh->get_class();
+		String tooltip = vformat(TTR("Open '%s' in Godot online documentation."), name);
+		site_search->set_text(TTR("Open in Online Docs"));
+		site_search->set_tooltip_text(tooltip);
+	} else {
+		site_search->set_text(TTR("Online Docs"));
+		site_search->set_tooltip_text(TTR("Open Godot online documentation."));
 	}
 }
 
@@ -3555,13 +3591,13 @@ void ScriptEditor::_update_selected_editor_menu() {
 		script_search_menu->get_popup()->add_shortcut(ED_SHORTCUT("script_editor/find_next", TTR("Find Next"), Key::F3), HELP_SEARCH_FIND_NEXT);
 		script_search_menu->get_popup()->add_shortcut(ED_SHORTCUT("script_editor/find_previous", TTR("Find Previous"), KeyModifierMask::SHIFT | Key::F3), HELP_SEARCH_FIND_PREVIOUS);
 		script_search_menu->get_popup()->add_separator();
-		script_search_menu->get_popup()->add_shortcut(ED_SHORTCUT("script_editor/find_in_files", TTR("Find in Files"), KeyModifierMask::CMD_OR_CTRL | KeyModifierMask::SHIFT | Key::F), SEARCH_IN_FILES);
-		script_search_menu->get_popup()->add_shortcut(ED_SHORTCUT("script_editor/replace_in_files", TTR("Replace in Files"), KeyModifierMask::CMD_OR_CTRL | KeyModifierMask::SHIFT | Key::R), REPLACE_IN_FILES);
+		script_search_menu->get_popup()->add_shortcut(ED_GET_SHORTCUT("script_editor/find_in_files"), SEARCH_IN_FILES);
+		script_search_menu->get_popup()->add_shortcut(ED_GET_SHORTCUT("script_editor/replace_in_files"), REPLACE_IN_FILES);
 		script_search_menu->show();
 	} else {
 		if (tab_container->get_tab_count() == 0) {
-			script_search_menu->get_popup()->add_shortcut(ED_SHORTCUT("script_editor/find_in_files", TTR("Find in Files"), KeyModifierMask::CMD_OR_CTRL | KeyModifierMask::SHIFT | Key::F), SEARCH_IN_FILES);
-			script_search_menu->get_popup()->add_shortcut(ED_SHORTCUT("script_editor/replace_in_files", TTR("Replace in Files"), KeyModifierMask::CMD_OR_CTRL | KeyModifierMask::SHIFT | Key::R), REPLACE_IN_FILES);
+			script_search_menu->get_popup()->add_shortcut(ED_GET_SHORTCUT("script_editor/find_in_files"), SEARCH_IN_FILES);
+			script_search_menu->get_popup()->add_shortcut(ED_GET_SHORTCUT("script_editor/replace_in_files"), REPLACE_IN_FILES);
 			script_search_menu->show();
 		} else {
 			script_search_menu->hide();
@@ -4065,7 +4101,7 @@ ScriptEditor::ScriptEditor(WindowWrapper *p_wrapper) {
 	file_menu->get_popup()->add_shortcut(ED_SHORTCUT("script_editor/new", TTR("New Script..."), KeyModifierMask::CMD_OR_CTRL | Key::N), FILE_NEW);
 	file_menu->get_popup()->add_shortcut(ED_SHORTCUT("script_editor/new_textfile", TTR("New Text File..."), KeyModifierMask::CMD_OR_CTRL | KeyModifierMask::SHIFT | Key::N), FILE_NEW_TEXTFILE);
 	file_menu->get_popup()->add_shortcut(ED_SHORTCUT("script_editor/open", TTR("Open...")), FILE_OPEN);
-	file_menu->get_popup()->add_shortcut(ED_SHORTCUT("script_editor/reopen_closed_script", TTR("Reopen Closed Script"), KeyModifierMask::CMD_OR_CTRL | KeyModifierMask::SHIFT | Key::T), FILE_REOPEN_CLOSED);
+	file_menu->get_popup()->add_shortcut(ED_GET_SHORTCUT("script_editor/reopen_closed_script"), FILE_REOPEN_CLOSED);
 
 	recent_scripts = memnew(PopupMenu);
 	file_menu->get_popup()->add_submenu_node_item(TTR("Open Recent"), recent_scripts, FILE_OPEN_RECENT);
@@ -4086,6 +4122,9 @@ ScriptEditor::ScriptEditor(WindowWrapper *p_wrapper) {
 
 	file_menu->get_popup()->add_shortcut(ED_SHORTCUT("script_editor/history_previous", TTR("History Previous"), KeyModifierMask::ALT | Key::LEFT), WINDOW_PREV);
 	file_menu->get_popup()->add_shortcut(ED_SHORTCUT("script_editor/history_next", TTR("History Next"), KeyModifierMask::ALT | Key::RIGHT), WINDOW_NEXT);
+	ED_SHORTCUT_OVERRIDE("script_editor/history_previous", "macos", KeyModifierMask::ALT | KeyModifierMask::META | Key::LEFT);
+	ED_SHORTCUT_OVERRIDE("script_editor/history_next", "macos", KeyModifierMask::ALT | KeyModifierMask::META | Key::RIGHT);
+
 	file_menu->get_popup()->add_separator();
 
 	theme_submenu = memnew(PopupMenu);
@@ -4147,15 +4186,13 @@ ScriptEditor::ScriptEditor(WindowWrapper *p_wrapper) {
 
 	site_search = memnew(Button);
 	site_search->set_flat(true);
-	site_search->set_text(TTR("Online Docs"));
-	site_search->connect("pressed", callable_mp(this, &ScriptEditor::_menu_option).bind(SEARCH_WEBSITE));
+	site_search->connect(SceneStringName(pressed), callable_mp(this, &ScriptEditor::_menu_option).bind(SEARCH_WEBSITE));
 	menu_hb->add_child(site_search);
-	site_search->set_tooltip_text(TTR("Open Godot online documentation."));
 
 	help_search = memnew(Button);
 	help_search->set_flat(true);
 	help_search->set_text(TTR("Search Help"));
-	help_search->connect("pressed", callable_mp(this, &ScriptEditor::_menu_option).bind(SEARCH_HELP));
+	help_search->connect(SceneStringName(pressed), callable_mp(this, &ScriptEditor::_menu_option).bind(SEARCH_HELP));
 	menu_hb->add_child(help_search);
 	help_search->set_tooltip_text(TTR("Search the reference documentation."));
 
@@ -4163,14 +4200,14 @@ ScriptEditor::ScriptEditor(WindowWrapper *p_wrapper) {
 
 	script_back = memnew(Button);
 	script_back->set_flat(true);
-	script_back->connect("pressed", callable_mp(this, &ScriptEditor::_history_back));
+	script_back->connect(SceneStringName(pressed), callable_mp(this, &ScriptEditor::_history_back));
 	menu_hb->add_child(script_back);
 	script_back->set_disabled(true);
 	script_back->set_tooltip_text(TTR("Go to previous edited document."));
 
 	script_forward = memnew(Button);
 	script_forward->set_flat(true);
-	script_forward->connect("pressed", callable_mp(this, &ScriptEditor::_history_forward));
+	script_forward->connect(SceneStringName(pressed), callable_mp(this, &ScriptEditor::_history_forward));
 	menu_hb->add_child(script_forward);
 	script_forward->set_disabled(true);
 	script_forward->set_tooltip_text(TTR("Go to next edited document."));
@@ -4271,6 +4308,8 @@ ScriptEditor::ScriptEditor(WindowWrapper *p_wrapper) {
 	Ref<EditorJSONSyntaxHighlighter> json_syntax_highlighter;
 	json_syntax_highlighter.instantiate();
 	register_syntax_highlighter(json_syntax_highlighter);
+
+	_update_online_doc();
 }
 
 ScriptEditor::~ScriptEditor() {
@@ -4463,6 +4502,15 @@ void ScriptEditorPlugin::edited_scene_changed() {
 }
 
 ScriptEditorPlugin::ScriptEditorPlugin() {
+	ED_SHORTCUT("script_editor/reopen_closed_script", TTR("Reopen Closed Script"), KeyModifierMask::CMD_OR_CTRL | KeyModifierMask::SHIFT | Key::T);
+	ED_SHORTCUT("script_editor/clear_recent", TTR("Clear Recent Scripts"));
+	ED_SHORTCUT("script_editor/find_in_files", TTR("Find in Files"), KeyModifierMask::CMD_OR_CTRL | KeyModifierMask::SHIFT | Key::F);
+	ED_SHORTCUT("script_editor/replace_in_files", TTR("Replace in Files"), KeyModifierMask::CMD_OR_CTRL | KeyModifierMask::SHIFT | Key::R);
+
+	ED_SHORTCUT("script_text_editor/convert_to_uppercase", TTR("Uppercase"), KeyModifierMask::SHIFT | Key::F4);
+	ED_SHORTCUT("script_text_editor/convert_to_lowercase", TTR("Lowercase"), KeyModifierMask::SHIFT | Key::F5);
+	ED_SHORTCUT("script_text_editor/capitalize", TTR("Capitalize"), KeyModifierMask::SHIFT | Key::F6);
+
 	window_wrapper = memnew(WindowWrapper);
 	window_wrapper->set_window_title(vformat(TTR("%s - Godot Engine"), TTR("Script Editor")));
 	window_wrapper->set_margins_enabled(true);
@@ -4491,9 +4539,6 @@ ScriptEditorPlugin::ScriptEditorPlugin() {
 	EditorSettings::get_singleton()->add_property_hint(PropertyInfo(Variant::STRING, "text_editor/external/exec_path", PROPERTY_HINT_GLOBAL_FILE));
 	EDITOR_DEF("text_editor/external/exec_flags", "{file}");
 	EditorSettings::get_singleton()->add_property_hint(PropertyInfo(Variant::STRING, "text_editor/external/exec_flags", PROPERTY_HINT_PLACEHOLDER_TEXT, "Call flags with placeholders: {project}, {file}, {col}, {line}."));
-
-	ED_SHORTCUT("script_editor/reopen_closed_script", TTR("Reopen Closed Script"), KeyModifierMask::CMD_OR_CTRL | KeyModifierMask::SHIFT | Key::T);
-	ED_SHORTCUT("script_editor/clear_recent", TTR("Clear Recent Scripts"));
 }
 
 ScriptEditorPlugin::~ScriptEditorPlugin() {

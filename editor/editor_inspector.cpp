@@ -2203,7 +2203,7 @@ void EditorInspectorArray::_setup() {
 			if (element_position > 0) {
 				ae.move_up = memnew(Button);
 				ae.move_up->set_icon(get_editor_theme_icon(SNAME("MoveUp")));
-				ae.move_up->connect("pressed", callable_mp(this, &EditorInspectorArray::_move_element).bind(element_position, element_position - 1));
+				ae.move_up->connect(SceneStringName(pressed), callable_mp(this, &EditorInspectorArray::_move_element).bind(element_position, element_position - 1));
 				move_vbox->add_child(ae.move_up);
 			}
 
@@ -2219,7 +2219,7 @@ void EditorInspectorArray::_setup() {
 			if (element_position < _get_array_count() - 1) {
 				ae.move_down = memnew(Button);
 				ae.move_down->set_icon(get_editor_theme_icon(SNAME("MoveDown")));
-				ae.move_down->connect("pressed", callable_mp(this, &EditorInspectorArray::_move_element).bind(element_position, element_position + 2));
+				ae.move_down->connect(SceneStringName(pressed), callable_mp(this, &EditorInspectorArray::_move_element).bind(element_position, element_position + 2));
 				move_vbox->add_child(ae.move_down);
 			}
 		}
@@ -2243,7 +2243,7 @@ void EditorInspectorArray::_setup() {
 		ae.erase = memnew(Button);
 		ae.erase->set_icon(get_editor_theme_icon(SNAME("Remove")));
 		ae.erase->set_v_size_flags(SIZE_SHRINK_CENTER);
-		ae.erase->connect("pressed", callable_mp(this, &EditorInspectorArray::_remove_item).bind(element_position));
+		ae.erase->connect(SceneStringName(pressed), callable_mp(this, &EditorInspectorArray::_remove_item).bind(element_position));
 		ae.hbox->add_child(ae.erase);
 	}
 
@@ -2433,7 +2433,7 @@ EditorInspectorArray::EditorInspectorArray(bool p_read_only) {
 	vbox->add_child(elements_vbox);
 
 	add_button = EditorInspector::create_inspector_action_button(TTR("Add Element"));
-	add_button->connect("pressed", callable_mp(this, &EditorInspectorArray::_add_button_pressed));
+	add_button->connect(SceneStringName(pressed), callable_mp(this, &EditorInspectorArray::_add_button_pressed));
 	add_button->set_disabled(read_only);
 	vbox->add_child(add_button);
 
@@ -2528,12 +2528,12 @@ EditorPaginator::EditorPaginator() {
 
 	first_page_button = memnew(Button);
 	first_page_button->set_flat(true);
-	first_page_button->connect("pressed", callable_mp(this, &EditorPaginator::_first_page_button_pressed));
+	first_page_button->connect(SceneStringName(pressed), callable_mp(this, &EditorPaginator::_first_page_button_pressed));
 	add_child(first_page_button);
 
 	prev_page_button = memnew(Button);
 	prev_page_button->set_flat(true);
-	prev_page_button->connect("pressed", callable_mp(this, &EditorPaginator::_prev_page_button_pressed));
+	prev_page_button->connect(SceneStringName(pressed), callable_mp(this, &EditorPaginator::_prev_page_button_pressed));
 	add_child(prev_page_button);
 
 	page_line_edit = memnew(LineEdit);
@@ -2546,12 +2546,12 @@ EditorPaginator::EditorPaginator() {
 
 	next_page_button = memnew(Button);
 	next_page_button->set_flat(true);
-	next_page_button->connect("pressed", callable_mp(this, &EditorPaginator::_next_page_button_pressed));
+	next_page_button->connect(SceneStringName(pressed), callable_mp(this, &EditorPaginator::_next_page_button_pressed));
 	add_child(next_page_button);
 
 	last_page_button = memnew(Button);
 	last_page_button->set_flat(true);
-	last_page_button->connect("pressed", callable_mp(this, &EditorPaginator::_last_page_button_pressed));
+	last_page_button->connect(SceneStringName(pressed), callable_mp(this, &EditorPaginator::_last_page_button_pressed));
 	add_child(last_page_button);
 }
 
@@ -2727,6 +2727,8 @@ void EditorInspector::update_tree() {
 	// TODO: Can be useful to store more context for the focusable, such as the caret position in LineEdit.
 	StringName current_selected = property_selected;
 	int current_focusable = -1;
+	// Temporarily disable focus following to avoid jumping while the inspector is updating.
+	set_follow_focus(false);
 
 	if (property_focusable != -1) {
 		// Check that focusable is actually focusable.
@@ -3465,7 +3467,7 @@ void EditorInspector::update_tree() {
 
 		Button *add_md = EditorInspector::create_inspector_action_button(TTR("Add Metadata"));
 		add_md->set_icon(get_editor_theme_icon(SNAME("Add")));
-		add_md->connect(SNAME("pressed"), callable_mp(this, &EditorInspector::_show_add_meta_dialog));
+		add_md->connect(SceneStringName(pressed), callable_mp(this, &EditorInspector::_show_add_meta_dialog));
 		main_vbox->add_child(add_md);
 		if (all_read_only) {
 			add_md->set_disabled(true);
@@ -3482,6 +3484,7 @@ void EditorInspector::update_tree() {
 		// Updating inspector might invalidate some editing owners.
 		EditorNode::get_singleton()->hide_unused_editors();
 	}
+	set_follow_focus(true);
 }
 
 void EditorInspector::update_property(const String &p_prop) {
@@ -3779,7 +3782,6 @@ void EditorInspector::_edit_set(const String &p_name, const Variant &p_value, bo
 		}
 
 		emit_signal(_prop_edited, p_name);
-
 	} else if (Object::cast_to<MultiNodeEdit>(object)) {
 		Object::cast_to<MultiNodeEdit>(object)->set_property_field(p_name, p_value, p_changed_field);
 		_edit_request_change(object, p_name);
@@ -3956,7 +3958,7 @@ void EditorInspector::_property_checked(const String &p_path, bool p_checked) {
 	//property checked
 	if (autoclear) {
 		if (!p_checked) {
-			object->set(p_path, Variant());
+			_edit_set(p_path, Variant(), false, "");
 		} else {
 			Variant to_create;
 			List<PropertyInfo> pinfo;
@@ -3968,7 +3970,7 @@ void EditorInspector::_property_checked(const String &p_path, bool p_checked) {
 					break;
 				}
 			}
-			object->set(p_path, to_create);
+			_edit_set(p_path, to_create, false, "");
 		}
 
 		if (editor_property_map.has(p_path)) {
@@ -3979,7 +3981,6 @@ void EditorInspector::_property_checked(const String &p_path, bool p_checked) {
 				E->update_cache();
 			}
 		}
-
 	} else {
 		emit_signal(SNAME("property_toggled"), p_path, p_checked);
 	}

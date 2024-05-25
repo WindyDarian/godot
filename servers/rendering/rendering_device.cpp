@@ -3154,9 +3154,6 @@ Error RenderingDevice::screen_create(DisplayServer::WindowID p_screen) {
 	RDD::SwapChainID swap_chain = driver->swap_chain_create(surface);
 	ERR_FAIL_COND_V_MSG(swap_chain.id == 0, ERR_CANT_CREATE, "Unable to create swap chain.");
 
-	Error err = driver->swap_chain_resize(main_queue, swap_chain, _get_swap_chain_desired_count());
-	ERR_FAIL_COND_V_MSG(err != OK, ERR_CANT_CREATE, "Unable to resize the new swap chain.");
-
 	screen_swap_chains[p_screen] = swap_chain;
 
 	return OK;
@@ -3335,12 +3332,15 @@ Error RenderingDevice::_draw_list_setup_framebuffer(Framebuffer *p_framebuffer, 
 }
 
 Error RenderingDevice::_draw_list_render_pass_begin(Framebuffer *p_framebuffer, InitialAction p_initial_color_action, FinalAction p_final_color_action, InitialAction p_initial_depth_action, FinalAction p_final_depth_action, const Vector<Color> &p_clear_colors, float p_clear_depth, uint32_t p_clear_stencil, Point2i p_viewport_offset, Point2i p_viewport_size, RDD::FramebufferID p_framebuffer_driver_id, RDD::RenderPassID p_render_pass) {
-	LocalVector<RDD::RenderPassClearValue> clear_values;
-	LocalVector<RDG::ResourceTracker *> resource_trackers;
-	LocalVector<RDG::ResourceUsage> resource_usages;
+	thread_local LocalVector<RDD::RenderPassClearValue> clear_values;
+	thread_local LocalVector<RDG::ResourceTracker *> resource_trackers;
+	thread_local LocalVector<RDG::ResourceUsage> resource_usages;
 	bool uses_color = false;
 	bool uses_depth = false;
+	clear_values.clear();
 	clear_values.resize(p_framebuffer->texture_ids.size());
+	resource_trackers.clear();
+	resource_usages.clear();
 	int clear_values_count = 0;
 	{
 		int color_index = 0;
@@ -3774,13 +3774,13 @@ void RenderingDevice::draw_list_draw(DrawListID p_list, bool p_use_indices, uint
 
 #endif
 
-	// Bind descriptor sets.
-
+#ifdef DEBUG_ENABLED
 	for (uint32_t i = 0; i < dl->state.set_count; i++) {
 		if (dl->state.sets[i].pipeline_expected_format == 0) {
-			continue; // Nothing expected by this pipeline.
+			// Nothing expected by this pipeline.
+			continue;
 		}
-#ifdef DEBUG_ENABLED
+
 		if (dl->state.sets[i].pipeline_expected_format != dl->state.sets[i].uniform_set_format) {
 			if (dl->state.sets[i].uniform_set_format == 0) {
 				ERR_FAIL_MSG("Uniforms were never supplied for set (" + itos(i) + ") at the time of drawing, which are required by the pipeline.");
@@ -3791,9 +3791,22 @@ void RenderingDevice::draw_list_draw(DrawListID p_list, bool p_use_indices, uint
 				ERR_FAIL_MSG("Uniforms supplied for set (" + itos(i) + ", which was just freed) are not the same format as required by the pipeline shader. Pipeline shader requires the following bindings:\n" + _shader_uniform_debug(dl->state.pipeline_shader));
 			}
 		}
-#endif
-		draw_graph.add_draw_list_uniform_set_prepare_for_use(dl->state.pipeline_shader_driver_id, dl->state.sets[i].uniform_set_driver_id, i);
 	}
+#endif
+
+	// Prepare descriptor sets if the API doesn't use pipeline barriers.
+	if (!driver->api_trait_get(RDD::API_TRAIT_HONORS_PIPELINE_BARRIERS)) {
+		for (uint32_t i = 0; i < dl->state.set_count; i++) {
+			if (dl->state.sets[i].pipeline_expected_format == 0) {
+				// Nothing expected by this pipeline.
+				continue;
+			}
+
+			draw_graph.add_draw_list_uniform_set_prepare_for_use(dl->state.pipeline_shader_driver_id, dl->state.sets[i].uniform_set_driver_id, i);
+		}
+	}
+
+	// Bind descriptor sets.
 	for (uint32_t i = 0; i < dl->state.set_count; i++) {
 		if (dl->state.sets[i].pipeline_expected_format == 0) {
 			continue; // Nothing expected by this pipeline.
@@ -4167,13 +4180,13 @@ void RenderingDevice::compute_list_dispatch(ComputeListID p_list, uint32_t p_x_g
 
 #endif
 
-	// Bind descriptor sets.
-
+#ifdef DEBUG_ENABLED
 	for (uint32_t i = 0; i < cl->state.set_count; i++) {
 		if (cl->state.sets[i].pipeline_expected_format == 0) {
-			continue; // Nothing expected by this pipeline.
+			// Nothing expected by this pipeline.
+			continue;
 		}
-#ifdef DEBUG_ENABLED
+
 		if (cl->state.sets[i].pipeline_expected_format != cl->state.sets[i].uniform_set_format) {
 			if (cl->state.sets[i].uniform_set_format == 0) {
 				ERR_FAIL_MSG("Uniforms were never supplied for set (" + itos(i) + ") at the time of drawing, which are required by the pipeline.");
@@ -4184,9 +4197,22 @@ void RenderingDevice::compute_list_dispatch(ComputeListID p_list, uint32_t p_x_g
 				ERR_FAIL_MSG("Uniforms supplied for set (" + itos(i) + ", which was just freed) are not the same format as required by the pipeline shader. Pipeline shader requires the following bindings:\n" + _shader_uniform_debug(cl->state.pipeline_shader));
 			}
 		}
-#endif
-		draw_graph.add_compute_list_uniform_set_prepare_for_use(cl->state.pipeline_shader_driver_id, cl->state.sets[i].uniform_set_driver_id, i);
 	}
+#endif
+
+	// Prepare descriptor sets if the API doesn't use pipeline barriers.
+	if (!driver->api_trait_get(RDD::API_TRAIT_HONORS_PIPELINE_BARRIERS)) {
+		for (uint32_t i = 0; i < cl->state.set_count; i++) {
+			if (cl->state.sets[i].pipeline_expected_format == 0) {
+				// Nothing expected by this pipeline.
+				continue;
+			}
+
+			draw_graph.add_compute_list_uniform_set_prepare_for_use(cl->state.pipeline_shader_driver_id, cl->state.sets[i].uniform_set_driver_id, i);
+		}
+	}
+
+	// Bind descriptor sets.
 	for (uint32_t i = 0; i < cl->state.set_count; i++) {
 		if (cl->state.sets[i].pipeline_expected_format == 0) {
 			continue; // Nothing expected by this pipeline.
@@ -4261,16 +4287,16 @@ void RenderingDevice::compute_list_dispatch_indirect(ComputeListID p_list, RID p
 
 #endif
 
-	// Bind descriptor sets.
-
+#ifdef DEBUG_ENABLED
 	for (uint32_t i = 0; i < cl->state.set_count; i++) {
 		if (cl->state.sets[i].pipeline_expected_format == 0) {
-			continue; // Nothing expected by this pipeline.
+			// Nothing expected by this pipeline.
+			continue;
 		}
-#ifdef DEBUG_ENABLED
+
 		if (cl->state.sets[i].pipeline_expected_format != cl->state.sets[i].uniform_set_format) {
 			if (cl->state.sets[i].uniform_set_format == 0) {
-				ERR_FAIL_MSG("Uniforms were never supplied for set (" + itos(i) + ") at the time of drawing, which are required by the pipeline");
+				ERR_FAIL_MSG("Uniforms were never supplied for set (" + itos(i) + ") at the time of drawing, which are required by the pipeline.");
 			} else if (uniform_set_owner.owns(cl->state.sets[i].uniform_set)) {
 				UniformSet *us = uniform_set_owner.get_or_null(cl->state.sets[i].uniform_set);
 				ERR_FAIL_MSG("Uniforms supplied for set (" + itos(i) + "):\n" + _shader_uniform_debug(us->shader_id, us->shader_set) + "\nare not the same format as required by the pipeline shader. Pipeline shader requires the following bindings:\n" + _shader_uniform_debug(cl->state.pipeline_shader));
@@ -4278,9 +4304,22 @@ void RenderingDevice::compute_list_dispatch_indirect(ComputeListID p_list, RID p
 				ERR_FAIL_MSG("Uniforms supplied for set (" + itos(i) + ", which was just freed) are not the same format as required by the pipeline shader. Pipeline shader requires the following bindings:\n" + _shader_uniform_debug(cl->state.pipeline_shader));
 			}
 		}
-#endif
-		draw_graph.add_compute_list_uniform_set_prepare_for_use(cl->state.pipeline_shader_driver_id, cl->state.sets[i].uniform_set_driver_id, i);
 	}
+#endif
+
+	// Prepare descriptor sets if the API doesn't use pipeline barriers.
+	if (!driver->api_trait_get(RDD::API_TRAIT_HONORS_PIPELINE_BARRIERS)) {
+		for (uint32_t i = 0; i < cl->state.set_count; i++) {
+			if (cl->state.sets[i].pipeline_expected_format == 0) {
+				// Nothing expected by this pipeline.
+				continue;
+			}
+
+			draw_graph.add_compute_list_uniform_set_prepare_for_use(cl->state.pipeline_shader_driver_id, cl->state.sets[i].uniform_set_driver_id, i);
+		}
+	}
+
+	// Bind descriptor sets.
 	for (uint32_t i = 0; i < cl->state.set_count; i++) {
 		if (cl->state.sets[i].pipeline_expected_format == 0) {
 			continue; // Nothing expected by this pipeline.
@@ -4696,6 +4735,10 @@ RenderingDevice::DeviceType RenderingDevice::get_device_type() const {
 
 String RenderingDevice::get_device_api_name() const {
 	return driver->get_api_name();
+}
+
+bool RenderingDevice::is_composite_alpha_supported() const {
+	return driver->is_composite_alpha_supported(main_queue);
 }
 
 String RenderingDevice::get_device_api_version() const {
