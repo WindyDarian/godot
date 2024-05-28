@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-EnsureSConsVersion(3, 0, 0)
+EnsureSConsVersion(3, 1, 2)
 EnsurePythonVersion(3, 6)
 
 # System
@@ -10,21 +10,11 @@ import os
 import pickle
 import sys
 import time
-from types import ModuleType
 from collections import OrderedDict
-from importlib.util import spec_from_file_location, module_from_spec
+from importlib.util import module_from_spec, spec_from_file_location
+from types import ModuleType
+
 from SCons import __version__ as scons_raw_version
-
-# Enable ANSI escape code support on Windows 10 and later (for colored console output).
-# <https://github.com/python/cpython/issues/73245>
-if sys.platform == "win32":
-    from ctypes import windll, c_int, byref
-
-    stdout_handle = windll.kernel32.GetStdHandle(c_int(-11))
-    mode = c_int(0)
-    windll.kernel32.GetConsoleMode(c_int(stdout_handle), byref(mode))
-    mode = c_int(mode.value | 4)
-    windll.kernel32.SetConsoleMode(c_int(stdout_handle), mode)
 
 # Explicitly resolve the helper modules, this is done to avoid clash with
 # modules of the same name that might be randomly added (e.g. someone adding
@@ -63,16 +53,34 @@ _helper_module("core.core_builders", "core/core_builders.py")
 _helper_module("main.main_builders", "main/main_builders.py")
 
 # Local
-import methods
-import glsl_builders
 import gles3_builders
+import glsl_builders
+import methods
 import scu_builders
-from methods import print_warning, print_error
-from platform_methods import architectures, architecture_aliases
+from methods import print_error, print_warning
+from platform_methods import architecture_aliases, architectures
 
 if ARGUMENTS.get("target", "editor") == "editor":
     _helper_module("editor.editor_builders", "editor/editor_builders.py")
     _helper_module("editor.template_builders", "editor/template_builders.py")
+
+# Enable ANSI escape code support on Windows 10 and later (for colored console output).
+# <https://github.com/python/cpython/issues/73245>
+if sys.stdout.isatty() and sys.platform == "win32":
+    try:
+        from ctypes import WinError, byref, windll  # type: ignore
+        from ctypes.wintypes import DWORD  # type: ignore
+
+        stdout_handle = windll.kernel32.GetStdHandle(DWORD(-11))
+        mode = DWORD(0)
+        if not windll.kernel32.GetConsoleMode(stdout_handle, byref(mode)):
+            raise WinError()
+        mode = DWORD(mode.value | 4)
+        if not windll.kernel32.SetConsoleMode(stdout_handle, mode):
+            raise WinError()
+    except Exception as e:
+        methods._colorize = False
+        print_error(f"Failed to enable ANSI escape code support, disabling color output.\n{e}")
 
 # Scan possible build platforms
 
@@ -114,6 +122,8 @@ for x in sorted(glob.glob("platform/*")):
         platform_list += [x]
         platform_opts[x] = detect.get_opts()
         platform_flags[x] = detect.get_flags()
+        if isinstance(platform_flags[x], list):  # backwards compatibility
+            platform_flags[x] = {flag[0]: flag[1] for flag in platform_flags[x]}
     sys.path.remove(tmppath)
     sys.modules.pop("detect")
 
@@ -365,7 +375,7 @@ if env["platform"] in platform_opts:
         opts.Add(opt)
 
 # Update the environment to take platform-specific options into account.
-opts.Update(env, {**ARGUMENTS, **env})
+opts.Update(env, {**ARGUMENTS, **env.Dictionary()})
 
 # Detect modules.
 modules_detected = OrderedDict()
@@ -425,7 +435,7 @@ for name, path in modules_detected.items():
 env.modules_detected = modules_detected
 
 # Update the environment again after all the module options are added.
-opts.Update(env, {**ARGUMENTS, **env})
+opts.Update(env, {**ARGUMENTS, **env.Dictionary()})
 Help(opts.GenerateHelpText(env))
 
 # add default include paths
@@ -554,16 +564,16 @@ if env["build_profile"] != "":
             dbo = ft["disabled_build_options"]
             for c in dbo:
                 env[c] = dbo[c]
-    except:
+    except json.JSONDecodeError:
         print_error('Failed to open feature build profile: "{}"'.format(env["build_profile"]))
         Exit(255)
 
 # Platform specific flags.
 # These can sometimes override default options.
 flag_list = platform_flags[env["platform"]]
-for f in flag_list:
-    if not (f[0] in ARGUMENTS) or ARGUMENTS[f[0]] == "auto":  # Allow command line to override platform flags
-        env[f[0]] = f[1]
+for key, value in flag_list.items():
+    if key not in ARGUMENTS or ARGUMENTS[key] == "auto":  # Allow command line to override platform flags
+        env[key] = value
 
 # 'dev_mode' and 'production' are aliases to set default options if they haven't been
 # set manually by the user.
@@ -583,7 +593,7 @@ if env["production"]:
 # Run SCU file generation script if in a SCU build.
 if env["scu_build"]:
     max_includes_per_scu = 8
-    if env.dev_build == True:
+    if env.dev_build:
         max_includes_per_scu = 1024
 
     read_scu_limit = int(env["scu_limit"])
@@ -976,7 +986,7 @@ GLSL_BUILDERS = {
 env.Append(BUILDERS=GLSL_BUILDERS)
 
 scons_cache_path = os.environ.get("SCONS_CACHE")
-if scons_cache_path != None:
+if scons_cache_path is not None:
     CacheDir(scons_cache_path)
     print("Scons cache enabled... (path: '" + scons_cache_path + "')")
 
