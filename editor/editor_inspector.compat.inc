@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  godot_status_item.mm                                                  */
+/*  editor_inspector.compat.inc                                           */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,56 +28,14 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#include "godot_status_item.h"
+#ifndef DISABLE_DEPRECATED
 
-#include "display_server_macos.h"
-
-@implementation GodotStatusItemDelegate
-
-- (id)init {
-	self = [super init];
-	return self;
+void EditorInspectorPlugin::_add_property_editor_bind_compat_92322(const String &p_for_property, Control *p_prop, bool p_add_to_end) {
+	add_property_editor(p_for_property, p_prop, p_add_to_end, "");
 }
 
-- (IBAction)click:(id)sender {
-	NSEvent *current_event = [NSApp currentEvent];
-	MouseButton index = MouseButton::LEFT;
-	if (current_event) {
-		if (current_event.type == NSEventTypeLeftMouseDown) {
-			index = MouseButton::LEFT;
-		} else if (current_event.type == NSEventTypeRightMouseDown) {
-			index = MouseButton::RIGHT;
-		} else if (current_event.type == NSEventTypeOtherMouseDown) {
-			if ((int)[current_event buttonNumber] == 2) {
-				index = MouseButton::MIDDLE;
-			} else if ((int)[current_event buttonNumber] == 3) {
-				index = MouseButton::MB_XBUTTON1;
-			} else if ((int)[current_event buttonNumber] == 4) {
-				index = MouseButton::MB_XBUTTON2;
-			}
-		}
-	}
-
-	DisplayServerMacOS *ds = (DisplayServerMacOS *)DisplayServer::get_singleton();
-	if (!ds) {
-		return;
-	}
-
-	if (cb.is_valid()) {
-		Variant v_button = index;
-		Variant v_pos = ds->mouse_get_position();
-		const Variant *v_args[2] = { &v_button, &v_pos };
-		Variant ret;
-		Callable::CallError ce;
-		cb.callp((const Variant **)&v_args, 2, ret, ce);
-		if (ce.error != Callable::CallError::CALL_OK) {
-			ERR_PRINT(vformat("Failed to execute status indicator callback: %s.", Variant::get_callable_error_text(cb, v_args, 2, ce)));
-		}
-	}
+void EditorInspectorPlugin::_bind_compatibility_methods() {
+	ClassDB::bind_compatibility_method(D_METHOD("add_property_editor", "property", "editor", "add_to_end"), &EditorInspectorPlugin::_add_property_editor_bind_compat_92322, DEFVAL(false));
 }
 
-- (void)setCallback:(const Callable &)callback {
-	cb = callback;
-}
-
-@end
+#endif // DISABLE_DEPRECATED
