@@ -587,7 +587,7 @@ void SpriteFramesEditor::_notification(int p_what) {
 			split_sheet_zoom_out->set_icon(get_editor_theme_icon(SNAME("ZoomLess")));
 			split_sheet_zoom_reset->set_icon(get_editor_theme_icon(SNAME("ZoomReset")));
 			split_sheet_zoom_in->set_icon(get_editor_theme_icon(SNAME("ZoomMore")));
-			split_sheet_scroll->add_theme_style_override("panel", get_theme_stylebox(SNAME("panel"), SNAME("Tree")));
+			split_sheet_scroll->add_theme_style_override(SceneStringName(panel), get_theme_stylebox(SceneStringName(panel), SNAME("Tree")));
 
 			_update_show_settings();
 		} break;
@@ -1476,8 +1476,8 @@ void SpriteFramesEditor::edit(Ref<SpriteFrames> p_frames) {
 	_fetch_sprite_node(); // Fetch node after set frames.
 }
 
-bool SpriteFramesEditor::is_editing() const {
-	return frames.is_valid();
+Ref<SpriteFrames> SpriteFramesEditor::get_sprite_frames() const {
+	return frames;
 }
 
 Variant SpriteFramesEditor::get_drag_data_fw(const Point2 &p_point, Control *p_from) {
@@ -2337,7 +2337,11 @@ bool SpriteFramesEditorPlugin::handles(Object *p_object) const {
 	if (animated_sprite_3d && *animated_sprite_3d->get_sprite_frames()) {
 		return true;
 	}
-	return !frames_editor->is_editing() && Object::cast_to<SpriteFrames>(p_object);
+	SpriteFrames *frames = Object::cast_to<SpriteFrames>(p_object);
+	if (frames && (frames_editor->get_sprite_frames().is_null() || frames_editor->get_sprite_frames() == frames)) {
+		return true;
+	}
+	return false;
 }
 
 void SpriteFramesEditorPlugin::make_visible(bool p_visible) {
