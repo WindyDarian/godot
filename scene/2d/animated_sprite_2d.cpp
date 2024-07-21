@@ -267,7 +267,7 @@ void AnimatedSprite2D::_notification(int p_what) {
 			}
 
 			if (get_viewport() && get_viewport()->is_snap_2d_transforms_to_pixel_enabled()) {
-				ofs = ofs.round();
+				ofs = (ofs + Point2(0.5, 0.5)).floor();
 			}
 
 			Rect2 dst_rect(ofs, s);
@@ -574,7 +574,7 @@ StringName AnimatedSprite2D::get_animation() const {
 PackedStringArray AnimatedSprite2D::get_configuration_warnings() const {
 	PackedStringArray warnings = Node2D::get_configuration_warnings();
 	if (frames.is_null()) {
-		warnings.push_back(RTR("A SpriteFrames resource must be created or set in the \"Frames\" property in order for AnimatedSprite2D to display frames."));
+		warnings.push_back(RTR("A SpriteFrames resource must be created or set in the \"Sprite Frames\" property in order for AnimatedSprite2D to display frames."));
 	}
 	return warnings;
 }

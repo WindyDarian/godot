@@ -2665,14 +2665,37 @@ void GDScriptAnalyzer::reduce_assignment(GDScriptParser::AssignmentNode *p_assig
 
 #ifdef DEBUG_ENABLED
 	{
+		bool is_subscript = false;
 		GDScriptParser::ExpressionNode *base = p_assignment->assignee;
 		while (base && base->type == GDScriptParser::Node::SUBSCRIPT) {
+			is_subscript = true;
 			base = static_cast<GDScriptParser::SubscriptNode *>(base)->base;
 		}
 		if (base && base->type == GDScriptParser::Node::IDENTIFIER) {
 			GDScriptParser::IdentifierNode *id = static_cast<GDScriptParser::IdentifierNode *>(base);
 			if (current_lambda && current_lambda->captures_indices.has(id->name)) {
-				parser->push_warning(p_assignment, GDScriptWarning::CONFUSABLE_CAPTURE_REASSIGNMENT, id->name);
+				bool need_warn = false;
+				if (is_subscript) {
+					const GDScriptParser::DataType &id_type = id->datatype;
+					if (id_type.is_hard_type()) {
+						switch (id_type.kind) {
+							case GDScriptParser::DataType::BUILTIN:
+								// TODO: Change `Variant::is_type_shared()` to include packed arrays?
+								need_warn = !Variant::is_type_shared(id_type.builtin_type) && id_type.builtin_type < Variant::PACKED_BYTE_ARRAY;
+								break;
+							case GDScriptParser::DataType::ENUM:
+								need_warn = true;
+								break;
+							default:
+								break;
+						}
+					}
+				} else {
+					need_warn = true;
+				}
+				if (need_warn) {
+					parser->push_warning(p_assignment, GDScriptWarning::CONFUSABLE_CAPTURE_REASSIGNMENT, id->name);
+				}
 			}
 		}
 	}
@@ -5157,7 +5180,7 @@ bool GDScriptAnalyzer::get_function_signature(GDScriptParser::Node *p_source, bo
 		if (!class_exists(base_native)) {
 			push_error(vformat("Native class %s used in script doesn't exist or isn't exposed.", base_native), p_source);
 			return false;
-		} else if (p_is_constructor && !ClassDB::can_instantiate(base_native)) {
+		} else if (p_is_constructor && ClassDB::is_abstract(base_native)) {
 			if (p_base_type.kind == GDScriptParser::DataType::CLASS) {
 				push_error(vformat(R"(Class "%s" cannot be constructed as it is based on abstract native class "%s".)", p_base_type.class_type->fqcn.get_file(), base_native), p_source);
 			} else if (p_base_type.kind == GDScriptParser::DataType::SCRIPT) {

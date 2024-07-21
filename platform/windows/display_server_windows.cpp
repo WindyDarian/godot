@@ -38,6 +38,7 @@
 #include "core/version.h"
 #include "drivers/png/png_driver_common.h"
 #include "main/main.h"
+#include "scene/resources/texture.h"
 
 #if defined(VULKAN_ENABLED)
 #include "rendering_context_driver_vulkan_windows.h"
@@ -2008,7 +2009,7 @@ void DisplayServerWindows::window_set_mode(WindowMode p_mode, WindowID p_window)
 	}
 
 	if (p_mode == WINDOW_MODE_WINDOWED) {
-		ShowWindow(wd.hWnd, SW_RESTORE);
+		ShowWindow(wd.hWnd, SW_NORMAL);
 		wd.maximized = false;
 		wd.minimized = false;
 	}
@@ -3807,9 +3808,9 @@ LRESULT DisplayServerWindows::WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARA
 		case WM_ACTIVATE: {
 			// Activation can happen just after the window has been created, even before the callbacks are set.
 			// Therefore, it's safer to defer the delivery of the event.
-			if (!windows[window_id].activate_timer_id) {
-				windows[window_id].activate_timer_id = SetTimer(windows[window_id].hWnd, 1, USER_TIMER_MINIMUM, (TIMERPROC) nullptr);
-			}
+			// It's important to set an nIDEvent different from the SetTimer for move_timer_id because
+			// if the same nIDEvent is passed, the timer is replaced and the same timer_id is returned.
+			windows[window_id].activate_timer_id = SetTimer(windows[window_id].hWnd, DisplayServerWindows::TIMER_ID_WINDOW_ACTIVATION, USER_TIMER_MINIMUM, (TIMERPROC) nullptr);
 			windows[window_id].activate_state = GET_WM_ACTIVATE_STATE(wParam, lParam);
 			return 0;
 		} break;
@@ -4727,7 +4728,7 @@ LRESULT DisplayServerWindows::WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARA
 
 		case WM_ENTERSIZEMOVE: {
 			Input::get_singleton()->release_pressed_events();
-			windows[window_id].move_timer_id = SetTimer(windows[window_id].hWnd, 1, USER_TIMER_MINIMUM, (TIMERPROC) nullptr);
+			windows[window_id].move_timer_id = SetTimer(windows[window_id].hWnd, DisplayServerWindows::TIMER_ID_MOVE_REDRAW, USER_TIMER_MINIMUM, (TIMERPROC) nullptr);
 		} break;
 		case WM_EXITSIZEMOVE: {
 			KillTimer(windows[window_id].hWnd, windows[window_id].move_timer_id);
@@ -5246,6 +5247,9 @@ DisplayServer::WindowID DisplayServerWindows::_create_window(WindowMode p_mode, 
 			::DwmSetWindowAttribute(wd.hWnd, use_legacy_dark_mode_before_20H1 ? DWMWA_USE_IMMERSIVE_DARK_MODE_BEFORE_20H1 : DWMWA_USE_IMMERSIVE_DARK_MODE, &value, sizeof(value));
 		}
 
+		RECT real_client_rect;
+		GetClientRect(wd.hWnd, &real_client_rect);
+
 #ifdef RD_ENABLED
 		if (rendering_context) {
 			union {
@@ -5275,7 +5279,7 @@ DisplayServer::WindowID DisplayServerWindows::_create_window(WindowMode p_mode, 
 				return INVALID_WINDOW_ID;
 			}
 
-			rendering_context->window_set_size(id, WindowRect.right - WindowRect.left, WindowRect.bottom - WindowRect.top);
+			rendering_context->window_set_size(id, real_client_rect.right - real_client_rect.left, real_client_rect.bottom - real_client_rect.top);
 			rendering_context->window_set_vsync_mode(id, p_vsync_mode);
 			wd.context_created = true;
 		}
@@ -5283,7 +5287,7 @@ DisplayServer::WindowID DisplayServerWindows::_create_window(WindowMode p_mode, 
 
 #ifdef GLES3_ENABLED
 		if (gl_manager_native) {
-			if (gl_manager_native->window_create(id, wd.hWnd, hInstance, WindowRect.right - WindowRect.left, WindowRect.bottom - WindowRect.top) != OK) {
+			if (gl_manager_native->window_create(id, wd.hWnd, hInstance, real_client_rect.right - real_client_rect.left, real_client_rect.bottom - real_client_rect.top) != OK) {
 				memdelete(gl_manager_native);
 				gl_manager_native = nullptr;
 				windows.erase(id);
@@ -5293,7 +5297,7 @@ DisplayServer::WindowID DisplayServerWindows::_create_window(WindowMode p_mode, 
 		}
 
 		if (gl_manager_angle) {
-			if (gl_manager_angle->window_create(id, nullptr, wd.hWnd, WindowRect.right - WindowRect.left, WindowRect.bottom - WindowRect.top) != OK) {
+			if (gl_manager_angle->window_create(id, nullptr, wd.hWnd, real_client_rect.right - real_client_rect.left, real_client_rect.bottom - real_client_rect.top) != OK) {
 				memdelete(gl_manager_angle);
 				gl_manager_angle = nullptr;
 				windows.erase(id);
@@ -5873,7 +5877,14 @@ DisplayServerWindows::DisplayServerWindows(const String &p_rendering_driver, Win
 #if defined(RD_ENABLED)
 	if (rendering_context) {
 		rendering_device = memnew(RenderingDevice);
-		rendering_device->initialize(rendering_context, MAIN_WINDOW_ID);
+		if (rendering_device->initialize(rendering_context, MAIN_WINDOW_ID) != OK) {
+			memdelete(rendering_device);
+			rendering_device = nullptr;
+			memdelete(rendering_context);
+			rendering_context = nullptr;
+			r_error = ERR_UNAVAILABLE;
+			return;
+		}
 		rendering_device->screen_create(MAIN_WINDOW_ID);
 
 		RendererCompositorRD::make_current();
