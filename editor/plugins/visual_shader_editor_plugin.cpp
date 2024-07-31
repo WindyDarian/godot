@@ -6905,8 +6905,7 @@ VisualShaderEditor::VisualShaderEditor() {
 	add_options.push_back(AddOption("ProximityFade", "Utility", "VisualShaderNodeProximityFade", TTR("The proximity fade effect fades out each pixel based on its distance to another object."), {}, VisualShaderNode::PORT_TYPE_SCALAR, TYPE_FLAGS_FRAGMENT, Shader::MODE_SPATIAL));
 	add_options.push_back(AddOption("RandomRange", "Utility", "VisualShaderNodeRandomRange", TTR("Returns a random value between the minimum and maximum input values."), {}, VisualShaderNode::PORT_TYPE_SCALAR));
 	add_options.push_back(AddOption("Remap", "Utility", "VisualShaderNodeRemap", TTR("Remaps a given input from the input range to the output range."), {}, VisualShaderNode::PORT_TYPE_SCALAR));
-	add_options.push_back(AddOption("RotationByAxis", "Utility", "VisualShaderNodeRotationByAxis", TTR("Rotates an input vector by a given angle."), {}, VisualShaderNode::PORT_TYPE_VECTOR_3D, TYPE_FLAGS_FRAGMENT, Shader::MODE_SPATIAL));
-	add_options.push_back(AddOption("RotationByAxis", "Utility", "VisualShaderNodeRotationByAxis", TTR("Rotates an input vector by a given angle."), {}, VisualShaderNode::PORT_TYPE_VECTOR_3D, TYPE_FLAGS_VERTEX, Shader::MODE_SPATIAL));
+	add_options.push_back(AddOption("RotationByAxis", "Utility", "VisualShaderNodeRotationByAxis", TTR("Builds a rotation matrix from the given axis and angle, multiply the input vector by it and returns both this vector and a matrix."), {}, VisualShaderNode::PORT_TYPE_VECTOR_3D));
 
 	// VECTOR
 
@@ -7348,7 +7347,7 @@ public:
 		Ref<VisualShaderNode> vsnode_new = vsnode->duplicate();
 		vsnode_new->set(p_property, p_value);
 		const int input_port_count = vsnode_new->get_input_port_count();
-		const int output_port_count = vsnode_new->get_output_port_count();
+		const int output_port_count = vsnode_new->get_expanded_output_port_count();
 
 		List<VisualShader::Connection> conns;
 		editor->get_visual_shader()->get_node_connections(shader_type, &conns);
@@ -7725,7 +7724,7 @@ void VisualShaderNodePortPreview::_shader_changed() {
 			List<PropertyInfo> params;
 			src_mat->get_shader()->get_shader_uniform_list(&params);
 			for (const PropertyInfo &E : params) {
-				mat->set(E.name, src_mat->get(E.name));
+				mat->set_shader_parameter(E.name, src_mat->get_shader_parameter(E.name));
 			}
 		}
 	}
