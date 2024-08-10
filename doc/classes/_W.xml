@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="_W" inherits="Object" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../class.xsd">
+	<brief_description>
+	</brief_description>
+	<description>
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="define_tag">
+			<return type="void" />
+			<param index="0" name="tag_name" type="String" />
+			<description>
+			</description>
+		</method>
+		<method name="get_tag">
+			<return type="int" />
+			<param index="0" name="tag_name" type="String" />
+			<description>
+			</description>
+		</method>
+		<method name="match_tag">
+			<return type="bool" />
+			<param index="0" name="a" type="int" />
+			<param index="1" name="b" type="int" />
+			<description>
+			</description>
+		</method>
+		<method name="quat">
+			<return type="Quaternion" />
+			<param index="0" name="forward" type="Vector3" />
+			<param index="1" name="up" type="Vector3" />
+			<description>
+			</description>
+		</method>
+		<method name="quat_from_up">
+			<return type="Quaternion" />
+			<param index="0" name="up" type="Vector3" />
+			<param index="1" name="forward" type="Vector3" />
+			<description>
+			</description>
+		</method>
+		<method name="spatial_get_rotation_quat" qualifiers="const">
+			<return type="Quaternion" />
+			<param index="0" name="spatial" type="Node" />
+			<description>
+			</description>
+		</method>
+		<method name="spatial_set_rotation_quat" qualifiers="const">
+			<return type="void" />
+			<param index="0" name="spatial" type="Node" />
+			<param index="1" name="quaternion" type="Quaternion" />
+			<description>
+			</description>
+		</method>
+		<method name="spatial_set_rotation_quat_keep_scale" qualifiers="const">
+			<return type="void" />
+			<param index="0" name="spatial" type="Node" />
+			<param index="1" name="quaternion" type="Quaternion" />
+			<description>
+			</description>
+		</method>
+	</methods>
+</class>
