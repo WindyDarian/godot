@@ -33,6 +33,13 @@
 			<description>
 			</description>
 		</method>
+		<method name="quat_align_forward">
+			<return type="Quaternion" />
+			<param index="0" name="forward" type="Vector3" />
+			<param index="1" name="quat" type="Quaternion" />
+			<description>
+			</description>
+		</method>
 		<method name="quat_from_up">
 			<return type="Quaternion" />
 			<param index="0" name="up" type="Vector3" />
