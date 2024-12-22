@@ -30,7 +30,7 @@
 
 #include "render_forward_mobile.h"
 #include "core/config/project_settings.h"
-#include "core/object/worker_thread_pool.h"
+#include "servers/rendering/renderer_rd/framebuffer_cache_rd.h"
 #include "servers/rendering/renderer_rd/storage_rd/light_storage.h"
 #include "servers/rendering/renderer_rd/storage_rd/mesh_storage.h"
 #include "servers/rendering/renderer_rd/storage_rd/particles_storage.h"
@@ -327,10 +327,10 @@ void RenderForwardMobile::mesh_generate_pipelines(RID p_mesh, bool p_background_
 		_mesh_compile_pipelines_for_surface(surface, global_pipeline_data_required, RS::PIPELINE_SOURCE_MESH, &pipeline_pairs);
 	}
 
-	// Try to retrieve all the pipeline pairs that were compiled. This will force the loader to wait on all ubershader pipelines to be ready.
+	// Try to wait for all the pipelines that were compiled. This will force the loader to wait on all ubershader pipelines to be ready.
 	if (!p_background_compilation && !pipeline_pairs.is_empty()) {
 		for (ShaderPipelinePair pair : pipeline_pairs) {
-			pair.first->pipeline_hash_map.get_pipeline(pair.second, pair.second.hash(), true, RS::PIPELINE_SOURCE_MESH);
+			pair.first->pipeline_hash_map.wait_for_pipeline(pair.second.hash());
 		}
 	}
 }
@@ -920,7 +920,8 @@ void RenderForwardMobile::_render_scene(RenderDataRD *p_render_data, const Color
 	bool draw_sky_fog_only = false;
 	// We invert luminance_multiplier for sky so that we can combine it with exposure value.
 	float inverse_luminance_multiplier = 1.0 / _render_buffers_get_luminance_multiplier();
-	float sky_energy_multiplier = inverse_luminance_multiplier;
+	float sky_luminance_multiplier = inverse_luminance_multiplier;
+	float sky_brightness_multiplier = 1.0;
 
 	Color clear_color = p_default_bg_color;
 	bool load_color = false;
@@ -988,11 +989,11 @@ void RenderForwardMobile::_render_scene(RenderDataRD *p_render_data, const Color
 
 			sky.setup_sky(p_render_data, screen_size);
 
-			sky_energy_multiplier *= bg_energy_multiplier;
+			sky_brightness_multiplier *= bg_energy_multiplier;
 
 			RID sky_rid = environment_get_sky(p_render_data->environment);
 			if (sky_rid.is_valid()) {
-				sky.update_radiance_buffers(rb, p_render_data->environment, p_render_data->scene_data->cam_transform.origin, time, sky_energy_multiplier);
+				sky.update_radiance_buffers(rb, p_render_data->environment, p_render_data->scene_data->cam_transform.origin, time, sky_luminance_multiplier, sky_brightness_multiplier);
 				radiance_texture = sky.sky_get_radiance_texture_rd(sky_rid);
 			} else {
 				// do not try to draw sky if invalid
@@ -1001,7 +1002,7 @@ void RenderForwardMobile::_render_scene(RenderDataRD *p_render_data, const Color
 
 			if (draw_sky || draw_sky_fog_only) {
 				// update sky half/quarter res buffers (if required)
-				sky.update_res_buffers(rb, p_render_data->environment, time, sky_energy_multiplier);
+				sky.update_res_buffers(rb, p_render_data->environment, time, sky_luminance_multiplier, sky_brightness_multiplier);
 			}
 			RD::get_singleton()->draw_command_end_label(); // Setup Sky
 		}
@@ -1118,7 +1119,7 @@ void RenderForwardMobile::_render_scene(RenderDataRD *p_render_data, const Color
 
 			// Note, sky.setup should have been called up above and setup stuff we need.
 
-			sky.draw_sky(draw_list, rb, p_render_data->environment, framebuffer, time, sky_energy_multiplier);
+			sky.draw_sky(draw_list, rb, p_render_data->environment, framebuffer, time, sky_luminance_multiplier, sky_brightness_multiplier);
 
 			RD::get_singleton()->draw_command_end_label(); // Draw Sky
 		}
@@ -1382,9 +1383,9 @@ void RenderForwardMobile::_render_shadow_pass(RID p_light, RID p_shadow_atlas, i
 			Rect2 atlas_rect_norm = atlas_rect;
 			atlas_rect_norm.position /= float(atlas_size);
 			atlas_rect_norm.size /= float(atlas_size);
-			copy_effects->copy_cubemap_to_dp(render_texture, atlas_fb, atlas_rect_norm, atlas_rect.size, light_projection.get_z_near(), light_projection.get_z_far(), false);
+			copy_effects->copy_cubemap_to_dp(render_texture, atlas_fb, atlas_rect_norm, atlas_rect.size, light_projection.get_z_near(), zfar, false);
 			atlas_rect_norm.position += Vector2(dual_paraboloid_offset) * atlas_rect_norm.size;
-			copy_effects->copy_cubemap_to_dp(render_texture, atlas_fb, atlas_rect_norm, atlas_rect.size, light_projection.get_z_near(), light_projection.get_z_far(), true);
+			copy_effects->copy_cubemap_to_dp(render_texture, atlas_fb, atlas_rect_norm, atlas_rect.size, light_projection.get_z_near(), zfar, true);
 
 			//restore transform so it can be properly used
 			light_storage->light_instance_set_shadow_transform(p_light, Projection(), light_storage->light_instance_get_base_transform(p_light), zfar, 0, 0, 0);
@@ -2059,6 +2060,10 @@ void RenderForwardMobile::_fill_render_list(RenderListType p_render_list, const 
 
 			} else if (p_pass_mode == PASS_MODE_SHADOW || p_pass_mode == PASS_MODE_SHADOW_DP) {
 				if (surf->flags & GeometryInstanceSurfaceDataCache::FLAG_PASS_SHADOW) {
+					rl->add_element(surf);
+				}
+			} else if (p_pass_mode == PASS_MODE_DEPTH_MATERIAL) {
+				if (surf->flags & (GeometryInstanceSurfaceDataCache::FLAG_PASS_DEPTH | GeometryInstanceSurfaceDataCache::FLAG_PASS_OPAQUE | GeometryInstanceSurfaceDataCache::FLAG_PASS_ALPHA)) {
 					rl->add_element(surf);
 				}
 			} else {

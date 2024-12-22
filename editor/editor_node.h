@@ -476,6 +476,8 @@ private:
 
 	bool was_window_windowed_last = false;
 
+	bool unfocused_low_processor_usage_mode_enabled = true;
+
 	static EditorBuildCallback build_callbacks[MAX_BUILD_CALLBACKS];
 	static EditorPluginInitializeCallback plugin_init_callbacks[MAX_INIT_CALLBACKS];
 	static int build_callback_count;
@@ -768,7 +770,7 @@ public:
 	void replace_resources_in_scenes(
 			const Vector<Ref<Resource>> &p_source_resources,
 			const Vector<Ref<Resource>> &p_target_resource);
-	void open_request(const String &p_path);
+	void open_request(const String &p_path, bool p_set_inherited = false);
 	void edit_foreign_resource(Ref<Resource> p_resource);
 
 	bool is_resource_read_only(Ref<Resource> p_resource, bool p_foreign_resources_are_writable = false);
@@ -790,6 +792,8 @@ public:
 
 	HashMap<StringName, Variant> get_modified_properties_for_node(Node *p_node, bool p_node_references_only);
 	HashMap<StringName, Variant> get_modified_properties_reference_to_nodes(Node *p_node, List<Node *> &p_nodes_referenced_by);
+
+	void set_unfocused_low_processor_usage_mode_enabled(bool p_enabled);
 
 	struct AdditiveNodeEntry {
 		Node *node = nullptr;

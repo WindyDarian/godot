@@ -31,12 +31,10 @@
 #ifndef RENDERING_DEVICE_H
 #define RENDERING_DEVICE_H
 
-#include "core/object/class_db.h"
 #include "core/object/worker_thread_pool.h"
 #include "core/os/condition_variable.h"
 #include "core/os/thread_safe.h"
 #include "core/templates/local_vector.h"
-#include "core/templates/oa_hash_map.h"
 #include "core/templates/rid_owner.h"
 #include "core/variant/typed_array.h"
 #include "servers/display_server.h"
@@ -197,7 +195,7 @@ private:
 	Error _buffer_initialize(Buffer *p_buffer, const uint8_t *p_data, size_t p_data_size, uint32_t p_required_align = 32);
 
 	void update_perf_report();
-	// flag for batching descriptor sets
+	// Flag for batching descriptor sets.
 	bool descriptor_set_batching = true;
 	// When true, the final draw call that copies our offscreen result into the Swapchain is put into its
 	// own cmd buffer, so that the whole rendering can start early instead of having to wait for the

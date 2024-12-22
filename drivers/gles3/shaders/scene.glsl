@@ -650,13 +650,16 @@ void main() {
 #endif
 
 	vertex_interp = vertex;
+
+	// Normalize TBN vectors before interpolation, per MikkTSpace.
+	// See: http://www.mikktspace.com/
 #ifdef NORMAL_USED
-	normal_interp = normal;
+	normal_interp = normalize(normal);
 #endif
 
 #if defined(TANGENT_USED) || defined(NORMAL_MAP_USED) || defined(LIGHT_ANISOTROPY_USED)
-	tangent_interp = tangent;
-	binormal_interp = binormal;
+	tangent_interp = normalize(tangent);
+	binormal_interp = normalize(binormal);
 #endif
 
 	// Calculate shadows.
@@ -885,6 +888,7 @@ uniform vec3 refprobe1_box_offset;
 uniform highp mat4 refprobe1_local_matrix;
 uniform bool refprobe1_exterior;
 uniform float refprobe1_intensity;
+uniform float refprobe1_blend_distance;
 uniform int refprobe1_ambient_mode;
 uniform vec4 refprobe1_ambient_color;
 
@@ -898,6 +902,7 @@ uniform vec3 refprobe2_box_offset;
 uniform highp mat4 refprobe2_local_matrix;
 uniform bool refprobe2_exterior;
 uniform float refprobe2_intensity;
+uniform float refprobe2_blend_distance;
 uniform int refprobe2_ambient_mode;
 uniform vec4 refprobe2_ambient_color;
 
@@ -983,6 +988,10 @@ layout(std140) uniform MultiviewData { // ubo:8
 }
 multiview_data;
 #endif
+
+uniform highp mat4 world_transform;
+uniform highp uint instance_offset;
+uniform highp uint model_flags;
 
 /* clang-format off */
 
@@ -1216,10 +1225,7 @@ ivec2 multiview_uv(ivec2 uv) {
 }
 #endif
 
-uniform highp mat4 world_transform;
 uniform mediump float opaque_prepass_threshold;
-uniform highp uint model_flags;
-uniform highp uint instance_offset;
 
 #if defined(RENDER_MATERIAL)
 layout(location = 0) out vec4 albedo_output_buffer;
@@ -1606,7 +1612,7 @@ void reflection_process(samplerCube reflection_map,
 		vec3 normal, vec3 vertex,
 		mat4 local_matrix,
 		bool use_box_project, vec3 box_extents, vec3 box_offset,
-		bool exterior, float intensity, int ref_ambient_mode, vec4 ref_ambient_color,
+		bool exterior, float intensity, float blend_distance, int ref_ambient_mode, vec4 ref_ambient_color,
 		float roughness, vec3 ambient, vec3 skybox,
 		inout highp vec4 reflection_accum, inout highp vec4 ambient_accum) {
 	vec4 reflection;
@@ -1617,11 +1623,15 @@ void reflection_process(samplerCube reflection_map,
 		return;
 	}
 
-	vec3 inner_pos = abs(local_pos / box_extents);
-	float blend = max(inner_pos.x, max(inner_pos.y, inner_pos.z));
-	blend = mix(length(inner_pos), blend, blend);
-	blend *= blend;
-	blend = max(0.0, 1.0 - blend);
+	float blend = 1.0;
+	if (blend_distance != 0.0) {
+		vec3 axis_blend_distance = min(vec3(blend_distance), box_extents);
+		vec3 blend_axes = abs(local_pos) - box_extents + axis_blend_distance;
+		blend_axes /= axis_blend_distance;
+		blend_axes = clamp(1.0 - blend_axes, vec3(0.0), vec3(1.0));
+
+		blend = pow(blend_axes.x * blend_axes.y * blend_axes.z, 2.0);
+	}
 
 	//reflect and make local
 	vec3 ref_normal = normalize(reflect(vertex, normal));
@@ -1792,23 +1802,22 @@ void main() {
 	float alpha = 1.0;
 
 #if defined(TANGENT_USED) || defined(NORMAL_MAP_USED) || defined(LIGHT_ANISOTROPY_USED)
-	vec3 binormal = normalize(binormal_interp);
-	vec3 tangent = normalize(tangent_interp);
+	vec3 binormal = binormal_interp;
+	vec3 tangent = tangent_interp;
 #else
 	vec3 binormal = vec3(0.0);
 	vec3 tangent = vec3(0.0);
 #endif
 
 #ifdef NORMAL_USED
-	vec3 normal = normalize(normal_interp);
-
+	vec3 normal = normal_interp;
 #if defined(DO_SIDE_CHECK)
 	if (!gl_FrontFacing) {
 		normal = -normal;
 	}
-#endif
-
-#endif //NORMAL_USED
+#endif // DO_SIDE_CHECK
+	vec3 geo_normal = normalize(normal);
+#endif // NORMAL_USED
 
 #ifdef UV_USED
 	vec2 uv = uv_interp;
@@ -1876,10 +1885,18 @@ void main() {
 #ifndef USE_SHADOW_TO_OPACITY
 
 #if defined(ALPHA_SCISSOR_USED)
+#ifdef RENDER_MATERIAL
+	if (alpha < alpha_scissor_threshold) {
+		alpha = 0.0;
+	} else {
+		alpha = 1.0;
+	}
+#else
 	if (alpha < alpha_scissor_threshold) {
 		discard;
 	}
 	alpha = 1.0;
+#endif // RENDER_MATERIAL
 #else
 #ifdef MODE_RENDER_DEPTH
 #ifdef USE_OPAQUE_PREPASS
@@ -1893,21 +1910,22 @@ void main() {
 
 #endif // !USE_SHADOW_TO_OPACITY
 
-#ifdef NORMAL_MAP_USED
-
+#if defined(NORMAL_MAP_USED)
 	normal_map.xy = normal_map.xy * 2.0 - 1.0;
 	normal_map.z = sqrt(max(0.0, 1.0 - dot(normal_map.xy, normal_map.xy))); //always ignore Z, as it can be RG packed, Z may be pos/neg, etc.
 
+	// Tangent-space transformation is performed using unnormalized TBN vectors, per MikkTSpace.
+	// See: http://www.mikktspace.com/
 	normal = normalize(mix(normal, tangent * normal_map.x + binormal * normal_map.y + normal * normal_map.z, normal_map_depth));
-
-#endif
+#elif defined(NORMAL_USED)
+	normal = geo_normal;
+#endif // NORMAL_MAP_USED
 
 #ifdef LIGHT_ANISOTROPY_USED
 
 	if (anisotropy > 0.01) {
-		//rotation matrix
-		mat3 rot = mat3(tangent, binormal, normal);
-		//make local to space
+		mat3 rot = mat3(normalize(tangent), normalize(binormal), normal);
+		// Make local to space.
 		tangent = normalize(rot * vec3(anisotropy_flow.x, anisotropy_flow.y, 0.0));
 		binormal = normalize(rot * vec3(-anisotropy_flow.y, anisotropy_flow.x, 0.0));
 	}
@@ -1980,14 +1998,14 @@ void main() {
 
 		reflection_process(refprobe1_texture, normal, vertex_interp, refprobe1_local_matrix,
 				refprobe1_use_box_project, refprobe1_box_extents, refprobe1_box_offset,
-				refprobe1_exterior, refprobe1_intensity, refprobe1_ambient_mode, refprobe1_ambient_color,
+				refprobe1_exterior, refprobe1_intensity, refprobe1_blend_distance, refprobe1_ambient_mode, refprobe1_ambient_color,
 				roughness, ambient_light, specular_light, reflection_accum, ambient_accum);
 
 #ifdef SECOND_REFLECTION_PROBE
 
 		reflection_process(refprobe2_texture, normal, vertex_interp, refprobe2_local_matrix,
 				refprobe2_use_box_project, refprobe2_box_extents, refprobe2_box_offset,
-				refprobe2_exterior, refprobe2_intensity, refprobe2_ambient_mode, refprobe2_ambient_color,
+				refprobe2_exterior, refprobe2_intensity, refprobe2_blend_distance, refprobe2_ambient_mode, refprobe2_ambient_color,
 				roughness, ambient_light, specular_light, reflection_accum, ambient_accum);
 
 #endif // SECOND_REFLECTION_PROBE
@@ -2131,7 +2149,7 @@ void main() {
 			continue;
 		}
 #endif
-		light_compute(normal, normalize(directional_lights[i].direction), normalize(view), directional_lights[i].size, directional_lights[i].color * directional_lights[i].energy, true, 1.0, f0, roughness, metallic, 1.0, albedo, alpha, screen_uv,
+		light_compute(normal, normalize(directional_lights[i].direction), normalize(view), directional_lights[i].size, directional_lights[i].color * directional_lights[i].energy, true, 1.0, f0, roughness, metallic, directional_lights[i].specular, albedo, alpha, screen_uv,
 #ifdef LIGHT_BACKLIGHT_USED
 				backlight,
 #endif
@@ -2139,8 +2157,8 @@ void main() {
 				rim, rim_tint,
 #endif
 #ifdef LIGHT_CLEARCOAT_USED
-				clearcoat, clearcoat_roughness, normalize(normal_interp),
-#endif
+				clearcoat, clearcoat_roughness, geo_normal,
+#endif // LIGHT_CLEARCOAT_USED
 #ifdef LIGHT_ANISOTROPY_USED
 				binormal,
 				tangent, anisotropy,
@@ -2165,8 +2183,8 @@ void main() {
 				rim_tint,
 #endif
 #ifdef LIGHT_CLEARCOAT_USED
-				clearcoat, clearcoat_roughness, normalize(normal_interp),
-#endif
+				clearcoat, clearcoat_roughness, geo_normal,
+#endif // LIGHT_CLEARCOAT_USED
 #ifdef LIGHT_ANISOTROPY_USED
 				binormal, tangent, anisotropy,
 #endif
@@ -2189,8 +2207,8 @@ void main() {
 				rim_tint,
 #endif
 #ifdef LIGHT_CLEARCOAT_USED
-				clearcoat, clearcoat_roughness, normalize(normal_interp),
-#endif
+				clearcoat, clearcoat_roughness, geo_normal,
+#endif // LIGHT_CLEARCOAT_USED
 #ifdef LIGHT_ANISOTROPY_USED
 				tangent,
 				binormal, anisotropy,
@@ -2209,9 +2227,17 @@ void main() {
 	alpha = min(alpha, clamp(length(ambient_light), 0.0, 1.0));
 
 #if defined(ALPHA_SCISSOR_USED)
+#ifdef RENDER_MATERIAL
+	if (alpha < alpha_scissor_threshold) {
+		alpha = 0.0;
+	} else {
+		alpha = 1.0;
+	}
+#else
 	if (alpha < alpha_scissor_threshold) {
 		discard;
 	}
+#endif // RENDER_MATERIAL
 #endif // !ALPHA_SCISSOR_USED
 
 #endif // !MODE_RENDER_DEPTH
@@ -2433,7 +2459,7 @@ void main() {
 #endif // SHADOWS_DISABLED
 
 #ifndef USE_VERTEX_LIGHTING
-	light_compute(normal, normalize(directional_lights[directional_shadow_index].direction), normalize(view), directional_lights[directional_shadow_index].size, directional_lights[directional_shadow_index].color * directional_lights[directional_shadow_index].energy, true, directional_shadow, f0, roughness, metallic, 1.0, albedo, alpha, screen_uv,
+	light_compute(normal, normalize(directional_lights[directional_shadow_index].direction), normalize(view), directional_lights[directional_shadow_index].size, directional_lights[directional_shadow_index].color * directional_lights[directional_shadow_index].energy, true, directional_shadow, f0, roughness, metallic, directional_lights[directional_shadow_index].specular, albedo, alpha, screen_uv,
 #ifdef LIGHT_BACKLIGHT_USED
 			backlight,
 #endif
@@ -2441,8 +2467,8 @@ void main() {
 			rim, rim_tint,
 #endif
 #ifdef LIGHT_CLEARCOAT_USED
-			clearcoat, clearcoat_roughness, normalize(normal_interp),
-#endif
+			clearcoat, clearcoat_roughness, geo_normal,
+#endif // LIGHT_CLEARCOAT_USED
 #ifdef LIGHT_ANISOTROPY_USED
 			binormal,
 			tangent, anisotropy,
@@ -2474,8 +2500,8 @@ void main() {
 			rim_tint,
 #endif
 #ifdef LIGHT_CLEARCOAT_USED
-			clearcoat, clearcoat_roughness, normalize(normal_interp),
-#endif
+			clearcoat, clearcoat_roughness, geo_normal,
+#endif // LIGHT_CLEARCOAT_USED
 #ifdef LIGHT_ANISOTROPY_USED
 			binormal, tangent, anisotropy,
 #endif
@@ -2504,8 +2530,8 @@ void main() {
 			rim_tint,
 #endif
 #ifdef LIGHT_CLEARCOAT_USED
-			clearcoat, clearcoat_roughness, normalize(normal_interp),
-#endif
+			clearcoat, clearcoat_roughness, geo_normal,
+#endif // LIGHT_RIM_USED
 #ifdef LIGHT_ANISOTROPY_USED
 			tangent,
 			binormal, anisotropy,

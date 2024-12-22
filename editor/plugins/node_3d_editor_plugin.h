@@ -192,10 +192,11 @@ public:
 	};
 
 	enum NavigationScheme {
-		NAVIGATION_GODOT,
-		NAVIGATION_MAYA,
-		NAVIGATION_MODO,
-		NAVIGATION_CUSTOM,
+		NAVIGATION_GODOT = 0,
+		NAVIGATION_MAYA = 1,
+		NAVIGATION_MODO = 2,
+		NAVIGATION_CUSTOM = 3,
+		NAVIGATION_TABLET = 4,
 	};
 
 	enum FreelookNavigationScheme {
@@ -208,6 +209,8 @@ public:
 		NAVIGATION_LEFT_MOUSE,
 		NAVIGATION_MIDDLE_MOUSE,
 		NAVIGATION_RIGHT_MOUSE,
+		NAVIGATION_MOUSE_4,
+		NAVIGATION_MOUSE_5,
 	};
 
 private:
@@ -1010,7 +1013,7 @@ class Node3DEditorPlugin : public EditorPlugin {
 
 public:
 	Node3DEditor *get_spatial_editor() { return spatial_editor; }
-	virtual String get_name() const override { return "3D"; }
+	virtual String get_plugin_name() const override { return "3D"; }
 	bool has_main_screen() const override { return true; }
 	virtual void make_visible(bool p_visible) override;
 	virtual void edit(Object *p_object) override;

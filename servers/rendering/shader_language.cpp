@@ -31,7 +31,6 @@
 #include "shader_language.h"
 
 #include "core/os/os.h"
-#include "core/string/print_string.h"
 #include "core/templates/local_vector.h"
 #include "servers/rendering/renderer_compositor.h"
 #include "servers/rendering_server.h"
@@ -9143,7 +9142,7 @@ Error ShaderLanguage::_parse_shader(const HashMap<StringName, FunctionInfo> &p_f
 						}
 					}
 #endif // DEBUG_ENABLED
-					if (shader_type_identifier != StringName() && String(shader_type_identifier) != "spatial") {
+					if (shader_type_identifier != StringName() && String(shader_type_identifier) != "spatial" && String(shader_type_identifier) != "canvas_item") {
 						_set_error(vformat(RTR("Uniform instances are not yet implemented for '%s' shaders."), shader_type_identifier));
 						return ERR_PARSE_ERROR;
 					}
@@ -9659,7 +9658,7 @@ Error ShaderLanguage::_parse_shader(const HashMap<StringName, FunctionInfo> &p_f
 									--texture_uniforms;
 									--texture_binding;
 									if (OS::get_singleton()->get_current_rendering_method() != "forward_plus") {
-										_set_error(RTR("'hint_normal_roughness_texture' is only available when using the Forward+ backend."));
+										_set_error(RTR("'hint_normal_roughness_texture' is only available when using the Forward+ renderer."));
 										return ERR_PARSE_ERROR;
 									}
 									if (shader_type_identifier != StringName() && String(shader_type_identifier) != "spatial") {

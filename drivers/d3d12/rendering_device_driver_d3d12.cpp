@@ -2292,6 +2292,19 @@ bool RenderingDeviceDriverD3D12::command_pool_reset(CommandPoolID p_cmd_pool) {
 
 void RenderingDeviceDriverD3D12::command_pool_free(CommandPoolID p_cmd_pool) {
 	CommandPoolInfo *command_pool = (CommandPoolInfo *)(p_cmd_pool.id);
+
+	// Destroy all command buffers associated with this command pool, mirroring Vulkan's behavior.
+	SelfList<CommandBufferInfo> *cmd_buf_elem = command_pool->command_buffers.first();
+	while (cmd_buf_elem != nullptr) {
+		CommandBufferInfo *cmd_buf_info = cmd_buf_elem->self();
+		cmd_buf_elem = cmd_buf_elem->next();
+
+		cmd_buf_info->cmd_list.Reset();
+		cmd_buf_info->cmd_allocator.Reset();
+
+		VersatileResource::free(resources_allocator, cmd_buf_info);
+	}
+
 	memdelete(command_pool);
 }
 
@@ -2300,7 +2313,7 @@ void RenderingDeviceDriverD3D12::command_pool_free(CommandPoolID p_cmd_pool) {
 RDD::CommandBufferID RenderingDeviceDriverD3D12::command_buffer_create(CommandPoolID p_cmd_pool) {
 	DEV_ASSERT(p_cmd_pool);
 
-	const CommandPoolInfo *command_pool = (CommandPoolInfo *)(p_cmd_pool.id);
+	CommandPoolInfo *command_pool = (CommandPoolInfo *)(p_cmd_pool.id);
 	D3D12_COMMAND_LIST_TYPE list_type;
 	if (command_pool->buffer_type == COMMAND_BUFFER_TYPE_SECONDARY) {
 		list_type = D3D12_COMMAND_LIST_TYPE_BUNDLE;
@@ -2335,6 +2348,9 @@ RDD::CommandBufferID RenderingDeviceDriverD3D12::command_buffer_create(CommandPo
 	CommandBufferInfo *cmd_buf_info = VersatileResource::allocate<CommandBufferInfo>(resources_allocator);
 	cmd_buf_info->cmd_allocator = cmd_allocator;
 	cmd_buf_info->cmd_list = cmd_list;
+
+	// Add this command buffer to the command pool's list of command buffers.
+	command_pool->command_buffers.add(&cmd_buf_info->command_buffer_info_elem);
 
 	return CommandBufferID(cmd_buf_info);
 }
@@ -3830,7 +3846,7 @@ static void _add_descriptor_count_for_uniform(RenderingDevice::UniformType p_typ
 }
 
 RDD::UniformSetID RenderingDeviceDriverD3D12::uniform_set_create(VectorView<BoundUniform> p_uniforms, ShaderID p_shader, uint32_t p_set_index, int p_linear_pool_index) {
-	// p_linear_pool_index = -1; // TODO:? Linear pools not implemented or not supported by API backend.
+	//p_linear_pool_index = -1; // TODO:? Linear pools not implemented or not supported by API backend.
 
 	// Pre-bookkeep.
 	UniformSetInfo *uniform_set_info = VersatileResource::allocate<UniformSetInfo>(resources_allocator);

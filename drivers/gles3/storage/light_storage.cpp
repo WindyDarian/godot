@@ -33,7 +33,6 @@
 #include "light_storage.h"
 #include "../rasterizer_gles3.h"
 #include "../rasterizer_scene_gles3.h"
-#include "config.h"
 #include "core/config/project_settings.h"
 #include "texture_storage.h"
 
@@ -469,6 +468,13 @@ void LightStorage::reflection_probe_set_intensity(RID p_probe, float p_intensity
 	ERR_FAIL_NULL(reflection_probe);
 
 	reflection_probe->intensity = p_intensity;
+}
+
+void LightStorage::reflection_probe_set_blend_distance(RID p_probe, float p_blend_distance) {
+	ReflectionProbe *reflection_probe = reflection_probe_owner.get_or_null(p_probe);
+	ERR_FAIL_NULL(reflection_probe);
+
+	reflection_probe->blend_distance = p_blend_distance;
 }
 
 void LightStorage::reflection_probe_set_ambient_mode(RID p_probe, RS::ReflectionProbeAmbientMode p_mode) {
