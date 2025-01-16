@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  editor_scene_importer_fbx2gltf.h                                      */
+/*  dialog_utils_jni.cpp                                                  */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,31 +28,25 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef EDITOR_SCENE_IMPORTER_FBX2GLTF_H
-#define EDITOR_SCENE_IMPORTER_FBX2GLTF_H
+#include "dialog_utils_jni.h"
 
-#ifdef TOOLS_ENABLED
+#include "display_server_android.h"
+#include "jni_utils.h"
 
-#include "editor/import/3d/resource_importer_scene.h"
+extern "C" {
 
-class Animation;
-class Node;
+JNIEXPORT void JNICALL Java_org_godotengine_godot_utils_DialogUtils_dialogCallback(JNIEnv *env, jclass clazz, jint p_button_index) {
+	DisplayServerAndroid *ds = (DisplayServerAndroid *)DisplayServer::get_singleton();
+	if (ds) {
+		ds->emit_dialog_callback(p_button_index);
+	}
+}
 
-class EditorSceneFormatImporterFBX2GLTF : public EditorSceneFormatImporter {
-	GDCLASS(EditorSceneFormatImporterFBX2GLTF, EditorSceneFormatImporter);
-
-public:
-	virtual void get_extensions(List<String> *r_extensions) const override;
-	virtual Node *import_scene(const String &p_path, uint32_t p_flags,
-			const HashMap<StringName, Variant> &p_options,
-			List<String> *r_missing_deps, Error *r_err = nullptr) override;
-	virtual void get_import_options(const String &p_path,
-			List<ResourceImporter::ImportOption> *r_options) override;
-	virtual Variant get_option_visibility(const String &p_path, const String &p_scene_import_type, const String &p_option,
-			const HashMap<StringName, Variant> &p_options) override;
-	virtual void handle_compatibility_options(HashMap<StringName, Variant> &p_import_params) const override;
-};
-
-#endif // TOOLS_ENABLED
-
-#endif // EDITOR_SCENE_IMPORTER_FBX2GLTF_H
+JNIEXPORT void JNICALL Java_org_godotengine_godot_utils_DialogUtils_inputDialogCallback(JNIEnv *env, jclass clazz, jstring p_text) {
+	DisplayServerAndroid *ds = (DisplayServerAndroid *)DisplayServer::get_singleton();
+	if (ds) {
+		String text = jstring_to_string(p_text, env);
+		ds->emit_input_dialog_callback(text);
+	}
+}
+}
