@@ -60,12 +60,5 @@
 			<description>
 			</description>
 		</method>
-		<method name="spatial_set_rotation_quat_keep_scale" qualifiers="const">
-			<return type="void" />
-			<param index="0" name="spatial" type="Node" />
-			<param index="1" name="quaternion" type="Quaternion" />
-			<description>
-			</description>
-		</method>
 	</methods>
 </class>
