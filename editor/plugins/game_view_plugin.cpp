@@ -42,6 +42,7 @@
 #include "editor/editor_node.h"
 #include "editor/editor_settings.h"
 #include "editor/editor_string_names.h"
+#include "editor/gui/editor_bottom_panel.h"
 #include "editor/gui/editor_run_bar.h"
 #include "editor/plugins/embedded_process.h"
 #include "editor/themes/editor_scale.h"
@@ -64,6 +65,7 @@ void GameViewDebugger::_session_started(Ref<EditorDebuggerSession> p_session) {
 	settings["editors/panning/warped_mouse_panning"] = EDITOR_GET("editors/panning/warped_mouse_panning");
 	settings["editors/panning/2d_editor_pan_speed"] = EDITOR_GET("editors/panning/2d_editor_pan_speed");
 	settings["canvas_item_editor/pan_view"] = DebuggerMarshalls::serialize_key_shortcut(ED_GET_SHORTCUT("canvas_item_editor/pan_view"));
+	settings["editors/3d/freelook/freelook_base_speed"] = EDITOR_GET("editors/3d/freelook/freelook_base_speed");
 	setup_data.append(settings);
 	p_session->send_message("scene:runtime_node_select_setup", setup_data);
 
@@ -299,6 +301,8 @@ void GameView::_play_pressed() {
 		_update_embed_window_size();
 		if (!window_wrapper->get_window_enabled()) {
 			EditorNode::get_singleton()->get_editor_main_screen()->select(EditorMainScreen::EDITOR_GAME);
+			// Reset the normal size of the bottom panel when fully expanded.
+			EditorNode::get_singleton()->get_bottom_panel()->set_expanded(false);
 			embedded_process->grab_focus();
 		}
 		embedded_process->embed_process(current_process_id);
@@ -445,6 +449,10 @@ GameView::EmbedAvailability GameView::_get_embed_available() {
 	if (get_tree()->get_root()->is_embedding_subwindows()) {
 		return EMBED_NOT_AVAILABLE_SINGLE_WINDOW_MODE;
 	}
+	String display_driver = GLOBAL_GET("display/display_server/driver");
+	if (display_driver == "headless" || display_driver == "wayland") {
+		return EMBED_NOT_AVAILABLE_PROJECT_DISPLAY_DRIVER;
+	}
 
 	EditorRun::WindowPlacement placement = EditorRun::get_window_placement();
 	if (placement.force_fullscreen) {
@@ -488,7 +496,14 @@ void GameView::_update_ui() {
 			}
 			break;
 		case EMBED_NOT_AVAILABLE_FEATURE_NOT_SUPPORTED:
-			state_label->set_text(TTR("Game embedding not available on your OS."));
+			if (DisplayServer::get_singleton()->get_name() == "Wayland") {
+				state_label->set_text(TTR("Game embedding not available on Wayland.\nWayland can be disabled in the Editor Settings (Run > Platforms > Linux/*BSD > Prefer Wayland)."));
+			} else {
+				state_label->set_text(TTR("Game embedding not available on your OS."));
+			}
+			break;
+		case EMBED_NOT_AVAILABLE_PROJECT_DISPLAY_DRIVER:
+			state_label->set_text(vformat(TTR("Game embedding not available for the Display Server: '%s'.\nDisplay Server can be modified in the Project Settings (Display > Display Server > Driver)."), GLOBAL_GET("display/display_server/driver")));
 			break;
 		case EMBED_NOT_AVAILABLE_MINIMIZED:
 			state_label->set_text(TTR("Game embedding not available when the game starts minimized.\nConsider overriding the window mode project setting with the editor feature tag to Windowed to use game embedding while leaving the exported project intact."));
