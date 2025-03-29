@@ -69,7 +69,6 @@
 #include "scene/theme/theme_db.h"
 #include "servers/display_server.h"
 #include "servers/navigation_server_3d.h"
-#include "servers/physics_server_2d.h"
 #include "servers/rendering_server.h"
 
 #include "editor/audio_stream_preview.h"
@@ -167,9 +166,17 @@
 
 #include "modules/modules_enabled.gen.h" // For gdscript, mono.
 
+#ifndef PHYSICS_2D_DISABLED
+#include "servers/physics_server_2d.h"
+#endif // PHYSICS_2D_DISABLED
+
+#ifndef PHYSICS_3D_DISABLED
+#include "servers/physics_server_3d.h"
+#endif // PHYSICS_3D_DISABLED
+
 #ifdef ANDROID_ENABLED
 #include "editor/gui/touch_actions_panel.h"
-#endif
+#endif // ANDROID_ENABLED
 
 #include <stdlib.h>
 
@@ -6494,7 +6501,7 @@ void EditorNode::reload_instances_with_path_in_edited_scenes() {
 
 			// Store all the paths for any selected nodes which are ancestors of the node we're replacing.
 			List<NodePath> selected_node_paths;
-			for (Node *selected_node : editor_selection->get_selected_node_list()) {
+			for (Node *selected_node : editor_selection->get_top_selected_node_list()) {
 				if (selected_node == original_node || original_node->is_ancestor_of(selected_node)) {
 					selected_node_paths.push_back(original_node->get_path_to(selected_node));
 					editor_selection->remove_node(selected_node);
@@ -7055,8 +7062,12 @@ EditorNode::EditorNode() {
 		}
 
 		// No physics by default if in editor.
+#ifndef PHYSICS_3D_DISABLED
 		PhysicsServer3D::get_singleton()->set_active(false);
+#endif // PHYSICS_3D_DISABLED
+#ifndef PHYSICS_2D_DISABLED
 		PhysicsServer2D::get_singleton()->set_active(false);
+#endif // PHYSICS_2D_DISABLED
 
 		// No scripting by default if in editor (except for tool).
 		ScriptServer::set_scripting_enabled(false);
