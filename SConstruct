@@ -15,6 +15,7 @@ from types import ModuleType
 
 from SCons import __version__ as scons_raw_version
 from SCons.Builder import ListEmitter
+from SCons.Util import CLVar
 
 # Explicitly resolve the helper modules, this is done to avoid clash with
 # modules of the same name that might be randomly added (e.g. someone adding
@@ -445,9 +446,18 @@ for tool in custom_tools:
     env.Tool(tool)
 
 
-# add default include paths
-
+# Add default include paths.
 env.Prepend(CPPPATH=["#"])
+
+# Allow marking includes as external/system to avoid raising warnings.
+env["_CCCOMCOM"] += " $_CPPEXTINCFLAGS"
+env["CPPEXTPATH"] = CLVar("")
+if env.scons_version < (4, 2):
+    env["_CPPEXTINCFLAGS"] = "${_concat(EXTINCPREFIX, CPPEXTPATH, EXTINCSUFFIX, __env__, RDirs, TARGET, SOURCE)}"
+else:
+    env["_CPPEXTINCFLAGS"] = (
+        "${_concat(EXTINCPREFIX, CPPEXTPATH, EXTINCSUFFIX, __env__, RDirs, TARGET, SOURCE, affect_signature=False)}"
+    )
 
 # configure ENV for platform
 env.platform_exporters = platform_exporters
@@ -912,6 +922,17 @@ else:  # GCC, Clang
     if env["werror"]:
         env.Append(CCFLAGS=["-Werror"])
 
+# Configure external includes.
+if env.msvc:
+    if cc_version_major < 16 or (cc_version_major == 16 and cc_version_minor < 10):
+        env.AppendUnique(CCFLAGS=["/experimental:external"])
+    env.AppendUnique(CCFLAGS=["/external:W0"])
+    env["EXTINCPREFIX"] = "/external:I"
+    env["EXTINCSUFFIX"] = ""
+else:
+    env["EXTINCPREFIX"] = "-isystem "
+    env["EXTINCSUFFIX"] = ""
+
 if hasattr(detect, "get_program_suffix"):
     suffix = "." + detect.get_program_suffix()
 else:
@@ -956,8 +977,8 @@ if env.editor_build:
 
 if env["disable_3d"]:
     env.Append(CPPDEFINES=["_3D_DISABLED"])
-    env["disable_physics_3d"] = True
     env["disable_navigation_3d"] = True
+    env["disable_physics_3d"] = True
     env["disable_xr"] = True
 if env["disable_advanced_gui"]:
     env.Append(CPPDEFINES=["ADVANCED_GUI_DISABLED"])

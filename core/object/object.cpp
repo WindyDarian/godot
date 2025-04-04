@@ -258,12 +258,6 @@ void Object::_postinitialize() {
 	notification(NOTIFICATION_POSTINITIALIZE);
 }
 
-void Object::get_valid_parents_static(List<String> *p_parents) {
-}
-
-void Object::_get_valid_parents_static(List<String> *p_parents) {
-}
-
 void Object::set(const StringName &p_name, const Variant &p_value, bool *r_valid) {
 #ifdef TOOLS_ENABLED
 
@@ -1900,7 +1894,7 @@ Variant::Type Object::get_static_property_type(const StringName &p_property, boo
 }
 
 Variant::Type Object::get_static_property_type_indexed(const Vector<StringName> &p_path, bool *r_valid) const {
-	if (p_path.size() == 0) {
+	if (p_path.is_empty()) {
 		if (r_valid) {
 			*r_valid = false;
 		}

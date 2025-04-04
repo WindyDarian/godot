@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  gl_manager_macos_legacy.h                                             */
+/*  test_triangle_mesh.h                                                  */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -30,64 +30,53 @@
 
 #pragma once
 
-#if defined(MACOS_ENABLED) && defined(GLES3_ENABLED)
+#include "core/math/triangle_mesh.h"
+#include "scene/resources/3d/primitive_meshes.h"
 
-#include "core/os/os.h"
-#include "core/templates/local_vector.h"
-#include "servers/display_server.h"
+#include "tests/test_macros.h"
 
-#import <AppKit/AppKit.h>
-#import <ApplicationServices/ApplicationServices.h>
-#import <CoreVideo/CoreVideo.h>
+namespace TestTriangleMesh {
 
-GODOT_CLANG_WARNING_PUSH_AND_IGNORE("-Wdeprecated-declarations") // OpenGL is deprecated in macOS 10.14.
+TEST_CASE("[SceneTree][TriangleMesh] BVH creation and intersection") {
+	Ref<BoxMesh> box_mesh;
+	box_mesh.instantiate();
 
-typedef CGLError (*CGLEnablePtr)(CGLContextObj ctx, CGLContextEnable pname);
-typedef CGLError (*CGLSetParameterPtr)(CGLContextObj ctx, CGLContextParameter pname, const GLint *params);
-typedef CGLContextObj (*CGLGetCurrentContextPtr)(void);
+	const Vector<Face3> faces = box_mesh->get_faces();
 
-class GLManagerLegacy_MacOS {
-	struct GLWindow {
-		id window_view = nullptr;
-		NSOpenGLContext *context = nullptr;
-	};
+	Ref<TriangleMesh> triangle_mesh;
+	triangle_mesh.instantiate();
+	CHECK(triangle_mesh->create_from_faces(Variant(faces)));
 
-	RBMap<DisplayServer::WindowID, GLWindow> windows;
+	const Vector3 begin = Vector3(0.0, 2.0, 0.0);
+	const Vector3 end = Vector3(0.0, -2.0, 0.0);
 
-	NSOpenGLContext *shared_context = nullptr;
-	DisplayServer::WindowID current_window = DisplayServer::INVALID_WINDOW_ID;
+	{
+		Vector3 point;
+		Vector3 normal;
+		int32_t *surf_index = nullptr;
+		int32_t face_index = -1;
+		const bool has_result = triangle_mesh->intersect_segment(begin, end, point, normal, surf_index, &face_index);
+		CHECK(has_result);
+		CHECK(point.is_equal_approx(Vector3(0.0, 0.5, 0.0)));
+		CHECK(normal.is_equal_approx(Vector3(0.0, 1.0, 0.0)));
+		CHECK(surf_index == nullptr);
+		REQUIRE(face_index != -1);
+		CHECK(face_index == 8);
+	}
 
-	Error create_context(GLWindow &win);
-
-	bool framework_loaded = false;
-	bool use_vsync = false;
-	CGLEnablePtr CGLEnable = nullptr;
-	CGLSetParameterPtr CGLSetParameter = nullptr;
-	CGLGetCurrentContextPtr CGLGetCurrentContext = nullptr;
-
-public:
-	Error window_create(DisplayServer::WindowID p_window_id, id p_view, int p_width, int p_height);
-	void window_destroy(DisplayServer::WindowID p_window_id);
-	void window_resize(DisplayServer::WindowID p_window_id, int p_width, int p_height);
-
-	void release_current();
-	void swap_buffers();
-
-	void window_make_current(DisplayServer::WindowID p_window_id);
-
-	void window_set_per_pixel_transparency_enabled(DisplayServer::WindowID p_window_id, bool p_enabled);
-
-	Error initialize();
-
-	void set_use_vsync(bool p_use);
-	bool is_using_vsync() const;
-
-	NSOpenGLContext *get_context(DisplayServer::WindowID p_window_id);
-
-	GLManagerLegacy_MacOS();
-	~GLManagerLegacy_MacOS();
-};
-
-GODOT_CLANG_WARNING_PUSH
-
-#endif // MACOS_ENABLED && GLES3_ENABLED
+	{
+		Vector3 dir = begin.direction_to(end);
+		Vector3 point;
+		Vector3 normal;
+		int32_t *surf_index = nullptr;
+		int32_t face_index = -1;
+		const bool has_result = triangle_mesh->intersect_ray(begin, dir, point, normal, surf_index, &face_index);
+		CHECK(has_result);
+		CHECK(point.is_equal_approx(Vector3(0.0, 0.5, 0.0)));
+		CHECK(normal.is_equal_approx(Vector3(0.0, 1.0, 0.0)));
+		CHECK(surf_index == nullptr);
+		REQUIRE(face_index != -1);
+		CHECK(face_index == 8);
+	}
+}
+} // namespace TestTriangleMesh

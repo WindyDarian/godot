@@ -82,23 +82,26 @@
 #include "servers/navigation_server_2d.h"
 #include "servers/navigation_server_2d_dummy.h"
 #endif // NAVIGATION_2D_DISABLED
+
 #ifndef PHYSICS_2D_DISABLED
 #include "servers/physics_server_2d.h"
 #include "servers/physics_server_2d_dummy.h"
 #endif // PHYSICS_2D_DISABLED
 
 // 3D
-#ifndef PHYSICS_3D_DISABLED
-#include "servers/physics_server_3d.h"
-#include "servers/physics_server_3d_dummy.h"
-#endif // PHYSICS_3D_DISABLED
 #ifndef NAVIGATION_3D_DISABLED
 #include "servers/navigation_server_3d.h"
 #include "servers/navigation_server_3d_dummy.h"
 #endif // NAVIGATION_3D_DISABLED
-#ifndef _3D_DISABLED
+
+#ifndef PHYSICS_3D_DISABLED
+#include "servers/physics_server_3d.h"
+#include "servers/physics_server_3d_dummy.h"
+#endif // PHYSICS_3D_DISABLED
+
+#ifndef XR_DISABLED
 #include "servers/xr_server.h"
-#endif // _3D_DISABLED
+#endif // XR_DISABLED
 
 #ifdef TESTS_ENABLED
 #include "tests/test_main.h"
@@ -181,9 +184,9 @@ static PhysicsServer2D *physics_server_2d = nullptr;
 static PhysicsServer3DManager *physics_server_3d_manager = nullptr;
 static PhysicsServer3D *physics_server_3d = nullptr;
 #endif // PHYSICS_3D_DISABLED
-#ifndef _3D_DISABLED
+#ifndef XR_DISABLED
 static XRServer *xr_server = nullptr;
-#endif // _3D_DISABLED
+#endif // XR_DISABLED
 // We error out if setup2() doesn't turn this true
 static bool _start_success = false;
 
@@ -2106,7 +2109,7 @@ Error Main::setup(const char *execpath, int argc, char *argv[], bool p_second_ph
 		OS::get_singleton()->add_logger(memnew(RotatedFileLogger(base_path, max_files)));
 	}
 
-	if (main_args.size() == 0 && String(GLOBAL_GET("application/run/main_scene")) == "") {
+	if (main_args.is_empty() && String(GLOBAL_GET("application/run/main_scene")) == "") {
 #ifdef TOOLS_ENABLED
 		if (!editor && !project_manager) {
 #endif
@@ -4648,10 +4651,10 @@ bool Main::iteration() {
 		uint64_t navigation_begin = OS::get_singleton()->get_ticks_usec();
 
 #ifndef NAVIGATION_2D_DISABLED
-		NavigationServer2D::get_singleton()->process(physics_step * time_scale);
+		NavigationServer2D::get_singleton()->physics_process(physics_step * time_scale);
 #endif // NAVIGATION_2D_DISABLED
 #ifndef NAVIGATION_3D_DISABLED
-		NavigationServer3D::get_singleton()->process(physics_step * time_scale);
+		NavigationServer3D::get_singleton()->physics_process(physics_step * time_scale);
 #endif // NAVIGATION_3D_DISABLED
 
 		navigation_process_ticks = MAX(navigation_process_ticks, OS::get_singleton()->get_ticks_usec() - navigation_begin); // keep the largest one for reference
@@ -4690,6 +4693,13 @@ bool Main::iteration() {
 		exit = true;
 	}
 	message_queue->flush();
+
+#ifndef NAVIGATION_2D_DISABLED
+	NavigationServer2D::get_singleton()->process(process_step * time_scale);
+#endif // NAVIGATION_2D_DISABLED
+#ifndef NAVIGATION_3D_DISABLED
+	NavigationServer3D::get_singleton()->process(process_step * time_scale);
+#endif // NAVIGATION_3D_DISABLED
 
 	RenderingServer::get_singleton()->sync(); //sync if still drawing from previous frames.
 
@@ -4909,11 +4919,11 @@ void Main::cleanup(bool p_force) {
 
 	EngineDebugger::deinitialize();
 
-#ifndef _3D_DISABLED
+#ifndef XR_DISABLED
 	if (xr_server) {
 		memdelete(xr_server);
 	}
-#endif // _3D_DISABLED
+#endif // XR_DISABLED
 
 	if (audio_server) {
 		audio_server->finish();
