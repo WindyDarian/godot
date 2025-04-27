@@ -32,6 +32,7 @@
 
 #include "core/os/mutex.h"
 #include "scene/main/node.h"
+#include <cstdint>
 
 #ifdef CLIPPER2_ENABLED
 #include "nav_mesh_generator_2d.h"
@@ -193,11 +194,12 @@ void GodotNavigationServer2D::add_command(SetCommand2D *p_command) {
 
 TypedArray<RID> GodotNavigationServer2D::get_maps() const {
 	TypedArray<RID> all_map_rids;
-	List<RID> maps_owned;
-	map_owner.get_owned_list(&maps_owned);
-	if (maps_owned.size()) {
-		for (const RID &E : maps_owned) {
-			all_map_rids.push_back(E);
+	LocalVector<RID> maps_owned = map_owner.get_owned_list();
+	uint32_t map_count = maps_owned.size();
+	if (map_count) {
+		all_map_rids.resize(map_count);
+		for (uint32_t i = 0; i < map_count; i++) {
+			all_map_rids[i] = maps_owned[i];
 		}
 	}
 	return all_map_rids;
@@ -446,6 +448,13 @@ RID GodotNavigationServer2D::region_create() {
 	NavRegion2D *reg = region_owner.get_or_null(rid);
 	reg->set_self(rid);
 	return rid;
+}
+
+uint32_t GodotNavigationServer2D::region_get_iteration_id(RID p_region) const {
+	NavRegion2D *region = region_owner.get_or_null(p_region);
+	ERR_FAIL_NULL_V(region, 0);
+
+	return region->get_iteration_id();
 }
 
 COMMAND_2(region_set_enabled, RID, p_region, bool, p_enabled) {

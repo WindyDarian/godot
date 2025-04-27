@@ -2035,7 +2035,14 @@ bool CanvasItemEditor::_gui_input_scale(const Ref<InputEvent> &p_event) {
 			Size2 scale_max;
 			if (drag_type != DRAG_SCALE_BOTH) {
 				for (CanvasItem *ci : drag_selection) {
-					scale_max = scale_max.max(ci->_edit_get_scale());
+					Size2 scale = ci->_edit_get_scale();
+
+					if (Math::abs(scale.x) > Math::abs(scale_max.x)) {
+						scale_max.x = scale.x;
+					}
+					if (Math::abs(scale.y) > Math::abs(scale_max.y)) {
+						scale_max.y = scale.y;
+					}
 				}
 			}
 
@@ -6438,6 +6445,7 @@ CanvasItemEditorViewport::CanvasItemEditorViewport(CanvasItemEditor *p_canvas_it
 	canvas_item_editor->get_controls_container()->add_child(label);
 
 	label_desc = memnew(Label);
+	label_desc->set_focus_mode(FOCUS_ACCESSIBILITY);
 	label_desc->add_theme_color_override(SceneStringName(font_color), Color(0.6f, 0.6f, 0.6f, 1));
 	label_desc->add_theme_color_override("font_shadow_color", Color(0.2f, 0.2f, 0.2f, 1));
 	label_desc->add_theme_constant_override("shadow_outline_size", 1 * EDSCALE);
