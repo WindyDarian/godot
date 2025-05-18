@@ -114,8 +114,6 @@ void SceneTreeTimer::release_connections() {
 	}
 }
 
-SceneTreeTimer::SceneTreeTimer() {}
-
 #ifndef _3D_DISABLED
 // This should be called once per physics tick, to make sure the transform previous and current
 // is kept up to date on the few Node3Ds that are using client side physics interpolation.
@@ -185,14 +183,6 @@ void SceneTree::remove_from_group(const StringName &p_group, Node *p_node) {
 	E->value.nodes.erase(p_node);
 	if (E->value.nodes.is_empty()) {
 		group_map.remove(E);
-	}
-}
-
-void SceneTree::make_group_changed(const StringName &p_group) {
-	_THREAD_SAFE_METHOD_
-	HashMap<StringName, Group>::Iterator E = group_map.find(p_group);
-	if (E) {
-		E->value.changed = true;
 	}
 }
 

@@ -104,7 +104,7 @@ void (*Image::_image_decompress_astc)(Image *) = nullptr;
 Vector<uint8_t> (*Image::webp_lossy_packer)(const Ref<Image> &, float) = nullptr;
 Vector<uint8_t> (*Image::webp_lossless_packer)(const Ref<Image> &) = nullptr;
 Vector<uint8_t> (*Image::png_packer)(const Ref<Image> &) = nullptr;
-Vector<uint8_t> (*Image::basis_universal_packer)(const Ref<Image> &, Image::UsedChannels) = nullptr;
+Vector<uint8_t> (*Image::basis_universal_packer)(const Ref<Image> &, Image::UsedChannels, const BasisUniversalPackerParams &) = nullptr;
 
 Ref<Image> (*Image::webp_unpacker)(const Vector<uint8_t> &) = nullptr;
 Ref<Image> (*Image::png_unpacker)(const Vector<uint8_t> &) = nullptr;
@@ -2266,7 +2266,7 @@ void Image::initialize_data(const char **p_xpm) {
 		switch (status) {
 			case READING_HEADER: {
 				String line_str = line_ptr;
-				line_str.replace_char('\t', ' ');
+				line_str = line_str.replace_char('\t', ' ');
 
 				size_width = line_str.get_slicec(' ', 0).to_int();
 				size_height = line_str.get_slicec(' ', 1).to_int();

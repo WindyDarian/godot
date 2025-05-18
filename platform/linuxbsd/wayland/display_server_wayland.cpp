@@ -453,15 +453,13 @@ Point2i DisplayServerWayland::mouse_get_position() const {
 
 	WindowID pointed_id = wayland_thread.pointer_get_pointed_window_id();
 
-	if (pointed_id != INVALID_WINDOW_ID) {
+	if (pointed_id != INVALID_WINDOW_ID && windows.has(pointed_id)) {
 		return Input::get_singleton()->get_mouse_position() + windows[pointed_id].rect.position;
 	}
 
 	// We can't properly implement this method by design.
 	// This is the best we can do unfortunately.
 	return Input::get_singleton()->get_mouse_position();
-
-	return Point2i();
 }
 
 BitField<MouseButtonMask> DisplayServerWayland::mouse_get_button_state() const {
@@ -1238,12 +1236,12 @@ void DisplayServerWayland::window_set_flag(WindowFlags p_flag, bool p_enabled, D
 
 		case WINDOW_FLAG_POPUP: {
 			ERR_FAIL_COND_MSG(p_window_id == MAIN_WINDOW_ID, "Main window can't be popup.");
-			ERR_FAIL_COND_MSG(wd.visible, "Popup flag can't changed while window is opened.");
+			ERR_FAIL_COND_MSG(wd.visible && (wd.flags & WINDOW_FLAG_POPUP_BIT) != p_enabled, "Popup flag can't changed while window is opened.");
 		} break;
 
 		case WINDOW_FLAG_POPUP_WM_HINT: {
 			ERR_FAIL_COND_MSG(p_window_id == MAIN_WINDOW_ID, "Main window can't have popup hint.");
-			ERR_FAIL_COND_MSG(wd.visible, "Popup hint can't changed while window is opened.");
+			ERR_FAIL_COND_MSG(wd.visible && (wd.flags & WINDOW_FLAG_POPUP_WM_HINT_BIT) != p_enabled, "Popup hint can't changed while window is opened.");
 		} break;
 
 		default: {
@@ -2075,6 +2073,16 @@ DisplayServerWayland::DisplayServerWayland(const String &p_rendering_driver, Win
 	wd.vsync_mode = p_vsync_mode;
 	wd.rect.size = p_resolution;
 	wd.title = "Godot";
+
+#ifdef ACCESSKIT_ENABLED
+	if (accessibility_driver && !accessibility_driver->window_create(wd.id, nullptr)) {
+		if (OS::get_singleton()->is_stdout_verbose()) {
+			ERR_PRINT("Can't create an accessibility adapter for window, accessibility support disabled!");
+		}
+		memdelete(accessibility_driver);
+		accessibility_driver = nullptr;
+	}
+#endif
 
 	show_window(MAIN_WINDOW_ID);
 
