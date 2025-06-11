@@ -160,6 +160,7 @@ public:
 
 		// Project menu.
 		PROJECT_OPEN_SETTINGS,
+		PROJECT_FIND_IN_FILES,
 		PROJECT_VERSION_CONTROL,
 		PROJECT_EXPORT,
 		PROJECT_PACK_AS_ZIP,
@@ -434,6 +435,8 @@ private:
 	EditorBottomPanel *bottom_panel = nullptr;
 
 	Tree *disk_changed_list = nullptr;
+	LocalVector<String> disk_changed_scenes;
+	bool disk_changed_project = false;
 	ConfirmationDialog *disk_changed = nullptr;
 	ConfirmationDialog *project_data_missing = nullptr;
 
@@ -445,6 +448,7 @@ private:
 	bool convert_old = false;
 	bool immediate_dialog_confirmed = false;
 	bool restoring_scenes = false;
+	bool settings_overrides_changed = false;
 	bool unsaved_cache = true;
 
 	bool requested_first_scan = false;
@@ -481,6 +485,7 @@ private:
 	PrintHandlerList print_handler;
 
 	HashMap<String, Ref<Texture2D>> icon_type_cache;
+	HashMap<Pair<String, String>, Ref<Texture2D>> class_icon_cache;
 
 	ProjectUpgradeTool *project_upgrade_tool = nullptr;
 	bool run_project_upgrade_tool = false;
@@ -543,7 +548,8 @@ private:
 
 	void _request_screenshot();
 	void _screenshot(bool p_use_utc = false);
-	void _save_screenshot(NodePath p_path);
+	void _save_screenshot(const String &p_path);
+	void _save_screenshot_with_embedded_process(int64_t p_w, int64_t p_h, const String &p_emb_path, const Rect2i &p_rect, const String &p_path);
 
 	void _check_system_theme_changed();
 
@@ -582,7 +588,7 @@ private:
 	void _set_current_scene(int p_idx);
 	void _set_current_scene_nocheck(int p_idx);
 	bool _validate_scene_recursive(const String &p_filename, Node *p_node);
-	void _save_scene(String p_file, int idx = -1);
+	void _save_scene(String p_file, int idx = -1, bool show_progress = true);
 	void _save_all_scenes();
 	int _next_unsaved_scene(bool p_valid_filename, int p_start = 0);
 	void _discard_changes(const String &p_str = String());
@@ -612,6 +618,7 @@ private:
 	void _update_vsync_mode();
 	void _update_from_settings();
 	void _gdextensions_reloaded();
+	void _update_translations();
 
 	void _renderer_selected(int);
 	void _update_renderer_color();
@@ -634,7 +641,6 @@ private:
 	bool _is_scene_unsaved(int p_idx);
 
 	void _find_node_types(Node *p_node, int &count_2d, int &count_3d);
-	void _save_scene_with_preview(String p_file, int p_idx = -1);
 	void _close_save_scene_progress();
 
 	bool _find_scene_in_use(Node *p_node, const String &p_path) const;
@@ -674,7 +680,7 @@ private:
 	void _scan_external_changes();
 	void _reload_modified_scenes();
 	void _reload_project_settings();
-	void _resave_scenes(String p_str);
+	void _resave_externally_modified_scenes(String p_str);
 
 	void _feature_profile_changed();
 	bool _is_class_editor_disabled_by_feature_profile(const StringName &p_class);
@@ -816,6 +822,9 @@ public:
 	void set_edited_scene_root(Node *p_scene, bool p_auto_add);
 	Node *get_edited_scene() { return editor_data.get_edited_scene_root(); }
 
+	String get_preview_locale() const;
+	void set_preview_locale(const String &p_locale);
+
 	void fix_dependencies(const String &p_for_file);
 	int new_scene();
 	Error load_scene(const String &p_scene, bool p_ignore_broken_deps = false, bool p_set_inherited = false, bool p_force_open_imported = false, bool p_silent_change_tab = false);
@@ -928,12 +937,11 @@ public:
 	Control *get_gui_base() { return gui_base; }
 
 	void save_scene_to_path(String p_file, bool p_with_preview = true) {
-		if (p_with_preview) {
-			_save_scene_with_preview(p_file);
-		} else {
-			_save_scene(p_file);
-		}
+		// p_with_preview has no effect, now generates preview at EditorPackedScenePreviewPlugin
+		_save_scene(p_file);
 	}
+
+	bool close_scene();
 
 	bool is_scene_in_use(const String &p_path);
 
@@ -969,6 +977,9 @@ public:
 	void restart_editor(bool p_goto_project_manager = false);
 	void unload_editor_addons();
 
+	void open_setting_override(const String &p_property);
+	void notify_settings_overrides_changed();
+
 	void dim_editor(bool p_dimming);
 	bool is_editor_dimmed() const;
 
@@ -991,6 +1002,7 @@ public:
 
 	bool ensure_main_scene(bool p_from_native);
 	bool validate_custom_directory();
+	void run_editor_script(const Ref<Script> &p_script);
 };
 
 class EditorPluginList : public Object {
