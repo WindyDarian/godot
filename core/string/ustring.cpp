@@ -166,10 +166,12 @@ void String::append_latin1(const Span<char> &p_cstr) {
 	*dst = 0;
 }
 
-void String::append_utf32(const Span<char32_t> &p_cstr) {
+Error String::append_utf32(const Span<char32_t> &p_cstr) {
 	if (p_cstr.is_empty()) {
-		return;
+		return OK;
 	}
+
+	Error error = OK;
 
 	const int prev_length = length();
 	resize_uninitialized(prev_length + p_cstr.size() + 1);
@@ -184,29 +186,29 @@ void String::append_utf32(const Span<char32_t> &p_cstr) {
 			// NUL in string is allowed by the unicode standard, but unsupported in our implementation right now.
 			print_unicode_error("Unexpected NUL character", true);
 			*dst = _replacement_char;
+			error = ERR_PARSE_ERROR;
 		} else if (unlikely((chr & 0xfffff800) == 0xd800)) {
 			print_unicode_error(vformat("Unpaired surrogate (%x)", (uint32_t)chr), true);
 			*dst = _replacement_char;
+			error = ERR_PARSE_ERROR;
 		} else if (unlikely(chr > 0x10ffff)) {
 			print_unicode_error(vformat("Invalid unicode codepoint (%x)", (uint32_t)chr), true);
 			*dst = _replacement_char;
+			error = ERR_PARSE_ERROR;
 		} else {
 			*dst = chr;
 		}
 	}
 	*dst = 0;
+	return error;
 }
 
-// assumes the following have already been validated:
-// p_char != nullptr
-// p_length > 0
-// p_length <= p_char strlen
-// p_char is a valid UTF32 string
-void String::copy_from_unchecked(const char32_t *p_char, const int p_length) {
-	resize_uninitialized(p_length + 1); // + 1 for \0
-	char32_t *dst = ptrw();
-	memcpy(dst, p_char, p_length * sizeof(char32_t));
-	*(dst + p_length) = _null;
+void String::append_utf32_unchecked(const Span<char32_t> &p_span) {
+	const int prev_length = length();
+	resize_uninitialized(prev_length + p_span.size() + 1); // + 1 for \0
+	char32_t *dst = ptrw() + prev_length;
+	memcpy(dst, p_span.ptr(), p_span.size() * sizeof(char32_t));
+	*(dst + p_span.size()) = _null;
 }
 
 String String::operator+(const String &p_str) const {
@@ -266,7 +268,7 @@ String &String::operator+=(const String &p_str) {
 		*this = p_str;
 		return *this;
 	}
-	append_utf32(p_str);
+	append_utf32_unchecked(p_str);
 	return *this;
 }
 
@@ -3048,7 +3050,7 @@ String String::substr(int p_from, int p_chars) const {
 	}
 
 	String s;
-	s.copy_from_unchecked(&get_data()[p_from], p_chars);
+	s.append_utf32_unchecked(Span(ptr() + p_from, p_chars));
 	return s;
 }
 
@@ -4225,7 +4227,7 @@ String String::left(int p_len) const {
 	}
 
 	String s;
-	s.copy_from_unchecked(&get_data()[0], p_len);
+	s.append_utf32_unchecked(Span(ptr(), p_len));
 	return s;
 }
 
@@ -4243,7 +4245,7 @@ String String::right(int p_len) const {
 	}
 
 	String s;
-	s.copy_from_unchecked(&get_data()[length() - p_len], p_len);
+	s.append_utf32_unchecked(Span(ptr() + length() - p_len, p_len));
 	return s;
 }
 
@@ -5461,7 +5463,7 @@ String String::lpad(int min_length, const String &character) const {
 //   "fish %s pie" % "frog"
 //   "fish %s %d pie" % ["frog", 12]
 // In case of an error, the string returned is the error description and "error" is true.
-String String::sprintf(const Array &values, bool *error) const {
+String String::sprintf(const Span<Variant> &values, bool *error) const {
 	static const String ZERO("0");
 	static const String SPACE(" ");
 	static const String MINUS("-");
@@ -5470,7 +5472,7 @@ String String::sprintf(const Array &values, bool *error) const {
 	String formatted;
 	char32_t *self = (char32_t *)get_data();
 	bool in_format = false;
-	int value_index = 0;
+	uint64_t value_index = 0;
 	int min_chars = 0;
 	int min_decimals = 0;
 	bool in_decimals = false;
