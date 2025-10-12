@@ -360,7 +360,7 @@ void EditorPropertyTextEnum::_emit_changed_value(const String &p_string) {
 }
 
 void EditorPropertyTextEnum::_option_selected(int p_which) {
-	_emit_changed_value(option_button->get_item_text(p_which));
+	_emit_changed_value(option_button->get_item_metadata(p_which));
 }
 
 void EditorPropertyTextEnum::_edit_custom_value() {
@@ -400,6 +400,7 @@ void EditorPropertyTextEnum::update_property() {
 		// Manually entered value.
 		if (default_option < 0 && !current_value.is_empty()) {
 			option_button->add_item(current_value, options.size() + 1001);
+			option_button->set_item_metadata(-1, current_value);
 			option_button->select(0);
 
 			option_button->add_separator();
@@ -409,7 +410,8 @@ void EditorPropertyTextEnum::update_property() {
 		option_button->add_item("", options.size() + 1000);
 
 		for (int i = 0; i < options.size(); i++) {
-			option_button->add_item(options[i], i);
+			option_button->add_item(option_names[i], i);
+			option_button->set_item_metadata(-1, options[i]);
 			if (options[i] == current_value) {
 				option_button->select(option_button->get_item_count() - 1);
 			}
@@ -422,20 +424,28 @@ void EditorPropertyTextEnum::update_property() {
 	}
 }
 
-void EditorPropertyTextEnum::setup(const Vector<String> &p_options, bool p_string_name, bool p_loose_mode) {
+void EditorPropertyTextEnum::setup(const Vector<String> &p_options, const Vector<String> &p_option_names, bool p_string_name, bool p_loose_mode) {
+	ERR_FAIL_COND(!p_option_names.is_empty() && p_option_names.size() != p_options.size());
+
 	string_name = p_string_name;
 	loose_mode = p_loose_mode;
 
-	options.clear();
+	options = p_options;
+	if (p_option_names.is_empty()) {
+		option_names = p_options;
+	} else {
+		option_names = p_option_names;
+	}
 
 	if (loose_mode) {
 		// Add an explicit empty value for clearing the property in the loose mode.
 		option_button->add_item("", options.size() + 1000);
+		option_button->set_item_metadata(-1, String());
 	}
 
-	for (int i = 0; i < p_options.size(); i++) {
-		options.append(p_options[i]);
-		option_button->add_item(p_options[i], i);
+	for (int i = 0; i < options.size(); i++) {
+		option_button->add_item(option_names[i], i);
+		option_button->set_item_metadata(-1, options[i]);
 	}
 
 	if (loose_mode) {
@@ -1786,21 +1796,41 @@ void EditorPropertyEasing::_spin_focus_exited() {
 void EditorPropertyEasing::setup(bool p_positive_only, bool p_flip) {
 	flip = p_flip;
 	positive_only = p_positive_only;
+
+	// Names need translation context, so they are set in NOTIFICATION_TRANSLATION_CHANGED.
+	preset->add_item("", EASING_LINEAR);
+	preset->add_item("", EASING_IN);
+	preset->add_item("", EASING_OUT);
+	preset->add_item("", EASING_ZERO);
+	if (!positive_only) {
+		preset->add_item("", EASING_IN_OUT);
+		preset->add_item("", EASING_OUT_IN);
+	}
 }
 
 void EditorPropertyEasing::_notification(int p_what) {
 	switch (p_what) {
 		case NOTIFICATION_THEME_CHANGED: {
-			preset->clear();
-			preset->add_icon_item(get_editor_theme_icon(SNAME("CurveLinear")), "Linear", EASING_LINEAR);
-			preset->add_icon_item(get_editor_theme_icon(SNAME("CurveIn")), "Ease In", EASING_IN);
-			preset->add_icon_item(get_editor_theme_icon(SNAME("CurveOut")), "Ease Out", EASING_OUT);
-			preset->add_icon_item(get_editor_theme_icon(SNAME("CurveConstant")), "Zero", EASING_ZERO);
+			preset->set_item_icon(preset->get_item_index(EASING_LINEAR), get_editor_theme_icon(SNAME("CurveLinear")));
+			preset->set_item_icon(preset->get_item_index(EASING_IN), get_editor_theme_icon(SNAME("CurveIn")));
+			preset->set_item_icon(preset->get_item_index(EASING_OUT), get_editor_theme_icon(SNAME("CurveOut")));
+			preset->set_item_icon(preset->get_item_index(EASING_ZERO), get_editor_theme_icon(SNAME("CurveConstant")));
 			if (!positive_only) {
-				preset->add_icon_item(get_editor_theme_icon(SNAME("CurveInOut")), "Ease In-Out", EASING_IN_OUT);
-				preset->add_icon_item(get_editor_theme_icon(SNAME("CurveOutIn")), "Ease Out-In", EASING_OUT_IN);
+				preset->set_item_icon(preset->get_item_index(EASING_IN_OUT), get_editor_theme_icon(SNAME("CurveInOut")));
+				preset->set_item_icon(preset->get_item_index(EASING_OUT_IN), get_editor_theme_icon(SNAME("CurveOutIn")));
 			}
 			easing_draw->set_custom_minimum_size(Size2(0, get_theme_font(SceneStringName(font), SNAME("Label"))->get_height(get_theme_font_size(SceneStringName(font_size), SNAME("Label"))) * 2));
+		} break;
+
+		case NOTIFICATION_TRANSLATION_CHANGED: {
+			preset->set_item_text(preset->get_item_index(EASING_LINEAR), TTR("Linear", "Ease Type"));
+			preset->set_item_text(preset->get_item_index(EASING_IN), TTR("Ease In", "Ease Type"));
+			preset->set_item_text(preset->get_item_index(EASING_OUT), TTR("Ease Out", "Ease Type"));
+			preset->set_item_text(preset->get_item_index(EASING_ZERO), TTR("Zero", "Ease Type"));
+			if (!positive_only) {
+				preset->set_item_text(preset->get_item_index(EASING_IN_OUT), TTR("Ease In-Out", "Ease Type"));
+				preset->set_item_text(preset->get_item_index(EASING_OUT_IN), TTR("Ease Out-In", "Ease Type"));
+			}
 		} break;
 	}
 }
@@ -1813,6 +1843,7 @@ EditorPropertyEasing::EditorPropertyEasing() {
 	add_child(easing_draw);
 
 	preset = memnew(PopupMenu);
+	preset->set_auto_translate_mode(AUTO_TRANSLATE_MODE_DISABLED);
 	add_child(preset);
 	preset->connect(SceneStringName(id_pressed), callable_mp(this, &EditorPropertyEasing::_set_preset));
 
@@ -3729,7 +3760,7 @@ static EditorProperty *get_input_action_editor(const String &p_hint_text, bool i
 		}
 	}
 	options.append_array(builtin_options);
-	editor->setup(options, is_string_name, hints.has("loose_mode"));
+	editor->setup(options, Vector<String>(), is_string_name, hints.has("loose_mode"));
 	return editor;
 }
 
@@ -3843,8 +3874,17 @@ EditorProperty *EditorInspectorDefaultPlugin::get_editor_for_property(Object *p_
 		case Variant::STRING: {
 			if (p_hint == PROPERTY_HINT_ENUM || p_hint == PROPERTY_HINT_ENUM_SUGGESTION) {
 				EditorPropertyTextEnum *editor = memnew(EditorPropertyTextEnum);
-				Vector<String> options = p_hint_text.split(",", false);
-				editor->setup(options, false, (p_hint == PROPERTY_HINT_ENUM_SUGGESTION));
+				Vector<String> options;
+				Vector<String> option_names;
+				if (p_hint_text.begins_with(";")) {
+					for (const String &option : p_hint_text.split(";", false)) {
+						options.append(option.get_slicec('/', 0));
+						option_names.append(option.get_slicec('/', 1));
+					}
+				} else {
+					options = p_hint_text.split(",", false);
+				}
+				editor->setup(options, option_names, false, (p_hint == PROPERTY_HINT_ENUM_SUGGESTION));
 				return editor;
 			} else if (p_hint == PROPERTY_HINT_INPUT_NAME) {
 				return get_input_action_editor(p_hint_text, false);
@@ -3999,7 +4039,7 @@ EditorProperty *EditorInspectorDefaultPlugin::get_editor_for_property(Object *p_
 			if (p_hint == PROPERTY_HINT_ENUM || p_hint == PROPERTY_HINT_ENUM_SUGGESTION) {
 				EditorPropertyTextEnum *editor = memnew(EditorPropertyTextEnum);
 				Vector<String> options = p_hint_text.split(",", false);
-				editor->setup(options, true, (p_hint == PROPERTY_HINT_ENUM_SUGGESTION));
+				editor->setup(options, Vector<String>(), true, (p_hint == PROPERTY_HINT_ENUM_SUGGESTION));
 				return editor;
 			} else if (p_hint == PROPERTY_HINT_INPUT_NAME) {
 				return get_input_action_editor(p_hint_text, true);

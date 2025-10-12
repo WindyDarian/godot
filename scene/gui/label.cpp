@@ -32,7 +32,7 @@
 
 #include "scene/gui/container.h"
 #include "scene/theme/theme_db.h"
-#include "servers/text_server.h"
+#include "servers/text/text_server.h"
 
 void Label::set_autowrap_mode(TextServer::AutowrapMode p_mode) {
 	if (autowrap_mode == p_mode) {
@@ -649,7 +649,7 @@ PackedStringArray Label::get_configuration_warnings() const {
 			const Glyph *glyph = TS->shaped_text_get_glyphs(para.text_rid);
 			int64_t glyph_count = TS->shaped_text_get_glyph_count(para.text_rid);
 			for (int64_t i = 0; i < glyph_count; i++) {
-				if (glyph[i].font_rid == RID()) {
+				if (glyph[i].font_rid == RID() && glyph[i].index != 0) {
 					warnings.push_back(RTR("The current font does not support rendering one or more characters used in this Label's text."));
 					break;
 				}
@@ -1114,12 +1114,12 @@ TextServer::StructuredTextParser Label::get_structured_text_bidi_override() cons
 	return st_parser;
 }
 
-void Label::set_structured_text_bidi_override_options(Array p_args) {
+void Label::set_structured_text_bidi_override_options(const Array &p_args) {
 	if (st_args == p_args) {
 		return;
 	}
 
-	st_args = p_args;
+	st_args = Array(p_args);
 	for (Paragraph &para : paragraphs) {
 		para.dirty = true;
 	}
@@ -1127,7 +1127,7 @@ void Label::set_structured_text_bidi_override_options(Array p_args) {
 }
 
 Array Label::get_structured_text_bidi_override_options() const {
-	return st_args;
+	return Array(st_args);
 }
 
 Control::TextDirection Label::get_text_direction() const {
