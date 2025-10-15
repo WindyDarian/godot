@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  post_effects.h                                                        */
+/*  margin_container_editor_plugin.h                                      */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -30,37 +30,19 @@
 
 #pragma once
 
-#ifdef GLES3_ENABLED
+#include "editor/plugins/editor_plugin.h"
+#include "scene/gui/margin_container.h"
 
-#include "drivers/gles3/shaders/effects/post.glsl.gen.h"
-#include "glow.h"
+class CanvasItemEditor;
 
-namespace GLES3 {
+class MarginContainerEditorPlugin : public EditorPlugin {
+	GDCLASS(MarginContainerEditorPlugin, EditorPlugin);
 
-class PostEffects {
-private:
-	struct Post {
-		PostShaderGLES3 shader;
-		RID shader_version;
-	} post;
-
-	static PostEffects *singleton;
-
-	// Use for full-screen effects. Slightly more efficient than screen_quad as this eliminates pixel overdraw along the diagonal.
-	GLuint screen_triangle = 0;
-	GLuint screen_triangle_array = 0;
-
-	void _draw_screen_triangle();
+	MarginContainer *margin_container = nullptr;
 
 public:
-	static PostEffects *get_singleton();
+	void forward_canvas_draw_over_viewport(Control *p_viewport_control) override;
 
-	PostEffects();
-	~PostEffects();
-
-	void post_copy(GLuint p_dest_framebuffer, Size2i p_dest_size, GLuint p_source_color, Size2i p_source_size, float p_luminance_multiplier, const Glow::GLOWLEVEL *p_glow_buffers, float p_glow_intensity, float p_srgb_white, uint32_t p_view = 0, bool p_use_multiview = false, uint64_t p_spec_constants = 0);
+	virtual void edit(Object *p_object) override;
+	virtual bool handles(Object *p_object) const override;
 };
-
-} //namespace GLES3
-
-#endif // GLES3_ENABLED
