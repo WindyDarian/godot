@@ -718,6 +718,8 @@ private:
 	void _update_main_menu_type();
 	void _add_to_main_menu(const String &p_name, PopupMenu *p_menu);
 
+	void _bottom_panel_resized();
+
 protected:
 	friend class FileSystemDock;
 
@@ -743,6 +745,7 @@ public:
 
 	static EditorTitleBar *get_title_bar() { return singleton->title_bar; }
 	static VSplitContainer *get_top_split() { return singleton->top_split; }
+	static DockSplitContainer *get_center_split() { return singleton->center_split; }
 	static EditorBottomPanel *get_bottom_panel() { return singleton->bottom_panel; }
 	static EditorMainScreen *get_editor_main_screen() { return singleton->editor_main_screen; }
 
@@ -1029,35 +1032,6 @@ public:
 	bool ensure_main_scene(bool p_from_native);
 	bool validate_custom_directory();
 	void run_editor_script(const Ref<Script> &p_script);
-};
-
-class EditorPluginList : public Object {
-	GDSOFTCLASS(EditorPluginList, Object);
-
-private:
-	Vector<EditorPlugin *> plugins_list;
-
-public:
-	void set_plugins_list(Vector<EditorPlugin *> p_plugins_list) {
-		plugins_list = p_plugins_list;
-	}
-
-	Vector<EditorPlugin *> &get_plugins_list() {
-		return plugins_list;
-	}
-
-	void make_visible(bool p_visible);
-	void edit(Object *p_object);
-	bool forward_gui_input(const Ref<InputEvent> &p_event);
-	void forward_canvas_draw_over_viewport(Control *p_overlay);
-	void forward_canvas_force_draw_over_viewport(Control *p_overlay);
-	EditorPlugin::AfterGUIInput forward_3d_gui_input(Camera3D *p_camera, const Ref<InputEvent> &p_event, bool serve_when_force_input_enabled);
-	void forward_3d_draw_over_viewport(Control *p_overlay);
-	void forward_3d_force_draw_over_viewport(Control *p_overlay);
-	void add_plugin(EditorPlugin *p_plugin);
-	void remove_plugin(EditorPlugin *p_plugin);
-	void clear();
-	bool is_empty();
 };
 
 struct EditorProgressBG {
