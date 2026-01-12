@@ -1846,8 +1846,8 @@ void SpringBoneSimulator3D::_process_joints(double p_delta, Skeleton3D *p_skelet
 		// Windy Darian hack (20260111) - limiter to prevent breaking down at high speed.
 		Vector3 limited_prev_tail = verlet->current_tail + (verlet->prev_tail - verlet->current_tail).limit_length(100.0 * p_delta);
 		Vector3 next_tail = verlet->current_tail +
-			(verlet->current_tail - limited_prev_tail) * smoothing +
-			p_center_transform.basis.get_rotation_quaternion().xform(current_rot.xform(verlet->forward_vector * (p_joints[i]->stiffness * p_delta)) + external);
+				(verlet->current_tail - limited_prev_tail) * smoothing +
+				p_center_transform.basis.get_rotation_quaternion().xform(current_rot.xform(verlet->forward_vector * (p_joints[i]->stiffness * p_delta)) + external);
 		// Vector3 next_tail = verlet->current_tail +
 		// 		(verlet->current_tail - verlet->prev_tail) * (1.0 - p_joints[i]->drag) +
 		// 		p_center_transform.basis.get_rotation_quaternion().xform(current_rot.xform(verlet->forward_vector * (p_joints[i]->stiffness * p_delta)) + external);
