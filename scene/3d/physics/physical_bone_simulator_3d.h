@@ -44,6 +44,7 @@ class PhysicalBoneSimulator3D : public SkeletonModifier3D {
 		Vector<int> child_bones;
 
 		Transform3D global_pose;
+		Transform3D prev_global_pose;
 
 		PhysicalBone3D *physical_bone = nullptr;
 		PhysicalBone3D *cache_parent_physical_bone = nullptr;
@@ -51,6 +52,7 @@ class PhysicalBoneSimulator3D : public SkeletonModifier3D {
 		SimulatedBone() {
 			parent = -1;
 			global_pose = Transform3D();
+			prev_global_pose = Transform3D();
 			physical_bone = nullptr;
 			cache_parent_physical_bone = nullptr;
 		}

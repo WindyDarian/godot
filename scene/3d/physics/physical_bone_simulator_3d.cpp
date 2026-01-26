@@ -86,7 +86,10 @@ void PhysicalBoneSimulator3D::_pose_updated() {
 
 void PhysicalBoneSimulator3D::_bone_pose_updated(Skeleton3D *p_skeleton, int p_bone_id) {
 	ERR_FAIL_UNSIGNED_INDEX((uint32_t)p_bone_id, bones.size());
-	bones[p_bone_id].global_pose = p_skeleton->get_bone_global_pose(p_bone_id);
+	Transform3D current_pose = p_skeleton->get_bone_global_pose(p_bone_id);
+	bones[p_bone_id].global_pose = current_pose;
+	// This is called outside of simulation or at starting of it, set prev_global_pose to global_pose.
+	bones[p_bone_id].prev_global_pose = current_pose;
 }
 
 void PhysicalBoneSimulator3D::_set_active(bool p_active) {
@@ -378,7 +381,10 @@ void PhysicalBoneSimulator3D::_process_modification(double p_delta) {
 			_bone_pose_updated(skeleton, i);
 			bones[i].physical_bone->reset_to_rest_position();
 		} else if (simulating) {
-			skeleton->set_bone_global_pose(i, bones[i].global_pose);
+			float interpolation_fraction = Engine::get_singleton()->get_physics_interpolation_fraction();
+			Transform3D interpolated_transform = bones[i].prev_global_pose.interpolate_with(bones[i].global_pose, interpolation_fraction);
+			skeleton->set_bone_global_pose(i, interpolated_transform);
+			bones[i].prev_global_pose = bones[i].global_pose;
 		}
 	}
 }
