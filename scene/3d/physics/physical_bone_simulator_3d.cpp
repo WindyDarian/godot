@@ -364,6 +364,7 @@ Transform3D PhysicalBoneSimulator3D::get_bone_global_pose(int p_bone) const {
 void PhysicalBoneSimulator3D::set_bone_global_pose(int p_bone, const Transform3D &p_pose) {
 	const int bone_size = bones.size();
 	ERR_FAIL_INDEX(p_bone, bone_size);
+	bones[p_bone].prev_global_pose = bones[p_bone].global_pose;
 	bones[p_bone].global_pose = p_pose;
 }
 
@@ -384,7 +385,6 @@ void PhysicalBoneSimulator3D::_process_modification(double p_delta) {
 			float interpolation_fraction = Engine::get_singleton()->get_physics_interpolation_fraction();
 			Transform3D interpolated_transform = bones[i].prev_global_pose.interpolate_with(bones[i].global_pose, interpolation_fraction);
 			skeleton->set_bone_global_pose(i, interpolated_transform);
-			bones[i].prev_global_pose = bones[i].global_pose;
 		}
 	}
 }
