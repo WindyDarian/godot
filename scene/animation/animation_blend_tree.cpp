@@ -30,6 +30,7 @@
 
 #include "animation_blend_tree.h"
 
+#include "core/object/class_db.h"
 #include "scene/resources/animation.h"
 
 void AnimationNodeAnimation::set_animation(const StringName &p_name) {
@@ -91,9 +92,7 @@ void AnimationNodeAnimation::_validate_property(PropertyInfo &p_property) const 
 			p_property.hint = PROPERTY_HINT_ENUM;
 			p_property.hint_string = anims;
 		}
-	}
-
-	if (!use_custom_timeline) {
+	} else if (!use_custom_timeline) {
 		if (p_property.name == "timeline_length" || p_property.name == "start_offset" || p_property.name == "loop_mode" || p_property.name == "stretch_time_scale") {
 			p_property.usage = PROPERTY_USAGE_NONE;
 		}
