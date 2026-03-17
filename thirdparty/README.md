@@ -8,7 +8,7 @@ readability.
 ## accesskit
 
 - Upstream: https://github.com/AccessKit/accesskit-c
-- Version: 0.21.1 (39dd05f65d070e86cecb5799652986db9edfdd81, 2026)
+- Version: 0.21.2 (72460cd52d1b24492393cdf54a6f19d2fd63e258, 2026)
 - License: MIT
 
 Files extracted from upstream source:
@@ -1210,7 +1210,7 @@ Files extracted from upstream source:
 # wayland-protocols
 
 - Upstream: https://gitlab.freedesktop.org/wayland/wayland-protocols
-- Version: 1.46 (6141e1154303dadd5c3e480bc4a16e26f1dcb2af, 2025)
+- Version: 1.47 (88223018d1b578d0d8869866da66d9608e05f928, 2025)
 - License: MIT
 
 Files extracted from upstream source:
@@ -1221,6 +1221,8 @@ Files extracted from upstream source:
 - `stable/viewporter/viewporter.xml`
 - `stable/xdg-shell/README`
 - `stable/xdg-shell/xdg-shell.xml`
+- `staging/color-management/README.md`
+- `staging/color-management/color-management-v1.xml`
 - `staging/fractional-scale/README`
 - `staging/fractional-scale/fractional-scale-v1.xml`
 - `staging/xdg-activation/README`
