@@ -7974,6 +7974,10 @@ void TextEdit::_paste_internal(int p_caret) {
 	// Paste a full line. Ignore '\r' characters that may have been added to the clipboard by the OS.
 	if (get_caret_count() == 1 && !has_selection(0) && !cut_copy_line.is_empty() && cut_copy_line == clipboard.remove_char('\r')) {
 		insert_text(clipboard, get_caret_line(), 0);
+
+		_update_scrollbars();
+		adjust_viewport_to_caret(0);
+
 		return;
 	}
 
@@ -8601,7 +8605,7 @@ void TextEdit::_update_wrap_at_column(bool p_force) {
 		new_wrap_at -= minimap_width;
 	}
 	if (v_scroll->is_visible_in_tree()) {
-		new_wrap_at -= v_scroll->get_combined_minimum_size().width;
+		new_wrap_at -= v_scroll->get_bound_minimum_size().width;
 	}
 	/* Give it a little more space. */
 	new_wrap_at -= theme_cache.wrap_offset;
@@ -8648,8 +8652,8 @@ void TextEdit::_update_wrap_at_column(bool p_force) {
 /* Viewport. */
 void TextEdit::_update_scrollbars() {
 	Size2 size = get_size();
-	Size2 hmin = h_scroll->get_combined_minimum_size();
-	Size2 vmin = v_scroll->get_combined_minimum_size();
+	Size2 hmin = h_scroll->get_bound_minimum_size();
+	Size2 vmin = v_scroll->get_bound_minimum_size();
 
 	Ref<StyleBox> style = _get_current_stylebox();
 	v_scroll->set_begin(Point2(size.width - vmin.width, style->get_margin(SIDE_TOP)));
@@ -8892,7 +8896,7 @@ void TextEdit::_adjust_viewport_to_caret_horizontally(int p_caret, bool p_maximi
 		visible_width -= minimap_width;
 	}
 	if (v_scroll->is_visible_in_tree()) {
-		visible_width -= v_scroll->get_combined_minimum_size().width;
+		visible_width -= v_scroll->get_bound_minimum_size().width;
 	}
 	visible_width -= 20; // Give it a little more space.
 
