@@ -43,6 +43,7 @@ typedef void (*EditorPluginInitializeCallback)();
 typedef bool (*EditorBuildCallback)();
 
 class AcceptDialog;
+class BoxContainer;
 class ColorPicker;
 class ConfirmationDialog;
 class Control;
@@ -168,6 +169,7 @@ public:
 		// Project menu.
 		PROJECT_OPEN_SETTINGS,
 		PROJECT_FIND_IN_FILES,
+		PROJECT_REPLACE_IN_FILES,
 		PROJECT_VERSION_CONTROL,
 		PROJECT_EXPORT,
 		PROJECT_PACK_AS_ZIP,
@@ -294,8 +296,8 @@ private:
 	OptionButton *renderer = nullptr;
 
 #ifdef ANDROID_ENABLED
-	VBoxContainer *base_vbox = nullptr; // It only contains the title_bar and main_hbox.
-	HBoxContainer *main_hbox = nullptr; // It only contains the touch_actions_panel and main_vbox.
+	VBoxContainer *base_vbox = nullptr; // It only contains the title_bar and main_box.
+	BoxContainer *main_box = nullptr; // It only contains the touch_actions_panel and main_vbox.
 	TouchActionsPanel *touch_actions_panel = nullptr;
 	void _touch_actions_panel_mode_changed();
 #endif
