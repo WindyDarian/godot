@@ -800,6 +800,10 @@ Collection of single-file libraries used in Godot components.
   * License: MIT
   * Patches:
     - `FastNoiseLite-0001-namespace-warnings.patch` ([GH-88526](https://github.com/godotengine/godot/pull/88526))
+- `gamemode_client.h`
+  * Upstream: https://github.com/FeralInteractive/gamemode (`lib/gamemode_client.h`)
+  * Version: 1.8.2
+  * License: BSD-3-Clause
 - `ifaddrs-android.{cc,h}`
   * Upstream: https://chromium.googlesource.com/external/webrtc/stable/talk/+/master/base/ifaddrs-android.h
   * Version: git (5976650443d68ccfadf1dea24999ee459dd2819d, 2013)
@@ -876,6 +880,18 @@ Files extracted from the upstream source:
 Patches:
 
 - `0001-remove-unused-save-features.patch` ([GH-113965](https://github.com/godotengine/godot/issues/113965))
+
+
+## offset_allocator
+
+- Upstream: https://github.com/sebbbi/OffsetAllocator
+- Version: git (3610a7377088b1e8c8f1525f458c96038a4e6fc0, 2026)
+- License: MIT
+
+Files extracted from upstream source:
+
+- `offsetAllocator.cpp`, `offsetAllocator.hpp`
+- `LICENSE`
 
 
 ## openxr
