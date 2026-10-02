@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  test_gdscript.h                                                       */
+/*  type_info.cpp                                                         */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,19 +28,17 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#pragma once
+#include "core/variant/type_info.h"
 
-namespace GDScriptTests {
-
-enum TestType {
-	TEST_TOKENIZER,
-	TEST_TOKENIZER_BUFFER,
-	TEST_PARSER,
-	TEST_COMPILER,
-	TEST_BYTECODE,
-};
-
-void test(TestType p_type);
-int generate_tests();
-
-} // namespace GDScriptTests
+namespace GodotTypeInfo {
+namespace Internal {
+String enum_qualified_name_to_class_info_name(const char *p_qualified_name) {
+	Vector<String> parts = String(p_qualified_name).split("::", false);
+	if (parts.size() <= 2) {
+		return String(".").join(parts);
+	}
+	// Contains namespace. We only want the class and enum names.
+	return parts[parts.size() - 2] + "." + parts[parts.size() - 1];
+}
+} // namespace Internal
+} // namespace GodotTypeInfo
